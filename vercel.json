@@ -1,0 +1,35 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "functions": {
+    "api/index.py": {
+      "includeFiles": [
+        "app/**",
+        "*.md"
+      ],
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/outputs/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/static/(.*)",
+      "destination": "/app/frontend/static/$1"
+    },
+    {
+      "source": "/",
+      "destination": "/app/frontend/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/app/frontend/index.html"
+    }
+  ]
+}

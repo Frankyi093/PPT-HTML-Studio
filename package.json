@@ -1,0 +1,12 @@
+{
+  "name": "ppt-html-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-cloudflare.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
