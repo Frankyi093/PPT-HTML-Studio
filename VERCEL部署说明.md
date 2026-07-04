@@ -17,7 +17,9 @@ The root `vercel.json` already routes:
 - `/api/*` to `api/index.py`
 - `/outputs/*` to `api/index.py`
 
-The Python function package explicitly includes `app/**` and the API guide markdown file in the repository root.
+The Python function package explicitly includes `app/**`.
+
+Important: Vercel expects `functions.api/index.py.includeFiles` to be a string. Do not change it to a JSON array, or Vercel will reject the project with `includeFiles should be string`.
 
 ## Required Files For GitHub
 

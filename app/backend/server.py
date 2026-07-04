@@ -39,6 +39,30 @@ from ppt_processor import load_jobs, process_ppt, save_jobs  # noqa: E402
 
 IMG_SRC_PATTERN = re.compile(r'(<img\b[^>]*\bsrc=["\'])([^"\']+)(["\'])', re.IGNORECASE)
 
+DEFAULT_API_GUIDE = """# API Configuration Tutorial
+
+## Quick setup
+
+1. Open Settings or the AI connection panel.
+2. Choose a service, such as DeepSeek, Doubao Seed 2.0, OpenAI compatible, Custom AI API, or Workflow API.
+3. Paste the API key.
+4. Keep the default endpoint and model unless your provider gives you a custom value.
+5. Click Save connection.
+6. Click Test API before generating HTML.
+
+## Required fields
+
+- Service: selects the provider preset.
+- API key: the secret key from your provider.
+- Endpoint: required for custom providers and workflow APIs.
+- Model: required for AI chat-compatible providers.
+
+## Notes
+
+- API settings are saved on the current deployment storage. On Vercel Serverless, storage is temporary unless you connect persistent storage.
+- For large PPT files or persistent job history, use Vercel Blob/KV/database storage or deploy the Python backend to Render, Railway, Fly, or a cloud server.
+"""
+
 
 def ensure_data_dirs() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -340,10 +364,11 @@ class PlatformHandler(BaseHTTPRequestHandler):
         if path == "/api/help/api-guide":
             guide_path = (APP_ROOT.parent / "API配置教程.md").resolve()
             project_root = APP_ROOT.parent.resolve()
-            if not self.is_safe_child(guide_path, project_root) or not guide_path.exists():
-                self.write_json({"error": "guide_not_found"}, HTTPStatus.NOT_FOUND)
-                return
-            self.write_json({"title": "API Configuration Tutorial", "markdown": guide_path.read_text(encoding="utf-8-sig")})
+            if self.is_safe_child(guide_path, project_root) and guide_path.exists():
+                markdown = guide_path.read_text(encoding="utf-8-sig")
+            else:
+                markdown = DEFAULT_API_GUIDE
+            self.write_json({"title": "API Configuration Tutorial", "markdown": markdown})
             return
 
         if path.startswith("/api/jobs/") and path.endswith("/download"):
