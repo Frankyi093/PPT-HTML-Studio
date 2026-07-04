@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "buildCommand": "node scripts/build-cloudflare.mjs",
+  "outputDirectory": "dist",
   "functions": {
     "api/index.py": {
       "includeFiles": "app/**",
@@ -18,15 +20,15 @@
     },
     {
       "source": "/static/(.*)",
-      "destination": "/app/frontend/static/$1"
+      "destination": "/static/$1"
     },
     {
       "source": "/",
-      "destination": "/app/frontend/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/(.*)",
-      "destination": "/app/frontend/index.html"
+      "destination": "/index.html"
     }
   ]
 }
