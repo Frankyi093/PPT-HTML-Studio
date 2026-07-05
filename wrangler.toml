@@ -1,0 +1,8 @@
+name = "ppt-html-studio"
+compatibility_date = "2026-06-29"
+main = "worker/cloudflare-worker.js"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
