@@ -4,6 +4,9 @@ const jobs = new Map();
 const jobList = [];
 const CLOUDFLARE_MAX_RAW_UPLOAD_BYTES = 50 * 1024 * 1024;
 const CLOUDFLARE_MAX_PAYLOAD_BYTES = 75 * 1024 * 1024;
+const MAX_EMBEDDED_IMAGES = 36;
+const MAX_EMBEDDED_IMAGE_BYTES = 700 * 1024;
+const MAX_TOTAL_EMBEDDED_IMAGE_BYTES = 6 * 1024 * 1024;
 let integrationConfig = {
   mode: "local",
   endpoint: "",
@@ -196,6 +199,7 @@ function extractTexts(slideXml) {
 }
 
 async function extractImages(zip, slideXml, rels, slideIndex) {
+  const stats = arguments[4] || { embeddedImages: 0, embeddedImageBytes: 0, skippedImages: 0 };
   const images = [];
   const seen = new Set();
   const pattern = /r:embed="([^"]+)"/g;
@@ -207,9 +211,28 @@ async function extractImages(zip, slideXml, rels, slideIndex) {
     const path = rels.get(relId);
     const file = path ? zip.file(path) : null;
     if (!file) continue;
+    const estimatedSize = Number(file._data?.uncompressedSize || file._data?.compressedSize || 0);
+    if (stats.embeddedImages >= MAX_EMBEDDED_IMAGES) {
+      stats.skippedImages += 1;
+      continue;
+    }
+    if (estimatedSize && estimatedSize > MAX_EMBEDDED_IMAGE_BYTES) {
+      stats.skippedImages += 1;
+      continue;
+    }
+    if (estimatedSize && stats.embeddedImageBytes + estimatedSize > MAX_TOTAL_EMBEDDED_IMAGE_BYTES) {
+      stats.skippedImages += 1;
+      continue;
+    }
     const bytes = await file.async("uint8array");
+    if (bytes.length > MAX_EMBEDDED_IMAGE_BYTES || stats.embeddedImageBytes + bytes.length > MAX_TOTAL_EMBEDDED_IMAGE_BYTES) {
+      stats.skippedImages += 1;
+      continue;
+    }
     const ext = path.split(".").pop()?.toLowerCase() || "png";
     const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : ext === "svg" ? "image/svg+xml" : "image/png";
+    stats.embeddedImages += 1;
+    stats.embeddedImageBytes += bytes.length;
     images.push({
       src: `data:${mime};base64,${bytesToBase64(bytes)}`,
       name: `slide-${String(slideIndex).padStart(3, "0")}-image-${images.length + 1}.${ext}`,
@@ -223,6 +246,11 @@ async function extractImages(zip, slideXml, rels, slideIndex) {
 async function extractPptx(fileBytes) {
   const zip = await JSZip.loadAsync(fileBytes);
   const slides = [];
+  const extractionStats = {
+    embeddedImages: 0,
+    embeddedImageBytes: 0,
+    skippedImages: 0,
+  };
   const paths = sortedSlidePaths(zip);
   for (let index = 0; index < paths.length; index += 1) {
     const slidePath = paths[index];
@@ -231,7 +259,7 @@ async function extractPptx(fileBytes) {
     const relsXml = zip.file(relsPath) ? await zip.file(relsPath).async("string") : "";
     const rels = relationshipMap(relsXml, slidePath);
     const texts = extractTexts(slideXml);
-    const images = await extractImages(zip, slideXml, rels, index + 1);
+    const images = await extractImages(zip, slideXml, rels, index + 1, extractionStats);
     const title = texts[0] || `Slide ${index + 1}`;
     slides.push({
       page: index + 1,
@@ -241,6 +269,7 @@ async function extractPptx(fileBytes) {
     });
   }
   if (!slides.length) throw new Error("No slides found in this PPTX file.");
+  slides.extractionStats = extractionStats;
   return slides;
 }
 
@@ -565,7 +594,7 @@ function buildHtml(slides, style, mode = "paged") {
 async function maybeGenerateAiHtml(slides, config, style) {
   if (!config.apiKey || config.mode !== "ai_api" || !config.endpoint) return null;
   const endpoint = normalizeChatEndpoint(config.endpoint);
-  const prompt = `Generate a complete standalone editable HTML slide deck in English from this JSON. Use embedded images as provided. Strict rules: all body text font-size must be greater than 30pt; all titles must be greater than 45pt; no text may overflow the viewport; do not use scrollable text boxes; preserve images; include Prev/Next buttons that are small and do not overlap editing controls; expose window.toggleEdit() and window.exportEditedHtml(mode). Return only HTML code.\n\n${JSON.stringify({ style, slides: slides.map((slide) => ({ title: slide.title, body: slide.body, images: slide.images.map((image) => image.src) })) }).slice(0, 90000)}`;
+  const prompt = `Generate a complete standalone editable HTML slide deck in English from this JSON. Do not include image base64 in your response. If a slide has images, reserve a clear visual area or placeholder for them. Strict rules: all body text font-size must be greater than 30pt; all titles must be greater than 45pt; no text may overflow the viewport; do not use scrollable text boxes; include Prev/Next buttons that are small and do not overlap editing controls; expose window.toggleEdit() and window.exportEditedHtml(mode). Return only HTML code.\n\n${JSON.stringify({ style, slides: slides.map((slide) => ({ title: slide.title, body: slide.body.slice(0, 12), imageCount: slide.images.length })) }).slice(0, 45000)}`;
   const headers = {
     "content-type": "application/json",
     [config.apiKeyHeader || "Authorization"]: `${config.apiKeyPrefix ?? "Bearer "}${config.apiKey}`,
@@ -639,6 +668,7 @@ async function createJob(payload) {
   }
   const fileBytes = decodeDataUrl(payload.fileBase64);
   const slides = await extractPptx(fileBytes);
+  const extractionStats = slides.extractionStats || { embeddedImages: 0, skippedImages: 0, embeddedImageBytes: 0 };
   const style = payload.style || "teaching";
   let aiStatus = { mode: integrationConfig.mode || "local", used: false };
   let pagedHtml = "";
@@ -676,10 +706,12 @@ async function createJob(payload) {
     aiStatus,
     share: {
       status: "ready",
-      recommendation: "Ready to share. Images are embedded in the HTML and included in the ZIP package.",
-      totalImages: slides.reduce((sum, slide) => sum + slide.images.length, 0),
-      embeddedImages: slides.reduce((sum, slide) => sum + slide.images.length, 0),
-      missingImages: 0,
+      recommendation: extractionStats.skippedImages
+        ? `Ready to share. ${extractionStats.embeddedImages} images were embedded. ${extractionStats.skippedImages} oversized images were skipped to avoid Cloudflare Worker resource limits.`
+        : "Ready to share. Images are embedded in the HTML and included in the ZIP package.",
+      totalImages: extractionStats.embeddedImages + extractionStats.skippedImages,
+      embeddedImages: extractionStats.embeddedImages,
+      missingImages: extractionStats.skippedImages,
       riskyPaths: 0,
       externalImages: 0,
       zipPackageUrl: `/api/jobs/${id}/download`,
@@ -690,7 +722,7 @@ async function createJob(payload) {
   };
   jobs.set(id, job);
   jobList.unshift(job);
-  while (jobList.length > 20) {
+  while (jobList.length > 5) {
     const removed = jobList.pop();
     if (removed) jobs.delete(removed.id);
   }
