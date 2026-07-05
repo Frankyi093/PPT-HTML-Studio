@@ -619,12 +619,17 @@ async function buildZip(job) {
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }
 
-async function attachZipDataUrl(job) {
-  const zipBytes = await buildZip(job);
-  const zipUrl = `data:application/zip;base64,${bytesToBase64(zipBytes)}`;
-  job.downloadUrl = zipUrl;
-  if (job.share) job.share.zipPackageUrl = zipUrl;
-  return job;
+function publicJob(job, includeInline = false) {
+  if (!job) return job;
+  const output = {
+    ...job,
+    share: job.share ? { ...job.share } : job.share,
+  };
+  if (!includeInline) {
+    delete output.inlinePreviewHtml;
+    delete output.inlineScrollHtml;
+  }
+  return output;
 }
 
 async function createJob(payload) {
@@ -683,7 +688,6 @@ async function createJob(payload) {
       reportUrl: `/outputs/${id}/share-report.json`,
     },
   };
-  await attachZipDataUrl(job);
   jobs.set(id, job);
   jobList.unshift(job);
   while (jobList.length > 20) {
@@ -706,8 +710,7 @@ async function saveEdited(request, id) {
   if (payload.pagedHtml) job.inlinePreviewHtml = String(payload.pagedHtml);
   if (payload.scrollHtml) job.inlineScrollHtml = String(payload.scrollHtml);
   job.updatedAt = new Date().toISOString();
-  await attachZipDataUrl(job);
-  return json({ job, share: job.share });
+  return json({ job: publicJob(job), share: job.share });
 }
 
 async function testIntegration() {
@@ -749,7 +752,7 @@ async function handleApi(request, env) {
     });
   }
   if (request.method === "GET" && path === "/api/help/api-guide") return json({ markdown: DEFAULT_API_GUIDE });
-  if (request.method === "GET" && path === "/api/jobs") return json({ jobs: jobList });
+  if (request.method === "GET" && path === "/api/jobs") return json({ jobs: jobList.map((job) => publicJob(job)) });
   if (request.method === "GET" && path === "/api/integration") return json({ integration: publicIntegration() });
   if (request.method === "POST" && path === "/api/integration") {
     const payload = await readJson(request);
@@ -769,7 +772,7 @@ async function handleApi(request, env) {
   if (request.method === "GET" && shareMatch) {
     const job = jobs.get(shareMatch[1]);
     if (!job) return json({ error: "job_not_found" }, 404);
-    return json({ job, share: job.share });
+    return json({ job: publicJob(job), share: job.share });
   }
   const downloadMatch = path.match(/^\/api\/jobs\/([^/]+)\/download$/);
   if (request.method === "GET" && downloadMatch) {
