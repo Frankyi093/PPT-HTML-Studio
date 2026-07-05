@@ -495,7 +495,7 @@ async function extractPptxInBrowser(file) {
   const paths = Object.keys(zip.files)
     .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
     .sort((a, b) => Number(a.match(/slide(\d+)\.xml/i)?.[1] || 0) - Number(b.match(/slide(\d+)\.xml/i)?.[1] || 0));
-  const stats = { embeddedImages: 0, embeddedImageBytes: 0, skippedImages: 0 };
+  const stats = { embeddedImages: 0, embeddedImageBytes: 0, skippedImages: 0, skippedBlankSlides: 0 };
   const slides = [];
   for (let index = 0; index < paths.length; index += 1) {
     const slidePath = paths[index];
@@ -505,7 +505,12 @@ async function extractPptxInBrowser(file) {
     const rels = clientRelationshipMap(relsXml, slidePath);
     const texts = clientExtractTexts(slideXml);
     const images = await clientExtractImages(zip, slideXml, rels, index + 1, stats);
-    slides.push({ page: index + 1, title: texts[0] || `Slide ${index + 1}`, body: texts.slice(1), images });
+    const isDefaultOnlySlide = texts.length === 1 && /^slide\s*\d+$/i.test(texts[0]) && !images.length;
+    if ((!texts.length && !images.length) || isDefaultOnlySlide) {
+      stats.skippedBlankSlides += 1;
+      continue;
+    }
+    slides.push({ page: index + 1, title: texts[0] || "", body: texts.slice(1), images });
   }
   if (!slides.length) throw new Error("No slides found in this PPTX file.");
   return { slides, stats };
@@ -516,10 +521,9 @@ function clientEditorRuntime() {
 }
 
 function clientSlideLayout(slide, index, items) {
-  const title = `${slide.title} ${items.join(" ")}`.toLowerCase();
-  const avgLen = items.length ? items.reduce((sum, item) => sum + item.length, 0) / items.length : 0;
+  const title = String(slide.title || "").toLowerCase();
   if (index === 0) return "cover";
-  if (/\b(outline|agenda|contents?|today|schedule|syllabus)\b/i.test(title) || (items.length >= 7 && avgLen < 36)) return "agenda";
+  if (/\b(outline|agenda|contents?|today|schedule|syllabus|overview)\b/i.test(title)) return "agenda";
   if (/\b(exercise|quiz|question|practice|activity|discussion|answer|solution|case)\b/i.test(title)) return "workshop";
   if (slide.images.length) return "image-split";
   if (items.length <= 2) return "statement";
@@ -541,11 +545,11 @@ function buildBrowserFallbackHtml(slides, style, mode = "paged") {
       agenda: `<div class="agenda-list">${agendaHtml}</div>`,
       workshop: `<div class="workshop-prompt">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}<div class="thinking-space editable-text">Class discussion space</div></div>`,
       statement: `<div class="statement-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}</div>`,
-      lesson: `<div class="lesson-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${items.length > 4 ? `<ul class="numbered-list">${items.slice(1, 6).map((item, itemIndex) => `<li class="editable-text"><span>${itemIndex + 1}</span>${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}</div>`,
+      lesson: `<div class="lesson-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${items.length > 4 ? `<ul class="quiet-list">${items.slice(1, 6).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}</div>`,
       "image-split": `<div class="lesson-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}</div>`,
     }[layout] || "";
     const imageHtml = slide.images.map((image) => `<figure class="media-box"><img src="${image.src}" alt="Slide image"></figure>`).join("");
-    return `<section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${index === 0 ? "active" : ""}"><div class="slide-inner"><header><span class="chapter editable-text">Chapter ${String(index + 1).padStart(2, "0")}</span><h1 class="editable-text">${escapeHtml(slide.title)}</h1></header><main>${contentHtml}${hasImages ? `<div class="media-grid">${imageHtml}</div>` : ""}</main><footer>${index + 1} / ${slides.length}</footer></div></section>`;
+    return `<section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${index === 0 ? "active" : ""}"><div class="slide-inner"><header><span class="chapter editable-text">Chapter ${String(index + 1).padStart(2, "0")}</span>${slide.title ? `<h1 class="editable-text">${escapeHtml(slide.title)}</h1>` : ""}</header><main>${contentHtml}${hasImages ? `<div class="media-grid">${imageHtml}</div>` : ""}</main><footer>${index + 1} / ${slides.length}</footer></div></section>`;
   }).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PPT HTML Studio</title><style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#f6f8fb;color:#17213f;font-family:Inter,Arial,sans-serif}body{overflow:hidden}body.scroll-mode{overflow:auto}.slide{width:100vw;height:100vh;display:none;background:#fff;overflow:hidden}.slide.active{display:block}body.scroll-mode .slide{display:block;min-height:100vh;height:auto}.slide-inner{width:min(1440px,100vw);height:100%;margin:0 auto;padding:clamp(42px,6vh,76px) clamp(72px,8vw,132px) 64px;display:grid;grid-template-rows:auto 1fr auto;gap:clamp(28px,5vh,58px)}header{display:grid;gap:14px;max-width:1120px}.chapter{color:#2563eb;font-size:clamp(17px,1.45vw,24px);font-weight:800;letter-spacing:.08em;text-transform:uppercase}h1{margin:0;font-size:clamp(40px,4vw,64px);line-height:1.05;max-width:1080px;overflow-wrap:anywhere}.cover header{align-self:center;text-align:center;max-width:1100px;margin:0 auto}.cover h1{font-size:clamp(48px,5.1vw,78px)}.cover-subtitle{margin:18px auto 0;max-width:860px;color:#64748b;font-size:clamp(24px,2vw,34px);line-height:1.35;font-weight:500}main{min-height:0;display:grid;gap:clamp(28px,4vh,48px);align-items:center}.image-split main{grid-template-columns:minmax(0,.82fr) minmax(360px,.9fr)}.lead-text{margin:0;max-width:980px;font-size:clamp(30px,2.45vw,44px);line-height:1.18;font-weight:760;color:#17213f}.lesson-block,.statement-block,.workshop-prompt{max-width:1040px;display:grid;gap:26px}.quiet-list,.numbered-list{margin:0;padding:0;list-style:none;display:grid;gap:16px;max-width:940px}.quiet-list li{position:relative;padding-left:28px;font-size:clamp(24px,1.85vw,32px);line-height:1.34;color:#334155}.quiet-list li:before{content:"";position:absolute;left:0;top:.58em;width:8px;height:8px;border-radius:50%;background:#2563eb}.numbered-list li{display:grid;grid-template-columns:42px 1fr;gap:18px;font-size:clamp(23px,1.7vw,30px);line-height:1.3;color:#334155}.numbered-list li span{color:#2563eb;font-weight:800}.agenda-list{width:min(980px,80vw);display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:18px 48px}.agenda-item{display:grid;grid-template-columns:46px 1fr;gap:16px;align-items:center;min-height:54px;border-bottom:1px solid #dbe5f2}.agenda-item span{color:#2563eb;font-size:18px;font-weight:800}.agenda-item p{margin:0;font-size:clamp(24px,1.85vw,32px);line-height:1.15;font-weight:650;color:#17213f}.concept-row{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:18px;max-width:980px}.point-card{border-radius:8px;background:#fff;border:1px solid #d7e3f4;padding:22px 24px;font-size:clamp(22px,1.65vw,30px);line-height:1.25;font-weight:650;box-shadow:none}.thinking-space{width:min(860px,68vw);min-height:180px;border:1px dashed #b7c7dc;border-radius:8px;color:#94a3b8;display:grid;place-items:center;font-size:24px;font-weight:600}.media-grid{display:grid;gap:18px;align-content:center}.media-box{margin:0;display:grid;place-items:center}.media-box img{width:100%;max-height:54vh;object-fit:contain;border-radius:8px;box-shadow:none}footer{justify-self:end;font-size:20px;color:#64748b}.nav{position:fixed;z-index:20;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:10px}.nav button{border:1px solid #d8e2f0;border-radius:8px;padding:8px 13px;background:#fff;color:#1e3a8a;font-size:15px;font-weight:800}.nav button:last-child{background:#2563eb;color:#fff;border-color:#2563eb}body.scroll-mode .nav{display:none}@media(max-width:900px){.slide-inner{padding:34px 28px 50px}.image-split main{grid-template-columns:1fr}.agenda-list,.concept-row{grid-template-columns:1fr;width:100%}h1{font-size:44px}.point-card,.quiet-list li,.agenda-item p{font-size:26px}}</style></head><body class="${bodyClass}">${slideHtml}<div class="nav"><button onclick="prevSlide()">Prev</button><button onclick="nextSlide()">Next</button></div>${clientEditorRuntime()}</body></html>`;
 }
@@ -553,6 +557,35 @@ function buildBrowserFallbackHtml(slides, style, mode = "paged") {
 async function generateInBrowserFallback(reason) {
   setGenerationOverlay(true, "Cloudflare was overloaded, generating locally in this browser...");
   const { slides, stats } = await extractPptxInBrowser(state.selectedFile);
+  if (state.integration.mode === "ai_api") {
+    try {
+      setGenerationOverlay(true, "Extracted PPT locally. Asking AI to design the HTML...");
+      const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: state.selectedFile.name,
+          style: state.selectedStyle,
+          slides,
+          stats,
+          fallbackReason: reason,
+        }),
+      });
+      const data = await readJsonResponse(response, "AI generation failed");
+      const generatedJob = hydrateInlineJob(data.job);
+      state.activeJob = generatedJob;
+      state.jobs.unshift(generatedJob);
+      renderJobs();
+      renderJobSelect();
+      selectJob(generatedJob.id);
+      const aiMessage = formatAiStatus(generatedJob);
+      setStatus(aiMessage ? `Completed. ${aiMessage}` : "Completed. AI preview is ready.", generatedJob.aiStatus?.fallback ? "error" : "ok");
+      return generatedJob;
+    } catch (aiError) {
+      console.warn("AI generation after browser extraction failed", aiError);
+      reason = aiError.message || reason;
+    }
+  }
   const pagedHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "paged");
   const scrollHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "scroll");
   const id = `LOCAL-${Date.now().toString(36).toUpperCase()}`;
@@ -585,7 +618,7 @@ async function generateInBrowserFallback(reason) {
   renderJobs();
   renderJobSelect();
   selectJob(job.id);
-  setStatus(`Cloudflare exceeded its resource limit, so this PPT was generated locally in your browser. ${stats.skippedImages ? "Some oversized images were skipped." : ""}`, "ok");
+  setStatus(`Generated locally in your browser to avoid Cloudflare file-processing limits. ${stats.skippedImages ? "Some oversized images were skipped." : ""}`, "ok");
   return job;
 }
 
