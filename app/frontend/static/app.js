@@ -542,8 +542,44 @@ function previewDocument() {
   }
 }
 
-function hasEditablePreview() {
+function ensurePreviewEditorApi() {
   const win = previewWindow();
+  const doc = previewDocument();
+  if (!win || !doc) return null;
+  if (typeof win.toggleEdit === "function" && typeof win.exportEditedHtml === "function") return win;
+  const hasEditorSurface = doc.querySelector("#ppt-html-editor-style,.editor-toolbar,.editable-text,.media-box,.editable-image-box");
+  if (!hasEditorSurface) return null;
+  win.toggleEdit = (force) => {
+    const editing = typeof force === "boolean" ? force : !doc.body.classList.contains("editing");
+    doc.body.classList.toggle("editing", editing);
+    doc.querySelectorAll("h1,.point-card,.chapter,.editable-text,p,li,td,th,.free-textbox").forEach((node) => {
+      node.contentEditable = editing ? "true" : "false";
+    });
+    doc.querySelectorAll("img").forEach((img) => {
+      const box = img.closest(".media-box,.editable-image-box");
+      if (box) {
+        box.style.resize = "both";
+        box.style.overflow = "hidden";
+        box.style.minWidth = box.style.minWidth || "80px";
+        box.style.minHeight = box.style.minHeight || "60px";
+      }
+    });
+  };
+  win.exportEditedHtml = async (mode = "paged") => {
+    const clone = doc.documentElement.cloneNode(true);
+    clone.querySelector(".editor-toolbar")?.remove();
+    clone.querySelector("#ppt-html-editor-style")?.remove();
+    clone.querySelectorAll("[contenteditable]").forEach((node) => node.removeAttribute("contenteditable"));
+    clone.querySelector("body")?.classList.remove("editing");
+    if (mode === "scroll") clone.querySelector("body")?.classList.add("scroll-mode");
+    else clone.querySelector("body")?.classList.remove("scroll-mode");
+    return `<!doctype html>\n${clone.outerHTML}`;
+  };
+  return win;
+}
+
+function hasEditablePreview() {
+  const win = ensurePreviewEditorApi();
   return Boolean(win && typeof win.exportEditedHtml === "function" && typeof win.toggleEdit === "function");
 }
 
@@ -587,7 +623,7 @@ function setPreviewEditing(force = null) {
   }
   const shouldEdit = force === null ? !isPreviewEditing() : Boolean(force);
   if (isPreviewEditing() !== shouldEdit) {
-    previewWindow().toggleEdit();
+    ensurePreviewEditorApi().toggleEdit();
   }
   updatePreviewEditButton(shouldEdit);
   setStatus(shouldEdit ? "Editing in the preview. Select text, then use style buttons or download ZIP." : "Preview editing stopped.", shouldEdit ? "ok" : "");
@@ -597,6 +633,7 @@ function setPreviewEditing(force = null) {
 async function savePreviewEditsToServer(job, options = {}) {
   if (!job) return null;
   const win = previewWindow();
+  ensurePreviewEditorApi();
   if (!win || typeof win.exportEditedHtml !== "function") {
     if (options.requireEditable) {
       throw new Error("The current preview cannot export edited HTML. Regenerate this PPT, then edit inside the preview frame.");
