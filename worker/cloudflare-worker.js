@@ -250,6 +250,7 @@ async function extractPptx(fileBytes) {
     embeddedImages: 0,
     embeddedImageBytes: 0,
     skippedImages: 0,
+    skippedBlankSlides: 0,
   };
   const paths = sortedSlidePaths(zip);
   for (let index = 0; index < paths.length; index += 1) {
@@ -260,7 +261,12 @@ async function extractPptx(fileBytes) {
     const rels = relationshipMap(relsXml, slidePath);
     const texts = extractTexts(slideXml);
     const images = await extractImages(zip, slideXml, rels, index + 1, extractionStats);
-    const title = texts[0] || `Slide ${index + 1}`;
+    const isDefaultOnlySlide = texts.length === 1 && /^slide\s*\d+$/i.test(texts[0]) && !images.length;
+    if ((!texts.length && !images.length) || isDefaultOnlySlide) {
+      extractionStats.skippedBlankSlides += 1;
+      continue;
+    }
+    const title = texts[0] || "";
     slides.push({
       page: index + 1,
       title,
@@ -302,11 +308,10 @@ function themeFor(style) {
 
 function slideLayout(slide, index) {
   const items = splitCards(slide.body, 12);
-  const title = `${slide.title} ${items.join(" ")}`.toLowerCase();
+  const title = String(slide.title || "").toLowerCase();
   const hasImages = slide.images.length > 0;
-  const avgLen = items.length ? items.reduce((sum, item) => sum + item.length, 0) / items.length : 0;
   if (index === 0) return "cover";
-  if (/\b(outline|agenda|contents?|today|schedule|syllabus)\b/i.test(title) || (items.length >= 7 && avgLen < 36)) return "agenda";
+  if (/\b(outline|agenda|contents?|today|schedule|syllabus|overview)\b/i.test(title)) return "agenda";
   if (/\b(exercise|quiz|question|practice|activity|discussion|answer|solution|case)\b/i.test(title)) return "workshop";
   if (hasImages) return "image-split";
   if (items.length <= 2) return "statement";
@@ -343,7 +348,7 @@ function renderSlide(slide, index, total, style) {
     lesson: `
       <div class="lesson-block">
         ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
-        ${items.length > 4 ? `<ul class="numbered-list">${items.slice(1, 6).map((item, itemIndex) => `<li class="editable-text"><span>${itemIndex + 1}</span>${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}
+        ${items.length > 4 ? `<ul class="quiet-list">${items.slice(1, 6).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}
       </div>`,
     "image-split": `
       <div class="lesson-block">
@@ -357,7 +362,7 @@ function renderSlide(slide, index, total, style) {
       <div class="slide-inner">
         <header>
           <span class="chapter editable-text">Chapter ${String(index + 1).padStart(2, "0")}</span>
-          <h1 class="editable-text">${escapeHtml(slide.title)}</h1>
+          ${slide.title ? `<h1 class="editable-text">${escapeHtml(slide.title)}</h1>` : ""}
         </header>
         <main>
           ${contentHtml}
@@ -703,6 +708,39 @@ function publicJob(job, includeInline = false) {
   return output;
 }
 
+function normalizeSlidesPayload(rawSlides) {
+  const slides = (Array.isArray(rawSlides) ? rawSlides : [])
+    .map((slide, index) => {
+      const title = cleanText(slide?.title || "");
+      const body = (Array.isArray(slide?.body) ? slide.body : [])
+        .map(cleanText)
+        .filter(isUsefulText)
+        .slice(0, 18);
+      const images = (Array.isArray(slide?.images) ? slide.images : [])
+        .filter((image) => image?.src && String(image.src).startsWith("data:image/"))
+        .slice(0, 4)
+        .map((image, imageIndex) => ({
+          src: String(image.src),
+          name: cleanText(image.name || `image-${imageIndex + 1}`),
+          mime: cleanText(image.mime || "image/png"),
+          size: Number(image.size || 0),
+        }));
+      return {
+        page: Number(slide?.page || index + 1),
+        title,
+        body,
+        images,
+      };
+    })
+    .filter((slide) => {
+      if (!slide.title && !slide.body.length && !slide.images.length) return false;
+      if (/^slide\s*\d+$/i.test(slide.title) && !slide.body.length && !slide.images.length) return false;
+      return true;
+    });
+  if (!slides.length) throw new Error("No usable slide content was extracted from this PPTX file.");
+  return slides;
+}
+
 async function createJob(payload) {
   const filename = String(payload.filename || "presentation.pptx");
   if (!filename.toLowerCase().endsWith(".pptx")) {
@@ -771,9 +809,84 @@ async function createJob(payload) {
   return job;
 }
 
+async function createJobFromSlides(payload) {
+  const filename = String(payload.filename || "presentation.pptx");
+  const slides = normalizeSlidesPayload(payload.slides);
+  const extractionStats = {
+    embeddedImages: Number(payload.stats?.embeddedImages || 0),
+    embeddedImageBytes: Number(payload.stats?.embeddedImageBytes || 0),
+    skippedImages: Number(payload.stats?.skippedImages || 0),
+    skippedBlankSlides: Number(payload.stats?.skippedBlankSlides || 0),
+  };
+  const style = payload.style || "teaching";
+  let aiStatus = { mode: integrationConfig.mode || "local", used: false, browserExtracted: true };
+  let pagedHtml = "";
+  try {
+    pagedHtml = await maybeGenerateAiHtml(slides, integrationConfig, style);
+    if (pagedHtml) {
+      aiStatus = { mode: integrationConfig.mode, provider: integrationConfig.endpoint, used: true, resultType: "html", browserExtracted: true };
+    }
+  } catch (error) {
+    aiStatus = { mode: integrationConfig.mode, used: false, fallback: true, browserExtracted: true, error: String(error.message || error) };
+    if (!integrationConfig.fallbackToLocal) throw error;
+  }
+  let scrollHtml = "";
+  if (pagedHtml) {
+    pagedHtml = injectEditorRuntime(pagedHtml);
+    scrollHtml = makeScrollHtml(pagedHtml);
+  } else {
+    pagedHtml = buildHtml(slides, style, "paged");
+    scrollHtml = buildHtml(slides, style, "scroll");
+  }
+  const id = `CF-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const job = {
+    id,
+    fileName: filename,
+    slides: slides.length,
+    style,
+    status: "completed",
+    updatedAt: new Date().toISOString(),
+    previewUrl: `/outputs/${id}/index.html`,
+    scrollUrl: `/outputs/${id}/index-scroll.html`,
+    downloadUrl: `/api/jobs/${id}/download`,
+    inlinePreviewHtml: pagedHtml,
+    inlineScrollHtml: scrollHtml,
+    inlinePreviewMode: "blob",
+    aiStatus,
+    share: {
+      status: "ready",
+      recommendation: extractionStats.skippedImages
+        ? `Ready to share. ${extractionStats.embeddedImages} images were embedded. ${extractionStats.skippedImages} oversized images were skipped while avoiding Cloudflare file-processing limits.`
+        : "Ready to share. The PPT was extracted in the browser to avoid Cloudflare file-processing limits.",
+      totalImages: extractionStats.embeddedImages + extractionStats.skippedImages,
+      embeddedImages: extractionStats.embeddedImages,
+      missingImages: extractionStats.skippedImages,
+      riskyPaths: 0,
+      externalImages: 0,
+      zipPackageUrl: `/api/jobs/${id}/download`,
+      singleFileUrl: `/outputs/${id}/index-single-file.html`,
+      scrollSingleFileUrl: `/outputs/${id}/index-scroll-single-file.html`,
+      reportUrl: `/outputs/${id}/share-report.json`,
+    },
+  };
+  jobs.set(id, job);
+  jobList.unshift(job);
+  while (jobList.length > 5) {
+    const removed = jobList.pop();
+    if (removed) jobs.delete(removed.id);
+  }
+  return job;
+}
+
 async function handleGenerate(request) {
   const payload = await readJson(request);
   const job = await createJob(payload);
+  return json({ job });
+}
+
+async function handleGenerateFromSlides(request) {
+  const payload = await readJson(request);
+  const job = await createJobFromSlides(payload);
   return json({ job });
 }
 
@@ -840,6 +953,7 @@ async function handleApi(request, env) {
   }
   if (request.method === "POST" && path === "/api/integration/test") return testIntegration();
   if (request.method === "POST" && path === "/api/generate") return handleGenerate(request);
+  if (request.method === "POST" && path === "/api/generate-ai-from-slides") return handleGenerateFromSlides(request);
   const saveMatch = path.match(/^\/api\/jobs\/([^/]+)\/save-edited$/);
   if (request.method === "POST" && saveMatch) return saveEdited(request, saveMatch[1]);
   const shareMatch = path.match(/^\/api\/jobs\/([^/]+)\/share$/);
