@@ -2,6 +2,8 @@ import JSZip from "jszip";
 
 const jobs = new Map();
 const jobList = [];
+const CLOUDFLARE_MAX_RAW_UPLOAD_BYTES = 50 * 1024 * 1024;
+const CLOUDFLARE_MAX_PAYLOAD_BYTES = 75 * 1024 * 1024;
 let integrationConfig = {
   mode: "local",
   endpoint: "",
@@ -34,7 +36,7 @@ This deployment runs fully on Cloudflare Workers. It does not use Vercel or a Py
 - Local rules need no API key.
 - Cloudflare Workers currently support .pptx conversion in this deployment.
 - Old binary .ppt files are not supported in Cloudflare-only mode.
-- Very large files are limited by Cloudflare Worker request and memory limits.
+- Uploads up to 50MB are enabled in this Cloudflare-only deployment. Very large files are still limited by Cloudflare Worker request and memory limits.
 - API keys saved here are kept in the Worker isolate memory and may reset after redeploy or idle periods. For production, store provider keys as Cloudflare Secrets and hide them from the browser.
 `;
 
@@ -739,10 +741,10 @@ async function handleApi(request, env) {
       status: "ok",
       runtime: "cloudflare-worker-only",
       supportedFormats: [".pptx"],
-      maxUploadMb: 20,
-      maxRawUploadMb: 20,
-      maxRawUploadBytes: 20 * 1024 * 1024,
-      maxPayloadBytes: 35 * 1024 * 1024,
+      maxUploadMb: Math.round(CLOUDFLARE_MAX_RAW_UPLOAD_BYTES / 1024 / 1024),
+      maxRawUploadMb: Math.round(CLOUDFLARE_MAX_RAW_UPLOAD_BYTES / 1024 / 1024),
+      maxRawUploadBytes: CLOUDFLARE_MAX_RAW_UPLOAD_BYTES,
+      maxPayloadBytes: CLOUDFLARE_MAX_PAYLOAD_BYTES,
       message: "Cloudflare-only backend ready. No Vercel or Python backend is used.",
     });
   }
