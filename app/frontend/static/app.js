@@ -86,6 +86,10 @@ const state = {
   selectedFile: null,
   selectedStyle: "teaching",
   apiProvider: "local",
+  apiBaseUrl: "",
+  runtime: "local",
+  maxUploadBytes: 100 * 1024 * 1024,
+  maxRequestBytes: 150 * 1024 * 1024,
   jobs: [],
   activeJob: null,
   activeShare: null,
@@ -109,6 +113,20 @@ const state = {
 };
 
 const el = (id) => document.getElementById(id);
+
+function normalizeBaseUrl(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function apiUrl(path) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${state.apiBaseUrl}${normalizedPath}`;
+}
+
+function absoluteRuntimeUrl(url) {
+  if (!url || /^(?:blob:|data:|https?:\/\/)/i.test(url)) return url;
+  return apiUrl(url);
+}
 
 function escapeHelpHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -191,9 +209,8 @@ async function openHelp() {
   overlay.classList.remove("hidden");
   content.innerHTML = "<p>Loading API configuration tutorial...</p>";
   try {
-    const response = await fetch("/api/help/api-guide");
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Could not load API guide.");
+    const response = await fetch(apiUrl("/api/help/api-guide"));
+    const data = await readJsonResponse(response, "Could not load API guide.");
     content.innerHTML = renderHelpMarkdown(data.markdown || "");
   } catch (error) {
     content.innerHTML = `<p class="help-error">${escapeHelpHtml(error.message || "Could not load API guide.")}</p>`;
@@ -249,6 +266,17 @@ function createInlineHtmlUrl(html) {
   return url;
 }
 
+function hydrateShare(share) {
+  if (!share) return share;
+  return {
+    ...share,
+    zipPackageUrl: absoluteRuntimeUrl(share.zipPackageUrl),
+    singleFileUrl: absoluteRuntimeUrl(share.singleFileUrl),
+    scrollSingleFileUrl: absoluteRuntimeUrl(share.scrollSingleFileUrl),
+    reportUrl: absoluteRuntimeUrl(share.reportUrl),
+  };
+}
+
 function hydrateInlineJob(job) {
   if (!job) return job;
   const hydrated = { ...job };
@@ -262,6 +290,10 @@ function hydrateInlineJob(job) {
     hydrated.inlinePreviewAvailable = true;
     delete hydrated.inlineScrollHtml;
   }
+  hydrated.previewUrl = absoluteRuntimeUrl(hydrated.previewUrl);
+  hydrated.scrollUrl = absoluteRuntimeUrl(hydrated.scrollUrl);
+  hydrated.downloadUrl = absoluteRuntimeUrl(hydrated.downloadUrl);
+  hydrated.share = hydrateShare(hydrated.share);
   return hydrated;
 }
 
@@ -272,10 +304,64 @@ function formatBytes(size) {
   return `${(size / Math.pow(1024, power)).toFixed(power ? 1 : 0)} ${units[power]}`;
 }
 
+function uploadLimitMessage() {
+  if (state.runtime === "cloudflare-worker-only") {
+    return `Cloudflare-only mode supports .pptx files up to about ${formatBytes(state.maxUploadBytes)}. Old .ppt files require the local Python backend.`;
+  }
+  if (state.runtime === "vercel") {
+    return `Vercel mode supports PPT files up to about ${formatBytes(state.maxUploadBytes)}. Larger files need local running or a Blob/external backend setup.`;
+  }
+  return `Supports .ppt and .pptx up to ${formatBytes(state.maxUploadBytes)}`;
+}
+
+function fileTooLargeMessage(file) {
+  return `${file.name} is ${formatBytes(file.size)}, which is larger than this deployment can safely upload (${formatBytes(state.maxUploadBytes)}). Run the app locally for large PPT files, or deploy a Blob/external backend upload path.`;
+}
+
+function enforceUploadLimit(file) {
+  if (!file || file.size <= state.maxUploadBytes) return true;
+  setStatus(fileTooLargeMessage(file), "error");
+  return false;
+}
+
+async function readJsonResponse(response, fallbackMessage = "Request failed") {
+  const text = await response.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      const plain = text.replace(/\s+/g, " ").trim();
+      data = {
+        error: "non_json_response",
+        message: plain || fallbackMessage,
+      };
+    }
+  }
+  if (!response.ok) {
+    let message = data.message || data.error || response.statusText || fallbackMessage;
+    if (response.status === 413 || /request entity too large|payload too large/i.test(message)) {
+      message = `The PPT is too large for this Vercel deployment. Please use a file up to about ${formatBytes(state.maxUploadBytes)}, run the app locally, or add Vercel Blob/external backend storage for large files.`;
+    }
+    throw new Error(message);
+  }
+  return data;
+}
+
 function handleFile(file) {
   if (!file) return;
+  if (state.runtime === "cloudflare-worker-only" && !/\.pptx$/i.test(file.name)) {
+    setStatus("Cloudflare-only deployment supports .pptx files. Please convert old .ppt files to .pptx first.", "error");
+    return;
+  }
   if (!/\.(ppt|pptx)$/i.test(file.name)) {
     setStatus("Please choose a .ppt or .pptx file.", "error");
+    return;
+  }
+  if (!enforceUploadLimit(file)) {
+    state.selectedFile = null;
+    el("fileCard").classList.add("hidden");
+    el("fileInput").value = "";
     return;
   }
   state.selectedFile = file;
@@ -302,6 +388,7 @@ async function generate() {
     setStatus("Upload PPT first.", "error");
     return;
   }
+  if (!enforceUploadLimit(state.selectedFile)) return;
   state.busy = true;
   state.generationOverlayDismissed = false;
   el("runButton").disabled = true;
@@ -318,7 +405,7 @@ async function generate() {
     await saveIntegration(false, false);
     setGenerationOverlay(true, "AI is arranging titles, text, images, and final HTML...");
     const fileBase64 = await fileToBase64(state.selectedFile);
-    const response = await fetch("/api/generate", {
+    const response = await fetch(apiUrl("/api/generate"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -332,8 +419,7 @@ async function generate() {
         },
       }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || data.error || "Generation failed");
+    const data = await readJsonResponse(response, "Generation failed");
     state.activeStep = 4;
     const generatedJob = hydrateInlineJob(data.job);
     state.activeJob = generatedJob;
@@ -361,9 +447,9 @@ async function generate() {
 }
 
 async function loadJobs() {
-  const response = await fetch("/api/jobs");
-  const data = await response.json();
-  state.jobs = data.jobs || [];
+  const response = await fetch(apiUrl("/api/jobs"));
+  const data = await readJsonResponse(response, "Could not load jobs");
+  state.jobs = (data.jobs || []).map(hydrateInlineJob);
   renderJobs();
   renderJobSelect();
   if (!state.activeJob && state.jobs.length) selectJob(state.jobs[0].id);
@@ -504,15 +590,14 @@ async function savePreviewEditsToServer(job, options = {}) {
   }
   const pagedHtml = await win.exportEditedHtml("paged");
   const scrollHtml = await win.exportEditedHtml("scroll");
-  const response = await fetch(`/api/jobs/${job.id}/save-edited`, {
+  const response = await fetch(apiUrl(`/api/jobs/${job.id}/save-edited`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pagedHtml, scrollHtml }),
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || data.error || "Could not save edited HTML");
-  state.activeJob = data.job || job;
-  state.activeShare = data.share || state.activeShare;
+  const data = await readJsonResponse(response, "Could not save edited HTML");
+  state.activeJob = hydrateInlineJob(data.job || job);
+  state.activeShare = hydrateShare(data.share || state.activeShare);
   state.jobs = state.jobs.map((item) => item.id === job.id ? state.activeJob : item);
   renderJobs();
   renderJobSelect();
@@ -563,11 +648,10 @@ async function analyzeShare(jobId = null) {
     setStatus("Analyzing share package...");
     renderShareMessage("Checking image paths and building the share package...", "checking");
     if (shareButton) shareButton.disabled = true;
-    const response = await fetch(`/api/jobs/${job.id}/share`, { method: "GET", cache: "no-store" });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || data.error || "Share analysis failed");
-    state.activeJob = data.job;
-    state.activeShare = data.share;
+    const response = await fetch(apiUrl(`/api/jobs/${job.id}/share`), { method: "GET", cache: "no-store" });
+    const data = await readJsonResponse(response, "Share analysis failed");
+    state.activeJob = hydrateInlineJob(data.job);
+    state.activeShare = hydrateShare(data.share);
     state.jobs = state.jobs.map((item) => item.id === data.job.id ? data.job : item);
     renderJobs();
     renderJobSelect();
@@ -644,8 +728,8 @@ function escapeHtml(value) {
 
 async function loadIntegration() {
   try {
-    const response = await fetch("/api/integration");
-    const data = await response.json();
+    const response = await fetch(apiUrl("/api/integration"));
+    const data = await readJsonResponse(response, "Could not load API settings");
     state.integration = { ...state.integration, ...(data.integration || {}) };
     renderIntegration();
   } catch {
@@ -754,13 +838,12 @@ function setApiStatus(message, kind = "") {
 
 async function saveIntegration(showSuccess = true, allowClear = true) {
   const integration = collectIntegration(true, { allowClear });
-  const response = await fetch("/api/integration", {
+  const response = await fetch(apiUrl("/api/integration"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ integration }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || data.error || "Could not save API settings");
+  const data = await readJsonResponse(response, "Could not save API settings");
   state.integration = { ...state.integration, ...(data.integration || {}) };
   state.apiProvider = inferApiProvider(state.integration);
   el("apiKey").value = "";
@@ -774,9 +857,9 @@ async function testIntegration() {
   try {
     setApiStatus("Testing API endpoint...");
     await saveIntegration(false, false);
-    const response = await fetch("/api/integration/test", { method: "POST" });
-    const data = await response.json();
-    if (!response.ok || !data.ok) throw new Error(data.message || data.error || "API test failed");
+    const response = await fetch(apiUrl("/api/integration/test"), { method: "POST" });
+    const data = await readJsonResponse(response, "API test failed");
+    if (!data.ok) throw new Error(data.message || data.error || "API test failed");
     setApiStatus(data.message || "API test passed.", "ok");
   } catch (error) {
     setApiStatus(error.message, "error");
@@ -787,19 +870,49 @@ async function checkHealth() {
   try {
     const response = await fetch("/api/health");
     if (!response.ok) throw new Error("bad");
-    const data = await response.json().catch(() => ({}));
+    let data = await readJsonResponse(response, "Backend health check failed").catch(() => ({}));
+    const externalBackend = normalizeBaseUrl(data.externalBackendOrigin || data.publicBackendOrigin || "");
+    if (externalBackend) {
+      state.apiBaseUrl = externalBackend;
+      const externalResponse = await fetch(apiUrl("/api/health"));
+      data = await readJsonResponse(externalResponse, "External backend health check failed");
+      data.runtime = data.runtime || "external";
+      data.usingExternalBackend = true;
+    } else {
+      state.apiBaseUrl = "";
+    }
+    state.runtime = data.runtime || "local";
+    state.maxRequestBytes = Number(data.maxPayloadBytes || data.maxRequestBytes || 150 * 1024 * 1024);
+    if (data.maxRawUploadBytes) {
+      state.maxUploadBytes = Number(data.maxRawUploadBytes);
+    } else if (data.maxRawUploadMb) {
+      state.maxUploadBytes = Number(data.maxRawUploadMb) * 1024 * 1024;
+    } else if (state.runtime === "vercel") {
+      state.maxUploadBytes = Math.floor(Number(data.maxUploadMb || 4) * 1024 * 1024 * 0.62);
+    } else {
+      state.maxUploadBytes = Number(data.maxUploadMb || 100) * 1024 * 1024;
+    }
     el("health").textContent = "Backend ready";
     el("health").classList.add("ok");
     const uploadLimit = el("uploadLimitText");
-    if (uploadLimit && data.runtime === "vercel") {
-      uploadLimit.textContent = `Vercel serverless mode: small .ppt/.pptx files only, about ${data.maxUploadMb || 4}MB request payload.`;
-    } else if (uploadLimit) {
-      uploadLimit.textContent = "Supports .ppt and .pptx up to 100MB";
+    if (uploadLimit) {
+      const prefix = data.usingExternalBackend ? `External backend: ${state.apiBaseUrl}. ` : "";
+      uploadLimit.textContent = `${prefix}${uploadLimitMessage()}`;
     }
   } catch {
+    state.apiBaseUrl = "";
     el("health").textContent = "Backend offline";
     el("health").classList.add("error");
   }
+}
+
+async function init() {
+  renderSteps();
+  renderStyles();
+  bindEvents();
+  await checkHealth();
+  await loadIntegration();
+  await loadJobs();
 }
 
 function bindEvents() {
@@ -872,9 +985,4 @@ function bindEvents() {
   el("openShareReport").addEventListener("click", () => openShareUrl("report"));
 }
 
-renderSteps();
-renderStyles();
-bindEvents();
-checkHealth();
-loadIntegration();
-loadJobs();
+init();
