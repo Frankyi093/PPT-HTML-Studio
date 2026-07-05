@@ -301,23 +301,56 @@ function themeFor(style) {
 }
 
 function slideLayout(slide, index) {
-  const cards = splitCards(slide.body, 12);
+  const items = splitCards(slide.body, 12);
+  const title = `${slide.title} ${items.join(" ")}`.toLowerCase();
   const hasImages = slide.images.length > 0;
-  const avgLen = cards.length ? cards.reduce((sum, item) => sum + item.length, 0) / cards.length : 0;
+  const avgLen = items.length ? items.reduce((sum, item) => sum + item.length, 0) / items.length : 0;
   if (index === 0) return "cover";
-  if (hasImages && cards.length <= 3) return "image-focus";
+  if (/\b(outline|agenda|contents?|today|schedule|syllabus)\b/i.test(title) || (items.length >= 7 && avgLen < 36)) return "agenda";
+  if (/\b(exercise|quiz|question|practice|activity|discussion|answer|solution|case)\b/i.test(title)) return "workshop";
   if (hasImages) return "image-split";
-  if (cards.length >= 7 && avgLen < 34) return "compact-grid";
-  if (cards.length >= 4) return "balanced-cards";
-  return "center-list";
+  if (items.length <= 2) return "statement";
+  return "lesson";
 }
 
 function renderSlide(slide, index, total, style) {
   const theme = themeFor(style);
   const hasImages = slide.images.length > 0;
-  const cards = splitCards(slide.body, hasImages ? 6 : 12);
+  const items = splitCards(slide.body, 12);
   const layout = slideLayout(slide, index);
-  const cardHtml = cards.map((item) => `<div class="point-card editable-text">${escapeHtml(item)}</div>`).join("");
+  const lead = items[0] || "";
+  const agendaHtml = items.slice(0, 12).map((item, itemIndex) => `
+    <div class="agenda-item editable-text">
+      <span>${String(itemIndex + 1).padStart(2, "0")}</span>
+      <p>${escapeHtml(item)}</p>
+    </div>`).join("");
+  const bulletsHtml = items.slice(lead ? 1 : 0, lead ? 5 : 6).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("");
+  const conceptHtml = items.slice(0, 3).map((item) => `<div class="point-card editable-text">${escapeHtml(item)}</div>`).join("");
+  const contentHtml = {
+    cover: items.length ? `<p class="cover-subtitle editable-text">${escapeHtml(items.slice(0, 2).join(" · "))}</p>` : "",
+    agenda: `<div class="agenda-list">${agendaHtml}</div>`,
+    workshop: `
+      <div class="workshop-prompt">
+        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
+        ${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}
+        <div class="thinking-space editable-text">Class discussion space</div>
+      </div>`,
+    statement: `
+      <div class="statement-block">
+        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
+        ${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}
+      </div>`,
+    lesson: `
+      <div class="lesson-block">
+        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
+        ${items.length > 4 ? `<ul class="numbered-list">${items.slice(1, 6).map((item, itemIndex) => `<li class="editable-text"><span>${itemIndex + 1}</span>${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}
+      </div>`,
+    "image-split": `
+      <div class="lesson-block">
+        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
+        ${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}
+      </div>`,
+  }[layout] || "";
   const imageHtml = slide.images.map((image) => `<figure class="media-box"><img src="${image.src}" alt="Slide ${slide.page} image" /></figure>`).join("");
   return `
     <section class="slide ${layout} ${hasImages ? "has-media" : "text-only"}" id="slide-${index + 1}" style="--bg:${theme.bg};--ink:${theme.ink};--accent:${theme.accent};--panel:${theme.panel}">
@@ -327,7 +360,7 @@ function renderSlide(slide, index, total, style) {
           <h1 class="editable-text">${escapeHtml(slide.title)}</h1>
         </header>
         <main>
-          ${cards.length ? `<div class="content-grid">${cardHtml}</div>` : ""}
+          ${contentHtml}
           ${hasImages ? `<div class="media-grid">${imageHtml}</div>` : ""}
         </main>
         <footer>${index + 1} / ${total}</footer>
@@ -542,44 +575,53 @@ function buildHtml(slides, style, mode = "paged") {
   <title>PPT HTML Studio</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: #edf4ff; color: #16213e; font-family: Inter, Arial, sans-serif; }
+    html, body { margin: 0; min-height: 100%; background: #f6f8fb; color: #17213f; font-family: Inter, Arial, sans-serif; }
     body { overflow: hidden; }
     body.scroll-mode { overflow: auto; }
     .slide { width: 100vw; height: 100vh; display: none; background: var(--bg); color: var(--ink); overflow: hidden; }
     .slide.active { display: block; }
     body.scroll-mode .slide { display: block; min-height: 100vh; height: auto; page-break-after: always; }
-    .slide-inner { width: min(1500px, 100vw); height: 100%; margin: 0 auto; padding: clamp(28px, 4vh, 58px) clamp(42px, 6vw, 92px) 52px; display: grid; grid-template-rows: auto 1fr auto; gap: clamp(16px, 3vh, 30px); position: relative; }
-    header { display: grid; gap: 12px; text-align: left; }
-    .chapter { color: var(--accent); font-size: clamp(20px, 2vw, 30px); font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
-    h1 { margin: 0; font-size: clamp(38px, 4.2vw, 68px); line-height: 1.08; max-width: 100%; overflow-wrap: anywhere; }
+    .slide-inner { width: min(1440px, 100vw); height: 100%; margin: 0 auto; padding: clamp(42px, 6vh, 76px) clamp(72px, 8vw, 132px) 64px; display: grid; grid-template-rows: auto 1fr auto; gap: clamp(28px, 5vh, 58px); position: relative; }
+    header { display: grid; gap: 14px; text-align: left; max-width: 1120px; }
+    .chapter { color: var(--accent); font-size: clamp(17px, 1.45vw, 24px); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(40px, 4vw, 64px); line-height: 1.05; max-width: 1080px; overflow-wrap: anywhere; letter-spacing: -0.01em; }
     .cover header { align-self: center; text-align: center; max-width: 1100px; margin: 0 auto; }
-    .cover h1 { font-size: clamp(44px, 5.4vw, 82px); }
-    main { min-height: 0; display: grid; gap: 34px; align-items: stretch; }
-    .image-split main { grid-template-columns: minmax(0, 1fr) minmax(330px, .86fr); }
-    .image-focus main { grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr); }
+    .cover h1 { font-size: clamp(48px, 5.1vw, 78px); }
+    .cover-subtitle { margin: 18px auto 0; max-width: 860px; color: #64748b; font-size: clamp(24px, 2vw, 34px); line-height: 1.35; font-weight: 500; }
+    main { min-height: 0; display: grid; gap: clamp(28px, 4vh, 48px); align-items: center; }
+    .image-split main { grid-template-columns: minmax(0, .82fr) minmax(360px, .9fr); }
+    .image-focus main { grid-template-columns: minmax(0, .8fr) minmax(420px, 1fr); }
     .text-only main { grid-template-columns: 1fr; }
-    .content-grid { min-height: 0; display: grid; gap: clamp(14px, 2vh, 22px); align-content: center; }
-    .balanced-cards .content-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-    .compact-grid .content-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-    .center-list .content-grid { grid-template-columns: minmax(320px, 980px); justify-content: center; }
-    .point-card { min-width: 0; border-radius: 16px; background: var(--panel); border: 1.5px solid color-mix(in srgb, var(--accent) 24%, transparent); padding: clamp(14px, 1.8vw, 24px); font-size: clamp(20px, 1.7vw, 31px); line-height: 1.26; font-weight: 650; overflow-wrap: anywhere; display: flex; align-items: center; box-shadow: 0 12px 30px rgba(20, 36, 70, .07); }
-    .compact-grid .point-card { min-height: clamp(72px, 11vh, 128px); justify-content: center; text-align: center; font-size: clamp(20px, 1.55vw, 28px); }
-    .balanced-cards .point-card { min-height: clamp(86px, 14vh, 160px); }
-    .center-list .point-card { min-height: auto; background: transparent; border: 0; box-shadow: none; border-left: 8px solid var(--accent); border-radius: 0 14px 14px 0; }
+    .lead-text { margin: 0; max-width: 980px; font-size: clamp(30px, 2.45vw, 44px); line-height: 1.18; font-weight: 760; letter-spacing: -0.01em; color: var(--ink); }
+    .lesson-block, .statement-block, .workshop-prompt { max-width: 1040px; display: grid; gap: 26px; align-content: center; }
+    .quiet-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; max-width: 940px; }
+    .quiet-list li { position: relative; padding-left: 28px; font-size: clamp(24px, 1.85vw, 32px); line-height: 1.34; color: #334155; font-weight: 520; }
+    .quiet-list li::before { content: ""; position: absolute; left: 0; top: .58em; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); opacity: .75; }
+    .numbered-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 18px; max-width: 980px; }
+    .numbered-list li { display: grid; grid-template-columns: 42px 1fr; gap: 18px; align-items: start; font-size: clamp(23px, 1.7vw, 30px); line-height: 1.3; color: #334155; }
+    .numbered-list li span { color: var(--accent); font-weight: 800; font-size: .8em; padding-top: .15em; }
+    .agenda-list { width: min(980px, 80vw); display: grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 18px 48px; align-self: center; }
+    .agenda-item { display: grid; grid-template-columns: 46px 1fr; gap: 16px; align-items: center; min-height: 54px; border-bottom: 1px solid #dbe5f2; }
+    .agenda-item span { color: var(--accent); font-size: 18px; font-weight: 800; letter-spacing: .04em; }
+    .agenda-item p { margin: 0; font-size: clamp(24px, 1.85vw, 32px); line-height: 1.15; font-weight: 650; color: var(--ink); }
+    .concept-row { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 18px; max-width: 980px; }
+    .point-card { min-width: 0; border-radius: 8px; background: #ffffff; border: 1px solid #d7e3f4; padding: 22px 24px; font-size: clamp(22px, 1.65vw, 30px); line-height: 1.25; font-weight: 650; overflow-wrap: anywhere; display: flex; align-items: center; box-shadow: none; }
+    .thinking-space { width: min(860px, 68vw); min-height: 180px; border: 1px dashed #b7c7dc; border-radius: 8px; color: #94a3b8; display: grid; place-items: center; font-size: 24px; font-weight: 600; }
     .media-grid { min-height: 0; display: grid; gap: 18px; align-content: center; }
     .media-box { margin: 0; display: grid; place-items: center; min-height: 0; }
-    .media-grid img { width: 100%; max-height: 56vh; object-fit: contain; border-radius: 14px; box-shadow: 0 16px 42px rgba(15, 23, 42, .14); background: #fff; }
-    footer { justify-self: end; color: color-mix(in srgb, var(--ink) 60%, transparent); font-size: 22px; }
+    .media-grid img { width: 100%; max-height: 54vh; object-fit: contain; border-radius: 8px; box-shadow: none; background: #fff; }
+    footer { justify-self: end; color: #64748b; font-size: 20px; }
     .nav { position: fixed; z-index: 20; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 10px; }
-    .nav button { border: 0; border-radius: 10px; padding: 10px 16px; background: rgba(37, 99, 235, .86); color: white; font-size: 18px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 24px rgba(30, 64, 175, .24); }
-    .nav button:first-child { background: rgba(100, 116, 139, .55); }
+    .nav button { border: 1px solid #d8e2f0; border-radius: 8px; padding: 8px 13px; background: #ffffff; color: #1e3a8a; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: none; }
+    .nav button:last-child { background: #2563eb; color: #fff; border-color: #2563eb; }
     body.scroll-mode .nav { display: none; }
     body.editing [contenteditable="true"] { outline: 3px dashed var(--accent); outline-offset: 4px; }
     @media (max-width: 900px) {
       .slide-inner { padding: 34px 28px 50px; }
-      .with-media main { grid-template-columns: 1fr; }
+      .image-split main { grid-template-columns: 1fr; }
       h1 { font-size: 44px; }
-      .point-card { font-size: 28px; }
+      .agenda-list, .concept-row { grid-template-columns: 1fr; width: 100%; }
+      .point-card, .quiet-list li, .agenda-item p { font-size: 26px; }
     }
   </style>
 </head>
@@ -594,7 +636,7 @@ function buildHtml(slides, style, mode = "paged") {
 async function maybeGenerateAiHtml(slides, config, style) {
   if (!config.apiKey || config.mode !== "ai_api" || !config.endpoint) return null;
   const endpoint = normalizeChatEndpoint(config.endpoint);
-  const prompt = `Generate a complete standalone editable HTML slide deck in English from this JSON. Do not include image base64 in your response. If a slide has images, reserve a clear visual area or placeholder for them. Strict rules: all body text font-size must be greater than 30pt; all titles must be greater than 45pt; no text may overflow the viewport; do not use scrollable text boxes; include Prev/Next buttons that are small and do not overlap editing controls; expose window.toggleEdit() and window.exportEditedHtml(mode). Return only HTML code.\n\n${JSON.stringify({ style, slides: slides.map((slide) => ({ title: slide.title, body: slide.body.slice(0, 12), imageCount: slide.images.length })) }).slice(0, 45000)}`;
+  const prompt = `Generate a complete standalone editable HTML slide deck in English from this JSON. Visual direction: modern education technology product or workshop, clean and orderly, generous whitespace, light borders, no heavy shadows, no stacked gradients, no complex textures, no excessive decorative lines. Layout rules: one core idea per slide; titles should be short conclusion-style statements; keep safe margins on all sides; do not fill the whole page; use large whitespace plus one visual focus and brief text. Use cards only when there are 2-3 truly parallel concepts; card radius 6-8px, thin borders, no nested cards, no heavy shadow. Agenda/outline pages should be clean numbered lists, not grids of boxes. Exercise pages should leave open thinking space. Answer pages should not be packed with explanations. Do not include image base64 in your response. If a slide has images, reserve a clear visual area or placeholder for them. Strict technical rules: all body text font-size must be greater than 30pt; all titles must be greater than 45pt; no text may overflow the viewport; do not use scrollable text boxes; include small Prev/Next buttons that do not overlap editing controls; expose window.toggleEdit() and window.exportEditedHtml(mode). Return only HTML code.\n\n${JSON.stringify({ style, slides: slides.map((slide) => ({ title: slide.title, body: slide.body.slice(0, 12), imageCount: slide.images.length })) }).slice(0, 45000)}`;
   const headers = {
     "content-type": "application/json",
     [config.apiKeyHeader || "Authorization"]: `${config.apiKeyPrefix ?? "Bearer "}${config.apiKey}`,
