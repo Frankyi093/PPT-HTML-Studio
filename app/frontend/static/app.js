@@ -341,7 +341,7 @@ async function readJsonResponse(response, fallbackMessage = "Request failed") {
   if (!response.ok) {
     let message = data.message || data.error || response.statusText || fallbackMessage;
     if (response.status === 413 || /request entity too large|payload too large/i.test(message)) {
-      message = `The PPT is too large for this Vercel deployment. Please use a file up to about ${formatBytes(state.maxUploadBytes)}, run the app locally, or add Vercel Blob/external backend storage for large files.`;
+      message = `The PPT is too large for this deployment. Please use a file up to about ${formatBytes(state.maxUploadBytes)}, or run the app locally for larger files.`;
     }
     throw new Error(message);
   }
