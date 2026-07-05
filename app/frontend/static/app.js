@@ -334,9 +334,12 @@ async function readJsonResponse(response, fallbackMessage = "Request failed") {
       data = JSON.parse(text);
     } catch {
       const plain = text.replace(/\s+/g, " ").trim();
+      const isWorkerLimit = /Worker exceeded resource limits|cf-error-code"?\s*>?\s*1102|Error<\/span>\s*<span[^>]*>\s*1102/i.test(text);
       data = {
-        error: "non_json_response",
-        message: plain || fallbackMessage,
+        error: isWorkerLimit ? "worker_resource_limit" : "non_json_response",
+        message: isWorkerLimit
+          ? "Cloudflare Worker exceeded its CPU or memory limit while processing this PPT. Try a smaller PPT, compress oversized images, or use fewer image-heavy slides. The platform now skips oversized embedded images automatically; refresh and try again."
+          : plain || fallbackMessage,
       };
     }
   }
