@@ -457,6 +457,12 @@ function editorRuntime() {
       window.showSlide = showSlide;
       window.nextSlide = nextSlide;
       window.prevSlide = prevSlide;
+      globalThis.toggleEdit = toggleEdit;
+      globalThis.exportEditedHtml = exportEditedHtml;
+      globalThis.showSlide = showSlide;
+      globalThis.nextSlide = nextSlide;
+      globalThis.prevSlide = prevSlide;
+      document.documentElement.dataset.pptEditorReady = 'true';
       document.addEventListener('keydown', (event) => {
         if (document.body.classList.contains('editing') && (event.target?.isContentEditable || event.target?.closest?.('.editor-toolbar'))) return;
         if (event.key === 'ArrowRight' || event.key === 'PageDown') nextSlide();
