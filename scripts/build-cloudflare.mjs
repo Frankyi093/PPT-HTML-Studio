@@ -21,4 +21,4 @@ await writeFile(
   "utf8",
 );
 
-console.log(`Cloudflare Pages build complete: ${outDir}`);
+console.log(`Cloudflare build complete: ${outDir}`);
