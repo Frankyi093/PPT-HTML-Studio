@@ -309,13 +309,13 @@ function uploadLimitMessage() {
     return `Cloudflare-only mode supports .pptx files up to about ${formatBytes(state.maxUploadBytes)}. Old .ppt files require the local Python backend.`;
   }
   if (state.runtime === "vercel") {
-    return `Vercel mode supports PPT files up to about ${formatBytes(state.maxUploadBytes)}. Larger files need local running or a Blob/external backend setup.`;
+    return `Serverless mode supports PPT files up to about ${formatBytes(state.maxUploadBytes)}. Larger files need local running or dedicated storage.`;
   }
   return `Supports .ppt and .pptx up to ${formatBytes(state.maxUploadBytes)}`;
 }
 
 function fileTooLargeMessage(file) {
-  return `${file.name} is ${formatBytes(file.size)}, which is larger than this deployment can safely upload (${formatBytes(state.maxUploadBytes)}). Run the app locally for large PPT files, or deploy a Blob/external backend upload path.`;
+  return `${file.name} is ${formatBytes(file.size)}, which is larger than this deployment can safely upload (${formatBytes(state.maxUploadBytes)}). Run the app locally for larger PPT files.`;
 }
 
 function enforceUploadLimit(file) {
@@ -424,7 +424,7 @@ async function generate() {
     const generatedJob = hydrateInlineJob(data.job);
     state.activeJob = generatedJob;
     const aiMessage = formatAiStatus(generatedJob);
-    const inlineMessage = generatedJob.inlinePreviewAvailable ? " Vercel inline preview is ready." : "";
+    const inlineMessage = generatedJob.inlinePreviewAvailable ? " Inline preview is ready." : "";
     setStatus(aiMessage ? `Completed. ${aiMessage}${inlineMessage}` : `Completed. Preview is ready.${inlineMessage}`, generatedJob.aiStatus?.fallback ? "error" : "ok");
     await loadJobs();
     const existingIndex = state.jobs.findIndex((job) => job.id === generatedJob.id);
