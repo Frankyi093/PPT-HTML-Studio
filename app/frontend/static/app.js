@@ -387,6 +387,186 @@ function fileToBase64(file) {
   });
 }
 
+async function loadClientZipRuntime() {
+  if (window.JSZip) return window.JSZip;
+  const loadScript = (src) => new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  await loadScript("/static/jszip.min.js").catch(() => loadScript("https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"));
+  if (!window.JSZip) throw new Error("Browser PPT parser did not initialize.");
+  return window.JSZip;
+}
+
+function clientXmlDecode(value) {
+  return String(value || "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
+function clientCleanText(text) {
+  return String(text || "").replace(/\s+/g, " ").replace(/^[•·\-\s]+/, "").trim();
+}
+
+function clientUsefulText(text) {
+  const value = clientCleanText(text);
+  if (!value) return false;
+  if (/^[\d\s./\\-]+$/.test(value)) return false;
+  if (/^[()[\]{}.,;:!?'"`~_\-]+$/.test(value)) return false;
+  return value.length > 1;
+}
+
+function clientNormalizeZipPath(base, target) {
+  const parts = base.split("/");
+  parts.pop();
+  target.split("/").forEach((item) => {
+    if (!item || item === ".") return;
+    if (item === "..") parts.pop();
+    else parts.push(item);
+  });
+  return parts.join("/");
+}
+
+function clientRelationshipMap(relsXml, slidePath) {
+  const map = new Map();
+  const relPattern = /<Relationship\b([^>]*?)\/?>/g;
+  let match;
+  while ((match = relPattern.exec(relsXml || ""))) {
+    const attrs = match[1] || "";
+    const id = attrs.match(/\bId="([^"]+)"/)?.[1];
+    const target = attrs.match(/\bTarget="([^"]+)"/)?.[1];
+    if (id && target) map.set(id, clientNormalizeZipPath(slidePath, target));
+  }
+  return map;
+}
+
+function clientExtractTexts(slideXml) {
+  const texts = [];
+  const pattern = /<a:t[^>]*>([\s\S]*?)<\/a:t>/g;
+  let match;
+  while ((match = pattern.exec(slideXml || ""))) {
+    const text = clientCleanText(clientXmlDecode(match[1]));
+    if (clientUsefulText(text)) texts.push(text);
+  }
+  return texts;
+}
+
+async function clientExtractImages(zip, slideXml, rels, slideIndex, stats) {
+  const images = [];
+  const seen = new Set();
+  const pattern = /r:embed="([^"]+)"/g;
+  let match;
+  while ((match = pattern.exec(slideXml || ""))) {
+    const relId = match[1];
+    if (seen.has(relId)) continue;
+    seen.add(relId);
+    const path = rels.get(relId);
+    const file = path ? zip.file(path) : null;
+    if (!file) continue;
+    const estimatedSize = Number(file._data?.uncompressedSize || file._data?.compressedSize || 0);
+    if (stats.embeddedImages >= 36 || (estimatedSize && estimatedSize > 700 * 1024) || (estimatedSize && stats.embeddedImageBytes + estimatedSize > 6 * 1024 * 1024)) {
+      stats.skippedImages += 1;
+      continue;
+    }
+    const base64 = await file.async("base64");
+    const bytes = Math.ceil(base64.length * 0.75);
+    if (bytes > 700 * 1024 || stats.embeddedImageBytes + bytes > 6 * 1024 * 1024) {
+      stats.skippedImages += 1;
+      continue;
+    }
+    const ext = path.split(".").pop()?.toLowerCase() || "png";
+    const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : ext === "svg" ? "image/svg+xml" : "image/png";
+    stats.embeddedImages += 1;
+    stats.embeddedImageBytes += bytes;
+    images.push({ src: `data:${mime};base64,${base64}`, size: bytes, name: `slide-${slideIndex}-image-${images.length + 1}.${ext}` });
+  }
+  return images;
+}
+
+async function extractPptxInBrowser(file) {
+  const JSZipRuntime = await loadClientZipRuntime();
+  const zip = await JSZipRuntime.loadAsync(await file.arrayBuffer());
+  const paths = Object.keys(zip.files)
+    .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+    .sort((a, b) => Number(a.match(/slide(\d+)\.xml/i)?.[1] || 0) - Number(b.match(/slide(\d+)\.xml/i)?.[1] || 0));
+  const stats = { embeddedImages: 0, embeddedImageBytes: 0, skippedImages: 0 };
+  const slides = [];
+  for (let index = 0; index < paths.length; index += 1) {
+    const slidePath = paths[index];
+    const slideXml = await zip.file(slidePath).async("string");
+    const relsPath = slidePath.replace("ppt/slides/", "ppt/slides/_rels/") + ".rels";
+    const relsXml = zip.file(relsPath) ? await zip.file(relsPath).async("string") : "";
+    const rels = clientRelationshipMap(relsXml, slidePath);
+    const texts = clientExtractTexts(slideXml);
+    const images = await clientExtractImages(zip, slideXml, rels, index + 1, stats);
+    slides.push({ page: index + 1, title: texts[0] || `Slide ${index + 1}`, body: texts.slice(1), images });
+  }
+  if (!slides.length) throw new Error("No slides found in this PPTX file.");
+  return { slides, stats };
+}
+
+function clientEditorRuntime() {
+  return `<style id="ppt-html-editor-style">.editor-toolbar{position:fixed;z-index:9999;top:14px;right:14px;display:none;gap:6px;padding:8px;border:1px solid #c7d2fe;border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.16);font-family:Arial,sans-serif}body.editing .editor-toolbar{display:flex}.editor-toolbar button,.editor-toolbar select,.editor-toolbar input{height:30px;border:1px solid #c7d2fe;border-radius:8px;background:#fff;color:#1e3a8a;font:700 12px Arial;padding:0 8px}body.editing .editable-text,body.editing [contenteditable=true]{outline:2px dashed #60a5fa;outline-offset:3px}.media-box{resize:both;overflow:hidden}.media-box img{width:100%;height:100%;object-fit:contain}</style><script>(()=>{let i=0;const slides=[...document.querySelectorAll('.slide')];let selected=null;function show(n){i=Math.max(0,Math.min(n,slides.length-1));slides.forEach((s,k)=>s.classList.toggle('active',k===i))}function apply(p,v){const t=selected&&!selected.matches('.media-box,img')?selected:document.activeElement;if(t&&t!==document.body)t.style[p]=v}function toolbar(){if(document.querySelector('.editor-toolbar'))return;const t=document.createElement('div');t.className='editor-toolbar';t.innerHTML='<select data-font><option value="Arial,sans-serif">Arial</option><option value="Georgia,serif">Georgia</option><option value="Times New Roman,serif">Times</option><option value="Verdana,sans-serif">Verdana</option><option value="Microsoft YaHei,sans-serif">Microsoft YaHei</option></select><input data-size type="number" min="12" max="120" value="30"><input data-color type="color" value="#172554"><button data-bold>B</button><button data-italic>I</button><button data-underline>U</button>';document.body.appendChild(t);t.querySelector('[data-font]').onchange=e=>apply('fontFamily',e.target.value);t.querySelector('[data-size]').onchange=e=>apply('fontSize',e.target.value+'px');t.querySelector('[data-color]').oninput=e=>apply('color',e.target.value);t.querySelector('[data-bold]').onclick=()=>document.execCommand('bold');t.querySelector('[data-italic]').onclick=()=>document.execCommand('italic');t.querySelector('[data-underline]').onclick=()=>document.execCommand('underline')}window.toggleEdit=(force)=>{const editing=typeof force==='boolean'?force:!document.body.classList.contains('editing');toolbar();document.body.classList.toggle('editing',editing);document.querySelectorAll('h1,.chapter,.point-card,.editable-text,p,li').forEach(n=>n.contentEditable=editing?'true':'false')};window.exportEditedHtml=async(mode='paged')=>{const c=document.documentElement.cloneNode(true);c.querySelector('.editor-toolbar')?.remove();c.querySelector('#ppt-html-editor-style')?.remove();c.querySelectorAll('[contenteditable]').forEach(n=>n.removeAttribute('contenteditable'));c.querySelector('body')?.classList.remove('editing');if(mode==='scroll')c.querySelector('body')?.classList.add('scroll-mode');else c.querySelector('body')?.classList.remove('scroll-mode');return '<!doctype html>\\n'+c.outerHTML};window.nextSlide=()=>show(i+1);window.prevSlide=()=>show(i-1);document.addEventListener('click',e=>{selected=e.target.closest('.media-box,.editable-text,.point-card,h1,.chapter')},true);show(0)})();</script>`;
+}
+
+function buildBrowserFallbackHtml(slides, style, mode = "paged") {
+  const bodyClass = mode === "scroll" ? "scroll-mode" : "";
+  const slideHtml = slides.map((slide, index) => {
+    const cards = slide.body.filter(clientUsefulText).slice(0, slide.images.length ? 6 : 12);
+    const hasImages = slide.images.length > 0;
+    const layout = index === 0 ? "cover" : hasImages ? "image-split" : cards.length >= 4 ? "balanced-cards" : "center-list";
+    const cardHtml = cards.map((item) => `<div class="point-card editable-text">${escapeHtml(item)}</div>`).join("");
+    const imageHtml = slide.images.map((image) => `<figure class="media-box"><img src="${image.src}" alt="Slide image"></figure>`).join("");
+    return `<section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${index === 0 ? "active" : ""}"><div class="slide-inner"><header><span class="chapter editable-text">Chapter ${String(index + 1).padStart(2, "0")}</span><h1 class="editable-text">${escapeHtml(slide.title)}</h1></header><main>${cards.length ? `<div class="content-grid">${cardHtml}</div>` : ""}${hasImages ? `<div class="media-grid">${imageHtml}</div>` : ""}</main><footer>${index + 1} / ${slides.length}</footer></div></section>`;
+  }).join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PPT HTML Studio</title><style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#edf4ff;color:#172554;font-family:Inter,Arial,sans-serif}body{overflow:hidden}body.scroll-mode{overflow:auto}.slide{width:100vw;height:100vh;display:none;background:#fff;overflow:hidden}.slide.active{display:block}body.scroll-mode .slide{display:block;min-height:100vh;height:auto}.slide-inner{width:min(1500px,100vw);height:100%;margin:0 auto;padding:clamp(28px,4vh,58px) clamp(42px,6vw,92px) 52px;display:grid;grid-template-rows:auto 1fr auto;gap:24px}.chapter{color:#3b82f6;font-size:clamp(20px,2vw,30px);font-weight:850;text-transform:uppercase}h1{margin:0;font-size:clamp(38px,4.2vw,68px);line-height:1.08;overflow-wrap:anywhere}.cover header{align-self:center;text-align:center}.cover h1{font-size:clamp(44px,5vw,82px)}main{min-height:0;display:grid;gap:30px;align-items:center}.image-split main{grid-template-columns:minmax(0,1fr) minmax(330px,.9fr)}.content-grid{display:grid;gap:18px;align-content:center}.balanced-cards .content-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.center-list .content-grid{grid-template-columns:minmax(320px,980px);justify-content:center}.point-card{border-radius:16px;background:#eef6ff;border:1.5px solid #bfdbfe;padding:18px 22px;font-size:clamp(22px,1.7vw,31px);line-height:1.25;font-weight:650;overflow-wrap:anywhere}.media-grid{display:grid;gap:18px;align-content:center}.media-box{margin:0;display:grid;place-items:center}.media-box img{width:100%;max-height:56vh;object-fit:contain;border-radius:14px;box-shadow:0 16px 42px rgba(15,23,42,.14)}footer{justify-self:end;font-size:22px;color:#64748b}.nav{position:fixed;z-index:20;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:10px}.nav button{border:0;border-radius:10px;padding:10px 16px;background:#3b82f6;color:white;font-size:18px;font-weight:800}body.scroll-mode .nav{display:none}@media(max-width:900px){.image-split main{grid-template-columns:1fr}h1{font-size:44px}.point-card{font-size:28px}}</style></head><body class="${bodyClass}">${slideHtml}<div class="nav"><button onclick="prevSlide()">Prev</button><button onclick="nextSlide()">Next</button></div>${clientEditorRuntime()}</body></html>`;
+}
+
+async function generateInBrowserFallback(reason) {
+  setGenerationOverlay(true, "Cloudflare was overloaded, generating locally in this browser...");
+  const { slides, stats } = await extractPptxInBrowser(state.selectedFile);
+  const pagedHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "paged");
+  const scrollHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "scroll");
+  const id = `LOCAL-${Date.now().toString(36).toUpperCase()}`;
+  const job = hydrateInlineJob({
+    id,
+    fileName: state.selectedFile.name,
+    slides: slides.length,
+    style: state.selectedStyle,
+    status: "completed",
+    updatedAt: new Date().toISOString(),
+    previewUrl: "",
+    scrollUrl: "",
+    downloadUrl: "",
+    inlinePreviewHtml: pagedHtml,
+    inlineScrollHtml: scrollHtml,
+    inlinePreviewMode: "blob",
+    aiStatus: { mode: state.integration.mode || "local", fallback: true, error: reason },
+    share: {
+      status: "ready",
+      recommendation: stats.skippedImages ? `${stats.embeddedImages} images were embedded. ${stats.skippedImages} oversized images were skipped in browser fallback mode.` : "Browser fallback generated successfully.",
+      totalImages: stats.embeddedImages + stats.skippedImages,
+      embeddedImages: stats.embeddedImages,
+      missingImages: stats.skippedImages,
+      riskyPaths: 0,
+      externalImages: 0,
+    },
+  });
+  state.activeJob = job;
+  state.jobs.unshift(job);
+  renderJobs();
+  renderJobSelect();
+  selectJob(job.id);
+  setStatus(`Cloudflare exceeded its resource limit, so this PPT was generated locally in your browser. ${stats.skippedImages ? "Some oversized images were skipped." : ""}`, "ok");
+  return job;
+}
+
 async function generate() {
   if (state.busy) return;
   if (!state.selectedFile) {
@@ -442,7 +622,15 @@ async function generate() {
     renderJobSelect();
     selectJob(generatedJob.id);
   } catch (error) {
-    setStatus(error.message, "error");
+    if (/Cloudflare Worker exceeded|worker_resource_limit|resource limit|1102/i.test(error.message || "")) {
+      try {
+        await generateInBrowserFallback(error.message);
+      } catch (fallbackError) {
+        setStatus(fallbackError.message || error.message, "error");
+      }
+    } else {
+      setStatus(error.message, "error");
+    }
   } finally {
     state.busy = false;
     el("runButton").disabled = false;
