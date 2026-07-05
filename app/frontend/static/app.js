@@ -557,8 +557,23 @@ function updatePreviewEditButton(editing = isPreviewEditing()) {
 }
 
 function versionedUrl(url) {
+  if (!url || /^(?:data:|blob:)/i.test(String(url))) return url;
   const separator = String(url || "").includes("?") ? "&" : "?";
   return `${url}${separator}v=${Date.now()}`;
+}
+
+function isInlineDownloadUrl(url) {
+  return /^(?:data:|blob:)/i.test(String(url || ""));
+}
+
+function triggerDownload(url, filename = "optimized-ppt.zip") {
+  const link = document.createElement("a");
+  link.href = versionedUrl(url);
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 function setPreviewEditing(force = null) {
@@ -611,16 +626,26 @@ async function downloadJobZip(job) {
   if (!job) return;
   const button = el("downloadJob");
   const oldText = button?.textContent;
+  const fallbackJob = state.jobs.find((item) => item.id === job.id) || state.activeJob || job;
   try {
     if (button) {
       button.disabled = true;
       button.textContent = "Saving edits...";
     }
     setStatus("Saving current edited HTML before packaging...");
-    const saved = await savePreviewEditsToServer(job);
+    let saved = null;
+    try {
+      saved = await savePreviewEditsToServer(job);
+    } catch (saveError) {
+      const fallbackUrl = fallbackJob.downloadUrl || fallbackJob.share?.zipPackageUrl;
+      if (!isInlineDownloadUrl(fallbackUrl)) throw saveError;
+      setStatus("Could not sync edits back to the Worker instance, so downloading the latest self-contained package stored in this page.", "error");
+      triggerDownload(fallbackUrl, `${fallbackJob.id || "optimized-ppt"}.zip`);
+      return;
+    }
     const latestJob = state.jobs.find((item) => item.id === job.id) || state.activeJob || job;
     setStatus(saved ? "Downloading ZIP package with latest edits." : "Downloading ZIP package. Regenerate old jobs to enable edit syncing.", saved ? "ok" : "");
-    window.location.href = versionedUrl(latestJob.downloadUrl);
+    triggerDownload(latestJob.downloadUrl || latestJob.share?.zipPackageUrl, `${latestJob.id || "optimized-ppt"}.zip`);
   } catch (error) {
     setStatus(error.message || "Could not save edited HTML before download.", "error");
   } finally {
