@@ -281,12 +281,14 @@ function hydrateInlineJob(job) {
   if (!job) return job;
   const hydrated = { ...job };
   if (hydrated.inlinePreviewHtml) {
-    hydrated.previewUrl = createInlineHtmlUrl(hydrated.inlinePreviewHtml);
+    hydrated.inlinePreviewHtmlCache = hydrated.inlinePreviewHtml;
+    hydrated.previewUrl = createInlineHtmlUrl(hydrated.inlinePreviewHtmlCache);
     hydrated.inlinePreviewAvailable = true;
     delete hydrated.inlinePreviewHtml;
   }
   if (hydrated.inlineScrollHtml) {
-    hydrated.scrollUrl = createInlineHtmlUrl(hydrated.inlineScrollHtml);
+    hydrated.inlineScrollHtmlCache = hydrated.inlineScrollHtml;
+    hydrated.scrollUrl = createInlineHtmlUrl(hydrated.inlineScrollHtmlCache);
     hydrated.inlinePreviewAvailable = true;
     delete hydrated.inlineScrollHtml;
   }
@@ -612,6 +614,172 @@ function triggerDownload(url, filename = "optimized-ppt.zip") {
   link.remove();
 }
 
+function makeScrollHtmlFromPaged(html) {
+  let output = String(html || "");
+  if (/<body\b[^>]*class="/i.test(output)) {
+    return output.replace(/<body\b([^>]*?)class="([^"]*)"/i, (all, before, cls) => `<body${before}class="${cls} scroll-mode"`);
+  }
+  if (/<body\b/i.test(output)) return output.replace(/<body\b([^>]*)>/i, '<body$1 class="scroll-mode">');
+  return output;
+}
+
+let crcTable = null;
+
+function getCrcTable() {
+  if (crcTable) return crcTable;
+  crcTable = new Uint32Array(256);
+  for (let i = 0; i < 256; i += 1) {
+    let value = i;
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    }
+    crcTable[i] = value >>> 0;
+  }
+  return crcTable;
+}
+
+function crc32(bytes) {
+  const table = getCrcTable();
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) crc = table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function writeU16(out, value) {
+  out.push(value & 0xff, (value >>> 8) & 0xff);
+}
+
+function writeU32(out, value) {
+  out.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff);
+}
+
+function dosTimeDate(date = new Date()) {
+  const time = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+  const dosDate = ((date.getFullYear() - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { time, date: dosDate };
+}
+
+function bytesFromString(value) {
+  return new TextEncoder().encode(String(value ?? ""));
+}
+
+function concatBytes(parts) {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(total);
+  let offset = 0;
+  parts.forEach((part) => {
+    output.set(part, offset);
+    offset += part.length;
+  });
+  return output;
+}
+
+function makeZipBlob(files) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const now = dosTimeDate();
+  files.forEach((file) => {
+    const nameBytes = bytesFromString(file.name);
+    const dataBytes = typeof file.data === "string" ? bytesFromString(file.data) : file.data;
+    const crc = crc32(dataBytes);
+    const local = [];
+    writeU32(local, 0x04034b50);
+    writeU16(local, 20);
+    writeU16(local, 0x0800);
+    writeU16(local, 0);
+    writeU16(local, now.time);
+    writeU16(local, now.date);
+    writeU32(local, crc);
+    writeU32(local, dataBytes.length);
+    writeU32(local, dataBytes.length);
+    writeU16(local, nameBytes.length);
+    writeU16(local, 0);
+    const localBytes = concatBytes([new Uint8Array(local), nameBytes, dataBytes]);
+    localParts.push(localBytes);
+
+    const central = [];
+    writeU32(central, 0x02014b50);
+    writeU16(central, 20);
+    writeU16(central, 20);
+    writeU16(central, 0x0800);
+    writeU16(central, 0);
+    writeU16(central, now.time);
+    writeU16(central, now.date);
+    writeU32(central, crc);
+    writeU32(central, dataBytes.length);
+    writeU32(central, dataBytes.length);
+    writeU16(central, nameBytes.length);
+    writeU16(central, 0);
+    writeU16(central, 0);
+    writeU16(central, 0);
+    writeU16(central, 0);
+    writeU32(central, 0);
+    writeU32(central, offset);
+    centralParts.push(concatBytes([new Uint8Array(central), nameBytes]));
+    offset += localBytes.length;
+  });
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const end = [];
+  writeU32(end, 0x06054b50);
+  writeU16(end, 0);
+  writeU16(end, 0);
+  writeU16(end, files.length);
+  writeU16(end, files.length);
+  writeU32(end, centralSize);
+  writeU32(end, offset);
+  writeU16(end, 0);
+  return new Blob([...localParts, ...centralParts, new Uint8Array(end)], { type: "application/zip" });
+}
+
+async function fetchTextIfAvailable(url) {
+  if (!url) return "";
+  const response = await fetch(versionedUrl(url), { cache: "no-store" });
+  if (!response.ok) throw new Error(`Could not load generated HTML (${response.status}).`);
+  return response.text();
+}
+
+async function captureJobHtml(job, preferPreview = true) {
+  const win = previewWindow();
+  ensurePreviewEditorApi();
+  if (preferPreview && state.activeJob?.id === job.id && win && typeof win.exportEditedHtml === "function") {
+    return {
+      pagedHtml: await win.exportEditedHtml("paged"),
+      scrollHtml: await win.exportEditedHtml("scroll"),
+    };
+  }
+  const pagedHtml = job.inlinePreviewHtmlCache || await fetchTextIfAvailable(job.previewUrl);
+  const scrollHtml = job.inlineScrollHtmlCache || (job.scrollUrl ? await fetchTextIfAvailable(job.scrollUrl) : makeScrollHtmlFromPaged(pagedHtml));
+  return { pagedHtml, scrollHtml };
+}
+
+function updateLocalJobHtml(job, pagedHtml, scrollHtml) {
+  if (!job) return job;
+  job.inlinePreviewHtmlCache = pagedHtml;
+  job.inlineScrollHtmlCache = scrollHtml;
+  job.previewUrl = createInlineHtmlUrl(pagedHtml);
+  job.scrollUrl = createInlineHtmlUrl(scrollHtml);
+  job.inlinePreviewAvailable = true;
+  job.updatedAt = new Date().toISOString();
+  state.jobs = state.jobs.map((item) => item.id === job.id ? job : item);
+  if (state.activeJob?.id === job.id) state.activeJob = job;
+  return job;
+}
+
+async function makeClientZipUrl(job, pagedHtml, scrollHtml) {
+  const readme = "Open index.html for paged navigation, or index-scroll.html for continuous scrolling.\nImages are embedded in the HTML, so they will not be lost.\n";
+  const blob = makeZipBlob([
+    { name: "index.html", data: pagedHtml },
+    { name: "index-scroll.html", data: scrollHtml },
+    { name: "index-single-file.html", data: pagedHtml },
+    { name: "index-scroll-single-file.html", data: scrollHtml },
+    { name: "README-open.txt", data: readme },
+  ]);
+  const url = URL.createObjectURL(blob);
+  state.inlineObjectUrls.push(url);
+  return url;
+}
+
 function setPreviewEditing(force = null) {
   if (!state.activeJob) {
     setStatus("Generate or select a job first.", "error");
@@ -632,30 +800,41 @@ function setPreviewEditing(force = null) {
 
 async function savePreviewEditsToServer(job, options = {}) {
   if (!job) return null;
-  const win = previewWindow();
-  ensurePreviewEditorApi();
-  if (!win || typeof win.exportEditedHtml !== "function") {
+  let captured = null;
+  try {
+    captured = await captureJobHtml(job, true);
+  } catch (error) {
     if (options.requireEditable) {
-      throw new Error("The current preview cannot export edited HTML. Regenerate this PPT, then edit inside the preview frame.");
+      throw new Error(error.message || "The current preview cannot export edited HTML. Regenerate this PPT, then edit inside the preview frame.");
     }
     return null;
   }
-  const pagedHtml = await win.exportEditedHtml("paged");
-  const scrollHtml = await win.exportEditedHtml("scroll");
-  const response = await fetch(apiUrl(`/api/jobs/${job.id}/save-edited`), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pagedHtml, scrollHtml }),
-  });
-  const data = await readJsonResponse(response, "Could not save edited HTML");
-  state.activeJob = hydrateInlineJob(data.job || job);
+  const localJob = updateLocalJobHtml(job, captured.pagedHtml, captured.scrollHtml);
+  state.activeJob = localJob;
+  let data = { job: localJob, share: state.activeShare || localJob.share, localOnly: true };
+  try {
+    const response = await fetch(apiUrl(`/api/jobs/${job.id}/save-edited`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pagedHtml: captured.pagedHtml, scrollHtml: captured.scrollHtml }),
+    });
+    data = await readJsonResponse(response, "Could not save edited HTML");
+    const hydrated = hydrateInlineJob({
+      ...(data.job || localJob),
+      inlinePreviewHtml: captured.pagedHtml,
+      inlineScrollHtml: captured.scrollHtml,
+    });
+    state.activeJob = hydrated;
+    state.jobs = state.jobs.map((item) => item.id === job.id ? hydrated : item);
+  } catch {
+    data = { job: localJob, share: state.activeShare || localJob.share, localOnly: true };
+  }
   state.activeShare = hydrateShare(data.share || state.activeShare);
-  state.jobs = state.jobs.map((item) => item.id === job.id ? state.activeJob : item);
   renderJobs();
   renderJobSelect();
   el("jobSelect").value = state.activeJob.id;
   renderShare(state.activeShare || state.activeJob.share || null);
-  setStatus("Edited paged and scroll HTML saved to the package.", "ok");
+  setStatus(data.localOnly ? "Edits are saved in this browser. Download ZIP will include the latest edits." : "Edited paged and scroll HTML saved.", "ok");
   return data;
 }
 
@@ -663,28 +842,19 @@ async function downloadJobZip(job) {
   if (!job) return;
   const button = el("downloadJob");
   const oldText = button?.textContent;
-  const fallbackJob = state.jobs.find((item) => item.id === job.id) || state.activeJob || job;
   try {
     if (button) {
       button.disabled = true;
-      button.textContent = "Saving edits...";
+      button.textContent = "Packaging...";
     }
-    setStatus("Saving current edited HTML before packaging...");
-    let saved = null;
-    try {
-      saved = await savePreviewEditsToServer(job);
-    } catch (saveError) {
-      const fallbackUrl = fallbackJob.downloadUrl || fallbackJob.share?.zipPackageUrl;
-      if (!isInlineDownloadUrl(fallbackUrl)) throw saveError;
-      setStatus("Could not sync edits back to the Worker instance, so downloading the latest self-contained package stored in this page.", "error");
-      triggerDownload(fallbackUrl, `${fallbackJob.id || "optimized-ppt"}.zip`);
-      return;
-    }
-    const latestJob = state.jobs.find((item) => item.id === job.id) || state.activeJob || job;
-    setStatus(saved ? "Downloading ZIP package with latest edits." : "Downloading ZIP package. Regenerate old jobs to enable edit syncing.", saved ? "ok" : "");
-    triggerDownload(latestJob.downloadUrl || latestJob.share?.zipPackageUrl, `${latestJob.id || "optimized-ppt"}.zip`);
+    setStatus("Packaging current HTML in the browser...");
+    const captured = await captureJobHtml(job, true);
+    const latestJob = updateLocalJobHtml(job, captured.pagedHtml, captured.scrollHtml);
+    const zipUrl = await makeClientZipUrl(latestJob, captured.pagedHtml, captured.scrollHtml);
+    setStatus("Downloading ZIP package with the latest edited HTML.", "ok");
+    triggerDownload(zipUrl, `${latestJob.id || "optimized-ppt"}.zip`);
   } catch (error) {
-    setStatus(error.message || "Could not save edited HTML before download.", "error");
+    setStatus(error.message || "Could not package the edited HTML.", "error");
   } finally {
     if (button) {
       button.disabled = false;
