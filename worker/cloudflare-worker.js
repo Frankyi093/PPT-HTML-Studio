@@ -297,15 +297,22 @@ function splitCards(items, max = 10) {
 
 function themeFor(style) {
   const themes = {
+    teaching: ["#f8fbff", "#172554", "#3b82f6", "#eef6ff", "Inter, Arial, sans-serif"],
     softlesson: ["#f8fbff", "#1f3b67", "#477fb2", "#eaf4ff"],
+    webacademic: ["#ffffff", "#1e293b", "#2563eb", "#f1f5f9", "Inter, Arial, sans-serif"],
+    clean: ["#ffffff", "#111827", "#2563eb", "#f8fafc", "Arial, sans-serif"],
+    academic: ["#fdfcf8", "#1f2937", "#64748b", "#f4f1ea", "Georgia, 'Times New Roman', serif"],
+    instructional: ["#fffdf7", "#1e3a5f", "#0ea5e9", "#edf8ff", "Verdana, Arial, sans-serif"],
+    minimal: ["#ffffff", "#111827", "#111827", "#f6f7f9", "Inter, Arial, sans-serif"],
     healing: ["#fff8ec", "#45352e", "#8abed8", "#f7e7c8"],
     doodle: ["#fff6df", "#3c2c2c", "#8ecae6", "#ffe4a8"],
     swiss: ["#ffffff", "#14213d", "#2563eb", "#eef2ff"],
+    editorial: ["#fffdf8", "#182033", "#b45309", "#f7efe0", "Georgia, 'Times New Roman', serif"],
     vivid: ["#fff7ed", "#172554", "#f97316", "#e0f2fe"],
     contrast: ["#0f172a", "#ffffff", "#38bdf8", "#1e293b"],
   };
-  const [bg, ink, accent, panel] = themes[style] || ["#f8fbff", "#172554", "#3b82f6", "#eef6ff"];
-  return { bg, ink, accent, panel };
+  const [bg, ink, accent, panel, font] = themes[style] || themes.teaching;
+  return { bg, ink, accent, panel, font: font || "Inter, Arial, sans-serif" };
 }
 
 function slideLayout(slide, index) {
@@ -315,6 +322,7 @@ function slideLayout(slide, index) {
   if (index === 0) return "cover";
   if (/\b(outline|agenda|contents?|today|schedule|syllabus|overview)\b/i.test(title)) return "agenda";
   if (/\b(exercise|quiz|question|practice|activity|discussion|answer|solution|case)\b/i.test(title)) return "workshop";
+  if (hasImages && items.length <= 1) return "image-focus";
   if (hasImages) return "image-split";
   if (items.length <= 2) return "statement";
   return "lesson";
@@ -323,15 +331,16 @@ function slideLayout(slide, index) {
 function renderSlide(slide, index, total, style) {
   const theme = themeFor(style);
   const hasImages = slide.images.length > 0;
-  const items = splitCards(slide.body, 12);
+  const items = splitCards(slide.body, 18);
   const layout = slideLayout(slide, index);
+  const density = items.length >= 10 ? "density-many" : items.length >= 6 ? "density-medium" : "density-light";
   const lead = items[0] || "";
   const agendaHtml = items.slice(0, 12).map((item, itemIndex) => `
     <div class="agenda-item editable-text">
       <span>${String(itemIndex + 1).padStart(2, "0")}</span>
       <p>${escapeHtml(item)}</p>
     </div>`).join("");
-  const bulletsHtml = items.slice(lead ? 1 : 0, lead ? 5 : 6).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("");
+  const bulletsHtml = items.slice(lead ? 1 : 0, lead ? 12 : 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("");
   const conceptHtml = items.slice(0, 3).map((item) => `<div class="point-card editable-text">${escapeHtml(item)}</div>`).join("");
   const contentHtml = {
     cover: items.length ? `<p class="cover-subtitle editable-text">${escapeHtml(items.slice(0, 2).join(" · "))}</p>` : "",
@@ -350,17 +359,21 @@ function renderSlide(slide, index, total, style) {
     lesson: `
       <div class="lesson-block">
         ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
-        ${items.length > 4 ? `<ul class="quiet-list">${items.slice(1, 6).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}
+        ${items.length > 4 ? `<ul class="quiet-list ${items.length > 8 ? "multi-column" : ""}">${items.slice(1, 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}
       </div>`,
     "image-split": `
       <div class="lesson-block">
         ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
         ${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}
       </div>`,
+    "image-focus": `
+      <div class="lesson-block">
+        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
+      </div>`,
   }[layout] || "";
   const imageHtml = slide.images.map((image) => `<figure class="media-box"><img src="${image.src}" alt="Slide ${slide.page} image" /></figure>`).join("");
   return `
-    <section class="slide ${layout} ${hasImages ? "has-media" : "text-only"}" id="slide-${index + 1}" style="--bg:${theme.bg};--ink:${theme.ink};--accent:${theme.accent};--panel:${theme.panel}">
+    <section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${density}" id="slide-${index + 1}" data-slide-page="${slide.page}" style="--bg:${theme.bg};--ink:${theme.ink};--accent:${theme.accent};--panel:${theme.panel};--font:${theme.font}">
       <div class="slide-inner">
         <header>
           <span class="chapter editable-text">Chapter ${String(index + 1).padStart(2, "0")}</span>
@@ -561,6 +574,78 @@ function injectEditorRuntime(html) {
   return output;
 }
 
+function originalImageStyle() {
+  return `<style id="ppt-original-image-style">
+    .ppt-original-images { display: grid; gap: 14px; align-content: center; justify-items: center; min-width: 260px; max-width: min(48vw, 680px); margin: 0 auto; }
+    .ppt-original-images figure { margin: 0; display: grid; place-items: center; width: 100%; }
+    .ppt-original-images img { width: 100%; max-height: 56vh; object-fit: contain; border-radius: 8px; background: #fff; }
+    .ppt-original-images[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: min(58vw, 820px); }
+    .ppt-original-images[data-count="3"], .ppt-original-images[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: min(60vw, 900px); }
+  </style>`;
+}
+
+function originalImageBlock(slide) {
+  if (!slide?.images?.length) return "";
+  const figures = slide.images.map((image, index) => `<figure class="media-box original-ppt-image"><img src="${image.src}" alt="Original PPT slide ${slide.page} image ${index + 1}" /></figure>`).join("");
+  return `<div class="ppt-original-images" data-original-images="${slide.page}" data-count="${slide.images.length}">${figures}</div>`;
+}
+
+function countHtmlSlides(html) {
+  const output = String(html || "");
+  const pageMarkers = output.match(/data-slide-page\s*=/gi);
+  if (pageMarkers?.length) return pageMarkers.length;
+  const sections = (output.match(/<section\b/gi) || []).length;
+  if (sections) return sections;
+  return (output.match(/class=["'][^"']*\bslide\b/gi) || []).length;
+}
+
+function injectOriginalImages(html, slides) {
+  if (!slides.some((slide) => slide.images.length)) return html;
+  let output = String(html || "");
+  const usedPages = new Set();
+  output = output.replace(/<figure\b([^>]*data-image-slot\s*=\s*["']?(\d+)["']?[^>]*)>[\s\S]*?<\/figure>/gi, (match, attrs, pageText) => {
+    const page = Number(pageText);
+    const slide = slides.find((item) => item.page === page);
+    if (!slide?.images?.length) return match;
+    usedPages.add(page);
+    return originalImageBlock(slide);
+  });
+  const sections = [...output.matchAll(/<section\b[\s\S]*?<\/section>/gi)];
+  if (sections.length) {
+    let rebuilt = "";
+    let cursor = 0;
+    sections.forEach((match, index) => {
+      const section = match[0];
+      const slide = slides[index];
+      rebuilt += output.slice(cursor, match.index);
+      if (slide?.images?.length && !usedPages.has(slide.page) && !section.includes("ppt-original-images")) {
+        rebuilt += section.replace(/<\/section>\s*$/i, `${originalImageBlock(slide)}</section>`);
+        usedPages.add(slide.page);
+      } else {
+        rebuilt += section;
+      }
+      cursor = match.index + section.length;
+    });
+    rebuilt += output.slice(cursor);
+    output = rebuilt;
+  } else {
+    const imageAppendix = slides.map(originalImageBlock).filter(Boolean).join("");
+    output = output.replace(/<\/body>/i, `${imageAppendix}</body>`);
+  }
+  if (!/ppt-original-image-style/.test(output)) {
+    output = output.replace(/<\/head>/i, `${originalImageStyle()}</head>`);
+    if (!/ppt-original-image-style/.test(output)) output = `${originalImageStyle()}${output}`;
+  }
+  return output;
+}
+
+function validateAiHtmlCompleteness(html, slides) {
+  const slideCount = countHtmlSlides(html);
+  if (slides.length > 2 && slideCount && slideCount < Math.ceil(slides.length * 0.85)) {
+    throw new Error(`The AI returned an incomplete deck (${slideCount}/${slides.length} slides). Regenerate or reduce the PPT size.`);
+  }
+}
+
 function makeScrollHtml(html) {
   let output = String(html || "");
   if (/<body\b[^>]*class="/i.test(output)) {
@@ -572,7 +657,7 @@ function makeScrollHtml(html) {
 }
 
 function buildHtml(slides, style, mode = "paged") {
-  const bodyClass = mode === "scroll" ? "scroll-mode" : "";
+  const bodyClass = `${mode === "scroll" ? "scroll-mode " : ""}style-${style}`;
   const slideHtml = slides.map((slide, index) => renderSlide(slide, index, slides.length, style)).join("\n");
   return `<!doctype html>
 <html lang="en">
@@ -582,10 +667,10 @@ function buildHtml(slides, style, mode = "paged") {
   <title>PPT HTML Studio</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: #f6f8fb; color: #17213f; font-family: Inter, Arial, sans-serif; }
+    html, body { margin: 0; min-height: 100%; background: #f6f8fb; color: #17213f; font-family: var(--font, Inter, Arial, sans-serif); }
     body { overflow: hidden; }
     body.scroll-mode { overflow: auto; }
-    .slide { width: 100vw; height: 100vh; display: none; background: var(--bg); color: var(--ink); overflow: hidden; }
+    .slide { width: 100vw; height: 100vh; display: none; background: var(--bg); color: var(--ink); overflow: hidden; font-family: var(--font, Inter, Arial, sans-serif); }
     .slide.active { display: block; }
     body.scroll-mode .slide { display: block; min-height: 100vh; height: auto; page-break-after: always; }
     .slide-inner { width: min(1440px, 100vw); height: 100%; margin: 0 auto; padding: clamp(42px, 6vh, 76px) clamp(72px, 8vw, 132px) 64px; display: grid; grid-template-rows: auto 1fr auto; gap: clamp(28px, 5vh, 58px); position: relative; }
@@ -602,7 +687,10 @@ function buildHtml(slides, style, mode = "paged") {
     .lead-text { margin: 0; max-width: 980px; font-size: clamp(30px, 2.45vw, 44px); line-height: 1.18; font-weight: 760; letter-spacing: -0.01em; color: var(--ink); }
     .lesson-block, .statement-block, .workshop-prompt { max-width: 1040px; display: grid; gap: 26px; align-content: center; }
     .quiet-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; max-width: 940px; }
+    .quiet-list.multi-column { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 1120px; column-gap: 34px; }
     .quiet-list li { position: relative; padding-left: 28px; font-size: clamp(24px, 1.85vw, 32px); line-height: 1.34; color: #334155; font-weight: 520; }
+    .density-many .quiet-list li { font-size: clamp(21px, 1.45vw, 27px); line-height: 1.22; }
+    .density-medium .quiet-list li { font-size: clamp(23px, 1.65vw, 30px); line-height: 1.28; }
     .quiet-list li::before { content: ""; position: absolute; left: 0; top: .58em; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); opacity: .75; }
     .numbered-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 18px; max-width: 980px; }
     .numbered-list li { display: grid; grid-template-columns: 42px 1fr; gap: 18px; align-items: start; font-size: clamp(23px, 1.7vw, 30px); line-height: 1.3; color: #334155; }
@@ -615,6 +703,8 @@ function buildHtml(slides, style, mode = "paged") {
     .point-card { min-width: 0; border-radius: 8px; background: #ffffff; border: 1px solid #d7e3f4; padding: 22px 24px; font-size: clamp(22px, 1.65vw, 30px); line-height: 1.25; font-weight: 650; overflow-wrap: anywhere; display: flex; align-items: center; box-shadow: none; }
     .thinking-space { width: min(860px, 68vw); min-height: 180px; border: 1px dashed #b7c7dc; border-radius: 8px; color: #94a3b8; display: grid; place-items: center; font-size: 24px; font-weight: 600; }
     .media-grid { min-height: 0; display: grid; gap: 18px; align-content: center; }
+    .image-focus .media-grid { justify-self: center; width: min(72vw, 980px); }
+    .image-focus .media-grid img { max-height: 66vh; }
     .media-box { margin: 0; display: grid; place-items: center; min-height: 0; }
     .media-grid img { width: 100%; max-height: 54vh; object-fit: contain; border-radius: 8px; box-shadow: none; background: #fff; }
     footer { justify-self: end; color: #64748b; font-size: 20px; }
@@ -623,6 +713,30 @@ function buildHtml(slides, style, mode = "paged") {
     .nav button:last-child { background: #2563eb; color: #fff; border-color: #2563eb; }
     body.scroll-mode .nav { display: none; }
     body.editing [contenteditable="true"] { outline: 3px dashed var(--accent); outline-offset: 4px; }
+    body.style-clean .point-card, body.style-minimal .point-card { background: transparent; border-color: #d1d5db; }
+    body.style-minimal .chapter { color: var(--ink); opacity: .55; letter-spacing: .16em; }
+    body.style-minimal .quiet-list li::before { width: 22px; height: 2px; border-radius: 0; top: .72em; }
+    body.style-academic h1, body.style-editorial h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; letter-spacing: 0; }
+    body.style-academic .chapter { color: #6b7280; text-transform: none; letter-spacing: .03em; }
+    body.style-editorial .slide-inner { padding-left: clamp(84px, 10vw, 160px); }
+    body.style-editorial .lead-text { border-left: 4px solid var(--accent); padding-left: 24px; font-family: Georgia, 'Times New Roman', serif; font-weight: 600; }
+    body.style-swiss .slide-inner { background-image: linear-gradient(rgba(37,99,235,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,.055) 1px, transparent 1px); background-size: 48px 48px; }
+    body.style-swiss h1 { max-width: 900px; text-transform: none; letter-spacing: -.02em; }
+    body.style-swiss .point-card { border: 0; border-left: 6px solid var(--accent); border-radius: 0; background: rgba(255,255,255,.82); }
+    body.style-healing .slide { background: radial-gradient(circle at 88% 12%, rgba(138,190,216,.18), transparent 28%), var(--bg); }
+    body.style-healing .point-card, body.style-healing .thinking-space { background: #fffaf0; border-color: #ead7ba; }
+    body.style-doodle .slide { background: linear-gradient(0deg, rgba(255,246,223,.96), rgba(255,246,223,.96)); }
+    body.style-doodle h1, body.style-doodle .point-card, body.style-doodle .lead-text { font-family: 'Comic Sans MS', 'Trebuchet MS', Arial, sans-serif; }
+    body.style-doodle .point-card, body.style-doodle .media-grid img { border: 2px solid #3c2c2c; border-radius: 8px; transform: rotate(-.25deg); }
+    body.style-doodle .quiet-list li::before { border-radius: 2px; transform: rotate(12deg); }
+    body.style-contrast .quiet-list li, body.style-contrast footer, body.style-contrast .cover-subtitle { color: rgba(255,255,255,.82); }
+    body.style-contrast .point-card { background: #111827; color: #fff; border-color: rgba(56,189,248,.45); }
+    body.style-vivid .chapter { background: var(--accent); color: #fff; width: fit-content; padding: 5px 12px; border-radius: 999px; letter-spacing: .04em; }
+    body.style-vivid .point-card { background: #fff7ed; border-color: #fed7aa; }
+    body.style-instructional .thinking-space { background: #f0f9ff; border-style: solid; }
+    body.style-webacademic .slide-inner { max-width: 1320px; }
+    body.style-webacademic .lead-text { max-width: 1120px; font-weight: 650; }
+    body.style-softlesson .point-card, body.style-teaching .point-card { background: var(--panel); }
     @media (max-width: 900px) {
       .slide-inner { padding: 34px 28px 50px; }
       .image-split main { grid-template-columns: 1fr; }
@@ -669,8 +783,9 @@ function deckPrompt(slides, style) {
   const compactSlides = slides.map((slide) => ({
     page: slide.page,
     title: slide.title,
-    body: slide.body.slice(0, 14),
+    body: slide.body.slice(0, 20),
     imageCount: slide.images.length,
+    hasImages: slide.images.length > 0,
   }));
   return `Generate a complete standalone editable HTML slide deck in English from this PPT JSON.
 
@@ -680,6 +795,8 @@ ${stylePrompt(style)}
 Non-negotiable output rules:
 - Return ONLY complete HTML code. No markdown explanation.
 - This must be the AI-designed deck itself; do not ask another system to apply a local template.
+- Generate exactly ${slides.length} slide sections, one for every input slide, in the same order.
+- Every slide section must include data-slide-page="original page number".
 - Preserve the original PPT's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
 - Only make agenda/outline numbered pages when the original slide title explicitly says Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
 - Never create placeholder pages titled "Slide 1", "Slide 2", etc.
@@ -687,12 +804,13 @@ Non-negotiable output rules:
 - Avoid stacked gradients, heavy shadows, complex textures, excessive decoration, nested cards, and packed grids.
 - Body text must be greater than 30pt. Slide titles must be greater than 45pt.
 - No text may overflow the viewport or its box. Do not use scrollable text boxes.
-- If a slide has images, reserve a clear visual area for images using semantic placeholders such as <figure data-image-slot="page-number">; do not include base64.
+- If a slide has images, reserve a clear visual area for the original image using exactly <figure data-image-slot="page-number"></figure>. The platform will replace that placeholder with the original PPT image.
 - Include small Prev/Next buttons that stay away from editing controls.
 - Include window.toggleEdit(force) and window.exportEditedHtml(mode) so the platform editor can work.
+- Use CSS that keeps all sections visible and self-contained; no content should be clipped or hidden by default.
 
 PPT JSON:
-${JSON.stringify({ style, slides: compactSlides }).slice(0, 50000)}`;
+${JSON.stringify({ style, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
 }
 
 function integrationHeaders(config) {
@@ -748,6 +866,7 @@ async function callAiApi(slides, config, style) {
         { role: "user", content: prompt },
       ],
       temperature: 0.2,
+      max_tokens: Number(config.maxTokens || 20000),
     }),
   });
   const data = await readApiResponse(response);
@@ -764,7 +883,7 @@ async function callWorkflowApi(slides, config, style) {
         inputs: {
           style,
           prompt,
-          slides: slides.map((slide) => ({ page: slide.page, title: slide.title, body: slide.body.slice(0, 14), imageCount: slide.images.length })),
+          slides: slides.map((slide) => ({ page: slide.page, title: slide.title, body: slide.body.slice(0, 20), imageCount: slide.images.length, hasImages: slide.images.length > 0 })),
         },
         response_mode: "blocking",
         user: "ppt-html-studio",
@@ -772,7 +891,7 @@ async function callWorkflowApi(slides, config, style) {
     : {
         style,
         prompt,
-        slides: slides.map((slide) => ({ page: slide.page, title: slide.title, body: slide.body.slice(0, 14), imageCount: slide.images.length })),
+        slides: slides.map((slide) => ({ page: slide.page, title: slide.title, body: slide.body.slice(0, 20), imageCount: slide.images.length, hasImages: slide.images.length > 0 })),
       };
   const response = await fetch(endpoint, {
     method: "POST",
@@ -810,6 +929,10 @@ function extractHtml(text) {
   const fenced = raw.match(/```(?:html)?\s*([\s\S]*?)```/i)?.[1]?.trim();
   const candidate = fenced || raw;
   if (/<html[\s>]/i.test(candidate) || /<!doctype html/i.test(candidate)) return candidate;
+  if (/<body[\s>]/i.test(candidate)) return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>${candidate}</html>`;
+  if (/<section[\s>]/i.test(candidate) || /class=["'][^"']*\bslide\b/i.test(candidate)) {
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI PPT HTML</title></head><body>${candidate}</body></html>`;
+  }
   return "";
 }
 
@@ -892,6 +1015,8 @@ async function createJob(payload) {
   }
   let scrollHtml = "";
   if (pagedHtml) {
+    validateAiHtmlCompleteness(pagedHtml, slides);
+    pagedHtml = injectOriginalImages(pagedHtml, slides);
     pagedHtml = injectEditorRuntime(pagedHtml);
     scrollHtml = makeScrollHtml(pagedHtml);
   } else {
@@ -962,6 +1087,8 @@ async function createJobFromSlides(payload) {
   }
   let scrollHtml = "";
   if (pagedHtml) {
+    validateAiHtmlCompleteness(pagedHtml, slides);
+    pagedHtml = injectOriginalImages(pagedHtml, slides);
     pagedHtml = injectEditorRuntime(pagedHtml);
     scrollHtml = makeScrollHtml(pagedHtml);
   } else {
