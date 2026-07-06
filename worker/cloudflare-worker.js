@@ -20,6 +20,8 @@ let integrationConfig = {
   fallbackToLocal: true,
 };
 
+const LOCAL_MODE = "local";
+
 const DEFAULT_API_GUIDE = `# API Configuration Tutorial
 
 ## Cloudflare-only mode
@@ -638,10 +640,62 @@ function buildHtml(slides, style, mode = "paged") {
 </html>`;
 }
 
-async function maybeGenerateAiHtml(slides, config, style) {
-  if (!config.apiKey || config.mode !== "ai_api" || !config.endpoint) return null;
-  const endpoint = normalizeChatEndpoint(config.endpoint);
-  const prompt = `Generate a complete standalone editable HTML slide deck in English from this JSON. Visual direction: modern education technology product or workshop, clean and orderly, generous whitespace, light borders, no heavy shadows, no stacked gradients, no complex textures, no excessive decorative lines. Layout rules: one core idea per slide; titles should be short conclusion-style statements; keep safe margins on all sides; do not fill the whole page; use large whitespace plus one visual focus and brief text. Use cards only when there are 2-3 truly parallel concepts; card radius 6-8px, thin borders, no nested cards, no heavy shadow. Agenda/outline pages should be clean numbered lists, not grids of boxes. Exercise pages should leave open thinking space. Answer pages should not be packed with explanations. Do not include image base64 in your response. If a slide has images, reserve a clear visual area or placeholder for them. Strict technical rules: all body text font-size must be greater than 30pt; all titles must be greater than 45pt; no text may overflow the viewport; do not use scrollable text boxes; include small Prev/Next buttons that do not overlap editing controls; expose window.toggleEdit() and window.exportEditedHtml(mode). Return only HTML code.\n\n${JSON.stringify({ style, slides: slides.map((slide) => ({ title: slide.title, body: slide.body.slice(0, 12), imageCount: slide.images.length })) }).slice(0, 45000)}`;
+function mergedIntegrationConfig(override = {}) {
+  const merged = { ...integrationConfig, ...(override || {}) };
+  if (!override?.apiKey && integrationConfig.apiKey) merged.apiKey = integrationConfig.apiKey;
+  return merged;
+}
+
+function stylePrompt(style) {
+  const directions = {
+    teaching: "Teaching Blue: calm education technology, navy text, blue accents, lecture-friendly hierarchy, concise academic wording.",
+    softlesson: "Soft Lesson: warm white background, gentle blue accents, quiet workshop feeling, large readable text and spacious examples.",
+    webacademic: "Academic Webpage: polished long-form web presentation, section rhythm, editorial spacing, restrained cards only when useful.",
+    clean: "Clean: minimalist black and blue, strong typographic hierarchy, almost no decoration, generous margins.",
+    academic: "Academic: scholarly, serif title accents allowed, formal structure, no playful decoration, focus on clarity.",
+    instructional: "Instructional: classroom-ready, clear steps, practice prompts, visual anchors, leave space for teacher explanation.",
+    minimal: "Minimal: few elements, high whitespace, one idea per page, simple lines and no card grids unless essential.",
+    contrast: "High Contrast: dark/light contrast, bold but not crowded, accessible colors, no low-contrast text.",
+    healing: "Healing Hand-drawn: soft hand-drawn workshop feeling, gentle paper-like warmth, light sketch accents only, no clutter.",
+    doodle: "Doodle Sketch: playful but clean marker style, sparse doodle accents, hand-sketched dividers, readable classroom layout.",
+    swiss: "Swiss Grid: strict grid, left-aligned precision, strong scale contrast, blue accent rules, no decorative cards.",
+    editorial: "Editorial: magazine-like education feature, elegant title scale, thoughtful pull quotes, airy composition.",
+    vivid: "Vivid: bright education product energy, controlled accent blocks, crisp modern UI feeling, no heavy gradients.",
+  };
+  return directions[style] || directions.teaching;
+}
+
+function deckPrompt(slides, style) {
+  const compactSlides = slides.map((slide) => ({
+    page: slide.page,
+    title: slide.title,
+    body: slide.body.slice(0, 14),
+    imageCount: slide.images.length,
+  }));
+  return `Generate a complete standalone editable HTML slide deck in English from this PPT JSON.
+
+Style direction:
+${stylePrompt(style)}
+
+Non-negotiable output rules:
+- Return ONLY complete HTML code. No markdown explanation.
+- This must be the AI-designed deck itself; do not ask another system to apply a local template.
+- Preserve the original PPT's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
+- Only make agenda/outline numbered pages when the original slide title explicitly says Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
+- Never create placeholder pages titled "Slide 1", "Slide 2", etc.
+- One core idea per slide. Keep pages clean, ordered, airy, modern education/workshop style.
+- Avoid stacked gradients, heavy shadows, complex textures, excessive decoration, nested cards, and packed grids.
+- Body text must be greater than 30pt. Slide titles must be greater than 45pt.
+- No text may overflow the viewport or its box. Do not use scrollable text boxes.
+- If a slide has images, reserve a clear visual area for images using semantic placeholders such as <figure data-image-slot="page-number">; do not include base64.
+- Include small Prev/Next buttons that stay away from editing controls.
+- Include window.toggleEdit(force) and window.exportEditedHtml(mode) so the platform editor can work.
+
+PPT JSON:
+${JSON.stringify({ style, slides: compactSlides }).slice(0, 50000)}`;
+}
+
+function integrationHeaders(config) {
   const headers = {
     "content-type": "application/json",
     [config.apiKeyHeader || "Authorization"]: `${config.apiKeyPrefix ?? "Bearer "}${config.apiKey}`,
@@ -650,23 +704,97 @@ async function maybeGenerateAiHtml(slides, config, style) {
     const [key, ...rest] = line.split(":");
     if (key && rest.length) headers[key.trim()] = rest.join(":").trim();
   }
+  return headers;
+}
+
+async function readApiResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { text, message: text.replace(/\s+/g, " ").trim() };
+  }
+}
+
+function extractTextFromApiData(data) {
+  return data.choices?.[0]?.message?.content
+    || data.choices?.[0]?.text
+    || data.output_text
+    || data.output?.[0]?.content?.[0]?.text
+    || data.output?.text
+    || data.answer
+    || data.data?.answer
+    || data.data?.outputs?.html
+    || data.data?.outputs?.text
+    || data.data?.outputs?.result
+    || data.html
+    || data.text
+    || data.result
+    || "";
+}
+
+async function callAiApi(slides, config, style) {
+  const endpoint = normalizeChatEndpoint(config.endpoint);
+  const prompt = deckPrompt(slides, style);
   const response = await fetch(endpoint, {
     method: "POST",
-    headers,
+    headers: integrationHeaders(config),
+    signal: AbortSignal.timeout(Math.max(30, Number(config.timeoutSec || 180)) * 1000),
     body: JSON.stringify({
       model: config.model || "gpt-4.1-mini",
       messages: [
-        { role: "system", content: "You are an expert presentation HTML designer. Return only valid standalone HTML." },
+        { role: "system", content: "You are an expert HTML presentation designer. Return only valid standalone HTML." },
         { role: "user", content: prompt },
       ],
       temperature: 0.2,
     }),
   });
-  const data = await response.json().catch(async () => ({ message: await response.text() }));
+  const data = await readApiResponse(response);
   if (!response.ok) throw new Error(data.message || data.error?.message || `API HTTP ${response.status}`);
-  const text = data.choices?.[0]?.message?.content || data.output_text || data.text || "";
-  const html = extractHtml(text);
-  return html || null;
+  return extractHtml(extractTextFromApiData(data));
+}
+
+async function callWorkflowApi(slides, config, style) {
+  const endpoint = String(config.endpoint || "").trim();
+  const prompt = deckPrompt(slides, style);
+  const isDify = config.workflowPayload === "dify" || /\/v1\/workflows\/run|\/workflows\/run/i.test(endpoint);
+  const body = isDify
+    ? {
+        inputs: {
+          style,
+          prompt,
+          slides: slides.map((slide) => ({ page: slide.page, title: slide.title, body: slide.body.slice(0, 14), imageCount: slide.images.length })),
+        },
+        response_mode: "blocking",
+        user: "ppt-html-studio",
+      }
+    : {
+        style,
+        prompt,
+        slides: slides.map((slide) => ({ page: slide.page, title: slide.title, body: slide.body.slice(0, 14), imageCount: slide.images.length })),
+      };
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: integrationHeaders(config),
+    signal: AbortSignal.timeout(Math.max(30, Number(config.timeoutSec || 180)) * 1000),
+    body: JSON.stringify(body),
+  });
+  const data = await readApiResponse(response);
+  if (!response.ok) throw new Error(data.message || data.error?.message || `Workflow HTTP ${response.status}`);
+  return extractHtml(extractTextFromApiData(data));
+}
+
+async function maybeGenerateAiHtml(slides, config, style) {
+  if (!config || config.mode === LOCAL_MODE) return null;
+  if (!config.apiKey) throw new Error("API key is required for AI generation.");
+  if (!config.endpoint) throw new Error("API endpoint is required for AI generation.");
+  let html = null;
+  if (config.mode === "ai_api") html = await callAiApi(slides, config, style);
+  else if (config.mode === "workflow_api") html = await callWorkflowApi(slides, config, style);
+  else throw new Error(`Unsupported API mode: ${config.mode}`);
+  if (!html) throw new Error("The API responded, but no complete HTML document was found. Ask the model/workflow to return only standalone HTML.");
+  return html;
 }
 
 function normalizeChatEndpoint(endpoint) {
@@ -750,16 +878,17 @@ async function createJob(payload) {
   const slides = await extractPptx(fileBytes);
   const extractionStats = slides.extractionStats || { embeddedImages: 0, skippedImages: 0, embeddedImageBytes: 0 };
   const style = payload.style || "teaching";
-  let aiStatus = { mode: integrationConfig.mode || "local", used: false };
+  const requestConfig = mergedIntegrationConfig(payload.integration);
+  let aiStatus = { mode: requestConfig.mode || "local", used: false };
   let pagedHtml = "";
-  try {
-    pagedHtml = await maybeGenerateAiHtml(slides, integrationConfig, style);
-    if (pagedHtml) {
-      aiStatus = { mode: integrationConfig.mode, provider: integrationConfig.endpoint, used: true, resultType: "html" };
+  if (requestConfig.mode && requestConfig.mode !== LOCAL_MODE) {
+    try {
+      pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style);
+      aiStatus = { mode: requestConfig.mode, provider: requestConfig.endpoint, used: true, resultType: "html" };
+    } catch (error) {
+      aiStatus = { mode: requestConfig.mode, used: false, fallback: false, error: String(error.message || error) };
+      throw new Error(`AI generation failed: ${aiStatus.error}`);
     }
-  } catch (error) {
-    aiStatus = { mode: integrationConfig.mode, used: false, fallback: true, error: String(error.message || error) };
-    if (!integrationConfig.fallbackToLocal) throw error;
   }
   let scrollHtml = "";
   if (pagedHtml) {
@@ -819,16 +948,17 @@ async function createJobFromSlides(payload) {
     skippedBlankSlides: Number(payload.stats?.skippedBlankSlides || 0),
   };
   const style = payload.style || "teaching";
-  let aiStatus = { mode: integrationConfig.mode || "local", used: false, browserExtracted: true };
+  const requestConfig = mergedIntegrationConfig(payload.integration);
+  let aiStatus = { mode: requestConfig.mode || "local", used: false, browserExtracted: true };
   let pagedHtml = "";
-  try {
-    pagedHtml = await maybeGenerateAiHtml(slides, integrationConfig, style);
-    if (pagedHtml) {
-      aiStatus = { mode: integrationConfig.mode, provider: integrationConfig.endpoint, used: true, resultType: "html", browserExtracted: true };
+  if (requestConfig.mode && requestConfig.mode !== LOCAL_MODE) {
+    try {
+      pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style);
+      aiStatus = { mode: requestConfig.mode, provider: requestConfig.endpoint, used: true, resultType: "html", browserExtracted: true };
+    } catch (error) {
+      aiStatus = { mode: requestConfig.mode, used: false, fallback: false, browserExtracted: true, error: String(error.message || error) };
+      throw new Error(`AI generation failed: ${aiStatus.error}`);
     }
-  } catch (error) {
-    aiStatus = { mode: integrationConfig.mode, used: false, fallback: true, browserExtracted: true, error: String(error.message || error) };
-    if (!integrationConfig.fallbackToLocal) throw error;
   }
   let scrollHtml = "";
   if (pagedHtml) {
