@@ -151,6 +151,124 @@ function integrationForGeneration() {
   return integration;
 }
 
+function normalizeChatEndpoint(endpoint) {
+  const value = String(endpoint || "").trim().replace(/\/+$/, "");
+  if (!value) return "";
+  if (value.endsWith("/chat/completions")) return value;
+  if (value.endsWith("/v1") || value.endsWith("/api/v3")) return `${value}/chat/completions`;
+  return value;
+}
+
+function apiHeaders(config) {
+  const headers = {
+    "content-type": "application/json",
+    [config.apiKeyHeader || "Authorization"]: `${config.apiKeyPrefix ?? "Bearer "}${config.apiKey}`,
+  };
+  for (const line of String(config.customHeaders || "").split(/\r?\n/)) {
+    const [key, ...rest] = line.split(":");
+    if (key && rest.length) headers[key.trim()] = rest.join(":").trim();
+  }
+  return headers;
+}
+
+function clientStylePrompt(style) {
+  const map = {
+    teaching: "Teaching Blue: calm education technology, navy text, blue accents, lecture-friendly hierarchy.",
+    softlesson: "Soft Lesson: warm white background, gentle blue accents, quiet workshop feeling.",
+    healing: "Healing Hand-drawn: soft hand-drawn workshop style, warm paper feeling, sketch-like but readable.",
+    doodle: "Doodle Sketch: playful marker style, hand-drawn typography, sparse doodle accents, clean classroom layout.",
+    swiss: "Swiss Grid: strict grid, strong typography, blue rules, no decoration.",
+    editorial: "Editorial: magazine-like, elegant serif titles, large whitespace, pull-quote rhythm.",
+    academic: "Academic: scholarly, formal, serif title accents, clear lecture structure.",
+    minimal: "Minimal: few elements, simple typography, high whitespace.",
+    vivid: "Vivid: bright education product energy, controlled accent blocks.",
+    contrast: "High Contrast: accessible dark/light contrast and bold hierarchy.",
+  };
+  return map[style] || map.teaching;
+}
+
+function clientAiPrompt(slides, style) {
+  const compactSlides = slides.map((slide) => ({
+    page: slide.page,
+    title: slide.title,
+    body: slide.body.slice(0, 20),
+    imageCount: slide.images.length,
+    hasImages: slide.images.length > 0,
+  }));
+  return `Generate a complete standalone editable HTML slide deck in English.
+Style: ${clientStylePrompt(style)}
+Rules:
+- Return only HTML.
+- Generate exactly ${slides.length} slide sections in the same order.
+- Every section must include data-slide-page="original page number".
+- Preserve the original PPT's rough layout type; do not turn every page into an outline, card grid, or numbered list.
+- Body text > 30pt, titles > 45pt, no scrollable text boxes, no overflow.
+- If a slide has images, reserve a clear area using <figure data-image-slot="page-number"></figure>. The platform will insert the original PPT image.
+- Include small Prev/Next buttons and window.toggleEdit(force), window.exportEditedHtml(mode).
+PPT JSON:
+${JSON.stringify({ style, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
+}
+
+function extractHtmlFromAiText(text) {
+  const raw = String(text || "").trim();
+  const fenced = raw.match(/```(?:html)?\s*([\s\S]*?)```/i)?.[1]?.trim();
+  const candidate = fenced || raw;
+  if (/<html[\s>]/i.test(candidate) || /<!doctype html/i.test(candidate)) return candidate;
+  if (/<body[\s>]/i.test(candidate)) return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>${candidate}</html>`;
+  if (/<section[\s>]/i.test(candidate) || /class=["'][^"']*\bslide\b/i.test(candidate)) return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI PPT HTML</title></head><body>${candidate}</body></html>`;
+  return "";
+}
+
+function extractAiText(data) {
+  return data.choices?.[0]?.message?.content
+    || data.choices?.[0]?.text
+    || data.output_text
+    || data.output?.[0]?.content?.[0]?.text
+    || data.answer
+    || data.data?.answer
+    || data.data?.outputs?.html
+    || data.data?.outputs?.text
+    || data.html
+    || data.text
+    || data.result
+    || "";
+}
+
+function clientImageBlock(slide) {
+  if (!slide?.images?.length) return "";
+  return `<div class="ppt-original-images" data-original-images="${slide.page}" data-count="${slide.images.length}">${slide.images.map((image, index) => `<figure class="media-box original-ppt-image"><img src="${image.src}" alt="Original PPT slide ${slide.page} image ${index + 1}"></figure>`).join("")}</div>`;
+}
+
+function injectClientOriginalImages(html, slides) {
+  let output = String(html || "");
+  const style = `<style id="ppt-original-image-style">.ppt-original-images{display:grid;gap:14px;align-content:center;justify-items:center;max-width:min(56vw,820px);margin:0 auto}.ppt-original-images figure{margin:0;display:grid;place-items:center;width:100%}.ppt-original-images img{width:100%;max-height:56vh;object-fit:contain;border-radius:8px;background:#fff}.ppt-original-images[data-count="2"],.ppt-original-images[data-count="3"],.ppt-original-images[data-count="4"]{grid-template-columns:repeat(2,minmax(0,1fr))}</style>`;
+  const used = new Set();
+  output = output.replace(/<figure\b([^>]*data-image-slot\s*=\s*["']?(\d+)["']?[^>]*)>[\s\S]*?<\/figure>/gi, (match, attrs, pageText) => {
+    const slide = slides.find((item) => item.page === Number(pageText));
+    if (!slide?.images?.length) return match;
+    used.add(slide.page);
+    return clientImageBlock(slide);
+  });
+  const sections = [...output.matchAll(/<section\b[\s\S]*?<\/section>/gi)];
+  if (sections.length) {
+    let rebuilt = "";
+    let cursor = 0;
+    sections.forEach((match, index) => {
+      const section = match[0];
+      const slide = slides[index];
+      rebuilt += output.slice(cursor, match.index);
+      rebuilt += slide?.images?.length && !used.has(slide.page) && !section.includes("ppt-original-images")
+        ? section.replace(/<\/section>\s*$/i, `${clientImageBlock(slide)}</section>`)
+        : section;
+      cursor = match.index + section.length;
+    });
+    rebuilt += output.slice(cursor);
+    output = rebuilt;
+  }
+  if (!output.includes("ppt-original-image-style")) output = output.replace(/<\/head>/i, `${style}</head>`);
+  return output;
+}
+
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
 }
@@ -568,35 +686,126 @@ function clientSlideLayout(slide, index, items) {
   return "lesson";
 }
 
+function clientTextBlocks(items, max = 18) {
+  const cleaned = items.filter(clientUsefulText).slice(0, max);
+  const shortCount = cleaned.filter((item) => item.length < 34).length;
+  const continuationCount = cleaned.filter((item) => /^(and|or|to|of|in|for|with|on|by|as|the|their|our|your|is|are|was|were|communicate|interact|everyday|lives|working)\b/i.test(item)).length;
+  const hasQuoteFlow = cleaned.some((item) => /[“"]/.test(item)) && cleaned.some((item) => /[”"]/.test(item));
+  const asParagraph = cleaned.length >= 4 && (hasQuoteFlow || shortCount / cleaned.length > 0.55 || continuationCount >= 2);
+  if (!asParagraph) return { items: cleaned, paragraphs: cleaned, asParagraph: false };
+  const paragraphs = [];
+  let current = "";
+  const terminal = /[.!?。！？;；:”"]$/;
+  const startsContinuation = /^(and|or|to|of|in|for|with|on|by|as|the|their|our|your|is|are|was|were|communicate|interact|everyday|lives|working|\(|,|;|:)/i;
+  const hasOpenQuote = (value) => (value.match(/[“"]/g) || []).length > (value.match(/[”"]/g) || []).length;
+  for (const item of cleaned) {
+    if (!current) {
+      current = item;
+      continue;
+    }
+    const join = hasOpenQuote(current) || startsContinuation.test(item) || (!terminal.test(current) && current.length < 180 && item.length < 70);
+    if (join) current = `${current} ${item}`;
+    else {
+      paragraphs.push(current);
+      current = item;
+    }
+  }
+  if (current) paragraphs.push(current);
+  return { items: cleaned, paragraphs: paragraphs.slice(0, Math.max(1, max / 2)), asParagraph: true };
+}
+
 function buildBrowserFallbackHtml(slides, style, mode = "paged") {
   const bodyClass = `${mode === "scroll" ? "scroll-mode " : ""}style-${style}`;
   const slideHtml = slides.map((slide, index) => {
-    const items = slide.body.filter(clientUsefulText).slice(0, 18);
+    const blocks = clientTextBlocks(slide.body, 18);
+    const items = blocks.paragraphs;
     const hasImages = slide.images.length > 0;
     const layout = clientSlideLayout(slide, index, items);
     const lead = items[0] || "";
     const agendaHtml = items.slice(0, 12).map((item, itemIndex) => `<div class="agenda-item editable-text"><span>${String(itemIndex + 1).padStart(2, "0")}</span><p>${escapeHtml(item)}</p></div>`).join("");
     const bulletsHtml = items.slice(lead ? 1 : 0, lead ? 12 : 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("");
+    const paragraphHtml = items.map((item) => `<p class="body-paragraph editable-text">${escapeHtml(item)}</p>`).join("");
     const conceptHtml = items.slice(0, 3).map((item) => `<div class="point-card editable-text">${escapeHtml(item)}</div>`).join("");
     const contentHtml = {
       cover: items.length ? `<p class="cover-subtitle editable-text">${escapeHtml(items.slice(0, 2).join(" · "))}</p>` : "",
       agenda: `<div class="agenda-list">${agendaHtml}</div>`,
       workshop: `<div class="workshop-prompt">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}<div class="thinking-space editable-text">Class discussion space</div></div>`,
-      statement: `<div class="statement-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}</div>`,
-      lesson: `<div class="lesson-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${items.length > 4 ? `<ul class="quiet-list ${items.length > 8 ? "multi-column" : ""}">${items.slice(1, 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}</div>`,
-      "image-split": `<div class="lesson-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}</div>`,
+      statement: `<div class="statement-block">${blocks.asParagraph ? paragraphHtml : `${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}`}</div>`,
+      lesson: `<div class="lesson-block">${blocks.asParagraph ? paragraphHtml : `${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${items.length > 4 ? `<ul class="quiet-list ${items.length > 8 ? "multi-column" : ""}">${items.slice(1, 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}`}</div>`,
+      "image-split": `<div class="lesson-block">${blocks.asParagraph ? paragraphHtml : `${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}`}</div>`,
       "image-focus": `<div class="lesson-block">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}</div>`,
     }[layout] || "";
     const imageHtml = slide.images.map((image) => `<figure class="media-box"><img src="${image.src}" alt="Slide image"></figure>`).join("");
     return `<section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${items.length >= 10 ? "density-many" : items.length >= 6 ? "density-medium" : "density-light"} ${index === 0 ? "active" : ""}" data-slide-page="${slide.page}"><div class="slide-inner"><header><span class="chapter editable-text">Chapter ${String(index + 1).padStart(2, "0")}</span>${slide.title ? `<h1 class="editable-text">${escapeHtml(slide.title)}</h1>` : ""}</header><main>${contentHtml}${hasImages ? `<div class="media-grid">${imageHtml}</div>` : ""}</main><footer>${index + 1} / ${slides.length}</footer></div></section>`;
   }).join("");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PPT HTML Studio</title><style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#f6f8fb;color:#17213f;font-family:Inter,Arial,sans-serif}body{overflow:hidden}body.scroll-mode{overflow:auto}.slide{width:100vw;height:100vh;display:none;background:#fff;overflow:hidden}.slide.active{display:block}body.scroll-mode .slide{display:block;min-height:100vh;height:auto}.slide-inner{width:min(1440px,100vw);height:100%;margin:0 auto;padding:clamp(42px,6vh,76px) clamp(72px,8vw,132px) 64px;display:grid;grid-template-rows:auto 1fr auto;gap:clamp(28px,5vh,58px)}header{display:grid;gap:14px;max-width:1120px}.chapter{color:#2563eb;font-size:clamp(17px,1.45vw,24px);font-weight:800;letter-spacing:.08em;text-transform:uppercase}h1{margin:0;font-size:clamp(40px,4vw,64px);line-height:1.05;max-width:1080px;overflow-wrap:anywhere}.cover header{align-self:center;text-align:center;max-width:1100px;margin:0 auto}.cover h1{font-size:clamp(48px,5.1vw,78px)}.cover-subtitle{margin:18px auto 0;max-width:860px;color:#64748b;font-size:clamp(24px,2vw,34px);line-height:1.35;font-weight:500}main{min-height:0;display:grid;gap:clamp(28px,4vh,48px);align-items:center}.image-split main{grid-template-columns:minmax(0,.82fr) minmax(360px,.9fr)}.lead-text{margin:0;max-width:980px;font-size:clamp(30px,2.45vw,44px);line-height:1.18;font-weight:760;color:#17213f}.lesson-block,.statement-block,.workshop-prompt{max-width:1040px;display:grid;gap:26px}.quiet-list,.numbered-list{margin:0;padding:0;list-style:none;display:grid;gap:16px;max-width:940px}.quiet-list li{position:relative;padding-left:28px;font-size:clamp(24px,1.85vw,32px);line-height:1.34;color:#334155}.quiet-list li:before{content:"";position:absolute;left:0;top:.58em;width:8px;height:8px;border-radius:50%;background:#2563eb}.numbered-list li{display:grid;grid-template-columns:42px 1fr;gap:18px;font-size:clamp(23px,1.7vw,30px);line-height:1.3;color:#334155}.numbered-list li span{color:#2563eb;font-weight:800}.agenda-list{width:min(980px,80vw);display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:18px 48px}.agenda-item{display:grid;grid-template-columns:46px 1fr;gap:16px;align-items:center;min-height:54px;border-bottom:1px solid #dbe5f2}.agenda-item span{color:#2563eb;font-size:18px;font-weight:800}.agenda-item p{margin:0;font-size:clamp(24px,1.85vw,32px);line-height:1.15;font-weight:650;color:#17213f}.concept-row{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:18px;max-width:980px}.point-card{border-radius:8px;background:#fff;border:1px solid #d7e3f4;padding:22px 24px;font-size:clamp(22px,1.65vw,30px);line-height:1.25;font-weight:650;box-shadow:none}.thinking-space{width:min(860px,68vw);min-height:180px;border:1px dashed #b7c7dc;border-radius:8px;color:#94a3b8;display:grid;place-items:center;font-size:24px;font-weight:600}.media-grid{display:grid;gap:18px;align-content:center}.media-box{margin:0;display:grid;place-items:center}.media-box img{width:100%;max-height:54vh;object-fit:contain;border-radius:8px;box-shadow:none}footer{justify-self:end;font-size:20px;color:#64748b}.nav{position:fixed;z-index:20;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:10px}.nav button{border:1px solid #d8e2f0;border-radius:8px;padding:8px 13px;background:#fff;color:#1e3a8a;font-size:15px;font-weight:800}.nav button:last-child{background:#2563eb;color:#fff;border-color:#2563eb}body.scroll-mode .nav{display:none}@media(max-width:900px){.slide-inner{padding:34px 28px 50px}.image-split main{grid-template-columns:1fr}.agenda-list,.concept-row{grid-template-columns:1fr;width:100%}h1{font-size:44px}.point-card,.quiet-list li,.agenda-item p{font-size:26px}}</style></head><body class="${bodyClass}">${slideHtml}<div class="nav"><button onclick="prevSlide()">Prev</button><button onclick="nextSlide()">Next</button></div>${clientEditorRuntime()}</body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PPT HTML Studio</title><style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#f6f8fb;color:#17213f;font-family:Inter,Arial,sans-serif}body{overflow:hidden}body.scroll-mode{overflow:auto}.slide{width:100vw;height:100vh;display:none;background:#fff;overflow:hidden}.slide.active{display:block}body.scroll-mode .slide{display:block;min-height:100vh;height:auto}.slide-inner{width:min(1440px,100vw);height:100%;margin:0 auto;padding:clamp(42px,6vh,76px) clamp(72px,8vw,132px) 64px;display:grid;grid-template-rows:auto 1fr auto;gap:clamp(28px,5vh,58px)}header{display:grid;gap:14px;max-width:1120px}.chapter{color:#2563eb;font-size:clamp(17px,1.45vw,24px);font-weight:800;letter-spacing:.08em;text-transform:uppercase}h1{margin:0;font-size:clamp(40px,4vw,64px);line-height:1.05;max-width:1080px;overflow-wrap:anywhere}.cover header{align-self:center;text-align:center;max-width:1100px;margin:0 auto}.cover h1{font-size:clamp(48px,5.1vw,78px)}.cover-subtitle{margin:18px auto 0;max-width:860px;color:#64748b;font-size:clamp(24px,2vw,34px);line-height:1.35;font-weight:500}main{min-height:0;display:grid;gap:clamp(28px,4vh,48px);align-items:center}.image-split main{grid-template-columns:minmax(0,.82fr) minmax(360px,.9fr)}.lead-text{margin:0;max-width:980px;font-size:clamp(30px,2.45vw,44px);line-height:1.18;font-weight:760;color:#17213f}.lesson-block,.statement-block,.workshop-prompt{max-width:1040px;display:grid;gap:26px}.body-paragraph{margin:0;max-width:1120px;font-size:clamp(27px,2vw,36px);line-height:1.28;color:#17213f;font-weight:540}.density-many .body-paragraph{font-size:clamp(23px,1.55vw,30px);line-height:1.24}.quiet-list,.numbered-list{margin:0;padding:0;list-style:none;display:grid;gap:16px;max-width:940px}.quiet-list.multi-column{grid-template-columns:repeat(2,minmax(0,1fr));max-width:1120px;column-gap:34px}.quiet-list li{position:relative;padding-left:28px;font-size:clamp(24px,1.85vw,32px);line-height:1.34;color:#334155}.quiet-list li:before{content:"";position:absolute;left:0;top:.58em;width:8px;height:8px;border-radius:50%;background:#2563eb}.density-many .quiet-list li{font-size:clamp(21px,1.45vw,27px);line-height:1.22}.numbered-list li{display:grid;grid-template-columns:42px 1fr;gap:18px;font-size:clamp(23px,1.7vw,30px);line-height:1.3;color:#334155}.numbered-list li span{color:#2563eb;font-weight:800}.agenda-list{width:min(980px,80vw);display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:18px 48px}.agenda-item{display:grid;grid-template-columns:46px 1fr;gap:16px;align-items:center;min-height:54px;border-bottom:1px solid #dbe5f2}.agenda-item span{color:#2563eb;font-size:18px;font-weight:800}.agenda-item p{margin:0;font-size:clamp(24px,1.85vw,32px);line-height:1.15;font-weight:650;color:#17213f}.concept-row{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:18px;max-width:980px}.point-card{border-radius:8px;background:#fff;border:1px solid #d7e3f4;padding:22px 24px;font-size:clamp(22px,1.65vw,30px);line-height:1.25;font-weight:650;box-shadow:none}.thinking-space{width:min(860px,68vw);min-height:180px;border:1px dashed #b7c7dc;border-radius:8px;color:#94a3b8;display:grid;place-items:center;font-size:24px;font-weight:600}.media-grid{display:grid;gap:18px;align-content:center}.media-box{margin:0;display:grid;place-items:center}.media-box img{width:100%;max-height:54vh;object-fit:contain;border-radius:8px;box-shadow:none}footer{justify-self:end;font-size:20px;color:#64748b}.nav{position:fixed;z-index:20;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:10px}.nav button{border:1px solid #d8e2f0;border-radius:8px;padding:8px 13px;background:#fff;color:#1e3a8a;font-size:15px;font-weight:800}.nav button:last-child{background:#2563eb;color:#fff;border-color:#2563eb}body.scroll-mode .nav{display:none}body.style-doodle .slide,body.style-healing .slide{background:#fff6df}body.style-doodle h1,body.style-doodle .body-paragraph,body.style-doodle .point-card,body.style-healing h1{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-doodle .point-card,body.style-doodle .media-box img{border:2px solid #3c2c2c;transform:rotate(-.25deg)}body.style-swiss .slide-inner{background-image:linear-gradient(rgba(37,99,235,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.055) 1px,transparent 1px);background-size:48px 48px}body.style-swiss .point-card{border:0;border-left:6px solid #2563eb;border-radius:0}body.style-academic h1,body.style-editorial h1{font-family:Georgia,'Times New Roman',serif}body.style-minimal .point-card{background:transparent;border-color:#d1d5db}body.style-contrast .slide{background:#0f172a;color:#fff}body.style-contrast .quiet-list li,body.style-contrast .body-paragraph{color:rgba(255,255,255,.86)}body.style-vivid .chapter{background:#f97316;color:#fff;width:fit-content;padding:5px 12px;border-radius:999px}@media(max-width:900px){.slide-inner{padding:34px 28px 50px}.image-split main{grid-template-columns:1fr}.agenda-list,.concept-row,.quiet-list.multi-column{grid-template-columns:1fr;width:100%}h1{font-size:44px}.point-card,.quiet-list li,.agenda-item p{font-size:26px}}</style></head><body class="${bodyClass}">${slideHtml}<div class="nav"><button onclick="prevSlide()">Prev</button><button onclick="nextSlide()">Next</button></div>${clientEditorRuntime()}</body></html>`;
+}
+
+async function generateAiDirectlyInBrowser(slides, stats, previousError) {
+  const config = integrationForGeneration();
+  if (config.mode !== "ai_api") throw new Error(previousError || "Browser direct AI is only available for AI chat APIs.");
+  if (!config.apiKey) throw new Error("API key is required for AI generation.");
+  const response = await fetch(normalizeChatEndpoint(config.endpoint), {
+    method: "POST",
+    headers: apiHeaders(config),
+    body: JSON.stringify({
+      model: config.model || "gpt-4.1-mini",
+      messages: [
+        { role: "system", content: "You are an expert HTML presentation designer. Return only valid standalone HTML." },
+        { role: "user", content: clientAiPrompt(slides, state.selectedStyle) },
+      ],
+      temperature: 0.2,
+      max_tokens: 20000,
+    }),
+  });
+  const text = await response.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { text }; }
+  if (!response.ok) throw new Error(data.message || data.error?.message || `Direct AI HTTP ${response.status}`);
+  let html = extractHtmlFromAiText(extractAiText(data));
+  if (!html) throw new Error("The AI responded, but no complete HTML was found.");
+  html = injectClientOriginalImages(html, slides);
+  if (!html.includes("ppt-html-editor-style")) html = html.replace(/<\/body>/i, `${clientEditorRuntime()}</body>`);
+  const scrollHtml = makeScrollHtmlFromPaged(html);
+  const id = `AI-${Date.now().toString(36).toUpperCase()}`;
+  const job = hydrateInlineJob({
+    id,
+    fileName: state.selectedFile.name,
+    slides: slides.length,
+    style: state.selectedStyle,
+    status: "completed",
+    updatedAt: new Date().toISOString(),
+    previewUrl: "",
+    scrollUrl: "",
+    downloadUrl: "",
+    inlinePreviewHtml: html,
+    inlineScrollHtml: scrollHtml,
+    inlinePreviewMode: "blob",
+    aiStatus: { mode: config.mode, provider: config.endpoint, used: true, resultType: "html", browserDirect: true },
+    share: {
+      status: "ready",
+      recommendation: stats.skippedImages ? `${stats.embeddedImages} images were embedded. ${stats.skippedImages} oversized images were skipped.` : "AI generated in the browser and original PPT images were embedded.",
+      totalImages: stats.embeddedImages + stats.skippedImages,
+      embeddedImages: stats.embeddedImages,
+      missingImages: stats.skippedImages,
+      riskyPaths: 0,
+      externalImages: 0,
+    },
+  });
+  state.activeJob = job;
+  state.jobs.unshift(job);
+  renderJobs();
+  renderJobSelect();
+  selectJob(job.id);
+  setStatus("Completed. AI generated directly in the browser to avoid Cloudflare timeout.", "ok");
+  return job;
 }
 
 async function generateInBrowserFallback(reason) {
   setGenerationOverlay(true, "Cloudflare was overloaded, generating locally in this browser...");
   const { slides, stats } = await extractPptxInBrowser(state.selectedFile);
-  if (state.integration.mode === "ai_api") {
+  const fallbackIntegration = integrationForGeneration();
+  if (fallbackIntegration.mode === "ai_api") {
     try {
       setGenerationOverlay(true, "Extracted PPT locally. Asking AI to design the HTML...");
       const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
@@ -623,9 +832,11 @@ async function generateInBrowserFallback(reason) {
       return generatedJob;
     } catch (aiError) {
       console.warn("AI generation after browser extraction failed", aiError);
-      reason = aiError.message || reason;
+      setGenerationOverlay(true, "Cloudflare AI request failed. Trying direct browser AI call...");
+      return generateAiDirectlyInBrowser(slides, stats, aiError.message || reason);
     }
   }
+  if (fallbackIntegration.mode !== "local") throw new Error(reason || "AI generation failed. Local fallback is disabled for AI mode.");
   const pagedHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "paged");
   const scrollHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "scroll");
   const id = `LOCAL-${Date.now().toString(36).toUpperCase()}`;
