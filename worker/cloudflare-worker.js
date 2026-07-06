@@ -424,20 +424,56 @@ function editorRuntime() {
       .editor-toolbar button, .editor-toolbar select, .editor-toolbar input[type="number"] { height: 30px; border: 1px solid #c7d2fe; border-radius: 8px; background: #fff; color: #1e3a8a; font: 700 12px/1 Arial, sans-serif; padding: 0 8px; }
       .editor-toolbar input[type="color"] { width: 32px; height: 30px; padding: 0; border: 1px solid #c7d2fe; border-radius: 8px; background: #fff; }
       body.editing .editable-text, body.editing [contenteditable="true"] { outline: 2px dashed #60a5fa; outline-offset: 3px; cursor: text; }
-      body.editing .media-box, body.editing .editable-image-box { outline: 2px dashed #f59e0b; outline-offset: 4px; resize: both; overflow: hidden; min-width: 80px; min-height: 60px; cursor: move; }
-      body.editing .media-box img, body.editing .editable-image-box img { width: 100%; height: 100%; object-fit: contain; pointer-events: auto; }
+      body.editing .media-box, body.editing .editable-image-box { outline: 2px dashed #f59e0b; outline-offset: 4px; overflow: visible; min-width: 80px; min-height: 60px; cursor: default; }
+      body.editing .media-box.selected-image, body.editing .editable-image-box.selected-image { outline-color: #2563eb; z-index: 50; }
+      body.editing .media-box img, body.editing .editable-image-box img { width: 100%; height: 100%; object-fit: contain; pointer-events: auto; display: block; }
+      .image-drag-handle, .image-resize-handle { display: none; position: absolute; z-index: 60; box-sizing: border-box; }
+      body.editing .selected-image > .image-drag-handle, body.editing .selected-image > .image-resize-handle { display: block; }
+      .image-drag-handle { left: 50%; top: -18px; transform: translateX(-50%); width: 42px; height: 14px; border-radius: 999px; border: 1px solid #93c5fd; background: #2563eb; cursor: grab; box-shadow: 0 6px 16px rgba(37,99,235,.24); }
+      .image-drag-handle:active { cursor: grabbing; }
+      .image-resize-handle { width: 13px; height: 13px; border: 2px solid #fff; border-radius: 4px; background: #f59e0b; box-shadow: 0 0 0 1px rgba(15,23,42,.24); }
+      .image-resize-handle.nw { left: -8px; top: -8px; cursor: nwse-resize; }
+      .image-resize-handle.ne { right: -8px; top: -8px; cursor: nesw-resize; }
+      .image-resize-handle.sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+      .image-resize-handle.se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+      .ppt-runtime-nav { position: fixed; z-index: 9990; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; pointer-events: auto; }
+      .ppt-runtime-nav button, button[onclick*="nextSlide"], button[onclick*="prevSlide"] { min-width: 46px !important; height: 32px !important; padding: 0 12px !important; border-radius: 8px !important; border: 1px solid rgba(37,99,235,.22) !important; background: rgba(255,255,255,.9) !important; color: #1e3a8a !important; font: 800 14px/1 Arial, sans-serif !important; box-shadow: 0 8px 22px rgba(15,23,42,.12) !important; }
+      .ppt-runtime-nav button:last-child { background: #2563eb !important; color: #fff !important; }
+      body.scroll-mode .ppt-runtime-nav { display: none; }
       .free-textbox { position: absolute; left: 12%; top: 30%; min-width: 180px; min-height: 54px; padding: 12px 16px; border: 2px dashed #60a5fa; border-radius: 12px; background: rgba(255,255,255,.92); color: #172554; font: 700 30px/1.2 Arial, sans-serif; z-index: 12; resize: both; overflow: auto; }
     </style>
     <script>(() => {
       let currentSlide = 0;
-      const slides = Array.from(document.querySelectorAll('.slide'));
+      const slideSelector = '.slide, section[data-slide-page], .ai-slide, [data-slide-page]';
+      const slides = Array.from(document.querySelectorAll(slideSelector)).filter((node) => !node.closest('.editor-toolbar,.ppt-runtime-nav'));
       let selectedElement = null;
+      slides.forEach((slide) => {
+        slide.classList.add('ppt-runtime-slide');
+        if (!slide.style.position) slide.style.position = 'relative';
+      });
       function showSlide(index) {
+        if (!slides.length) return;
         currentSlide = Math.max(0, Math.min(index, slides.length - 1));
-        slides.forEach((slide, i) => slide.classList.toggle('active', i === currentSlide));
+        slides.forEach((slide, i) => {
+          const active = i === currentSlide;
+          slide.classList.toggle('active', active);
+          slide.classList.toggle('ppt-active-slide', active);
+          if (!document.body.classList.contains('scroll-mode')) {
+            slide.style.display = active ? (slide.dataset.originalDisplay || 'block') : 'none';
+          }
+        });
       }
       function nextSlide() { showSlide(currentSlide + 1); }
       function prevSlide() { showSlide(currentSlide - 1); }
+      function ensureRuntimeNav() {
+        if (document.querySelector('.ppt-runtime-nav')) return;
+        const nav = document.createElement('div');
+        nav.className = 'ppt-runtime-nav';
+        nav.innerHTML = '<button type="button" data-prev>Prev</button><button type="button" data-next>Next</button>';
+        nav.querySelector('[data-prev]').addEventListener('click', (event) => { event.preventDefault(); prevSlide(); });
+        nav.querySelector('[data-next]').addEventListener('click', (event) => { event.preventDefault(); nextSlide(); });
+        document.body.appendChild(nav);
+      }
       function ensureToolbar() {
         if (document.querySelector('.editor-toolbar')) return;
         const toolbar = document.createElement('div');
@@ -458,6 +494,8 @@ function editorRuntime() {
       function activeSlide() { return slides[currentSlide] || document.querySelector('.slide.active') || document.body; }
       function selectElement(el) {
         selectedElement = el && (el.closest('.media-box,.editable-image-box,.free-textbox,.editable-text,[contenteditable="true"]') || el);
+        document.querySelectorAll('.selected-image').forEach((node) => node.classList.remove('selected-image'));
+        if (selectedElement?.matches?.('.media-box,.editable-image-box')) selectedElement.classList.add('selected-image');
         if (selectedElement) {
           const style = getComputedStyle(selectedElement);
           document.querySelector('[data-size]')?.setAttribute('value', String(Math.round(parseFloat(style.fontSize) || 30)));
@@ -467,34 +505,109 @@ function editorRuntime() {
         const target = selectedElement && !selectedElement.matches('.media-box,.editable-image-box,img') ? selectedElement : document.activeElement;
         if (target && target !== document.body) target.style[prop] = value;
       }
-      function makeDraggable(el) {
-        if (el.dataset.dragReady) return;
-        el.dataset.dragReady = '1';
-        el.addEventListener('pointerdown', (event) => {
-          if (!document.body.classList.contains('editing') || event.target.closest('.editor-toolbar')) return;
-          if (event.target.matches('[contenteditable="true"],.editable-text')) return;
-          selectElement(el);
+      function keepImageInBounds(el) {
+        const parentRect = activeSlide().getBoundingClientRect();
+        const rect = el.getBoundingClientRect();
+        const left = Math.max(0, Math.min(rect.left - parentRect.left, Math.max(0, parentRect.width - rect.width)));
+        const top = Math.max(0, Math.min(rect.top - parentRect.top, Math.max(0, parentRect.height - rect.height)));
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+      }
+      function startMove(el, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        selectElement(el);
+        const rect = el.getBoundingClientRect();
+        const parentRect = activeSlide().getBoundingClientRect();
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const baseLeft = rect.left - parentRect.left;
+        const baseTop = rect.top - parentRect.top;
+        el.style.position = 'absolute';
+        el.style.left = baseLeft + 'px';
+        el.style.top = baseTop + 'px';
+        el.style.width = rect.width + 'px';
+        el.style.height = rect.height + 'px';
+        el.style.zIndex = '50';
+        event.target.setPointerCapture?.(event.pointerId);
+        const move = (moveEvent) => {
+          const nextLeft = Math.max(0, Math.min(baseLeft + moveEvent.clientX - startX, Math.max(0, parentRect.width - rect.width)));
+          const nextTop = Math.max(0, Math.min(baseTop + moveEvent.clientY - startY, Math.max(0, parentRect.height - rect.height)));
+          el.style.left = nextLeft + 'px';
+          el.style.top = nextTop + 'px';
+        };
+        const up = () => {
+          event.target.removeEventListener('pointermove', move);
+          event.target.removeEventListener('pointerup', up);
+          keepImageInBounds(el);
+        };
+        event.target.addEventListener('pointermove', move);
+        event.target.addEventListener('pointerup', up);
+      }
+      function startResize(el, corner, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        selectElement(el);
           const rect = el.getBoundingClientRect();
           const parentRect = activeSlide().getBoundingClientRect();
           const startX = event.clientX;
           const startY = event.clientY;
           const baseLeft = rect.left - parentRect.left;
           const baseTop = rect.top - parentRect.top;
+        const baseWidth = rect.width;
+        const baseHeight = rect.height;
           el.style.position = 'absolute';
           el.style.left = baseLeft + 'px';
           el.style.top = baseTop + 'px';
-          el.style.zIndex = '20';
-          el.setPointerCapture?.(event.pointerId);
+        el.style.width = baseWidth + 'px';
+        el.style.height = baseHeight + 'px';
+        el.style.zIndex = '50';
+        event.target.setPointerCapture?.(event.pointerId);
           const move = (moveEvent) => {
-            el.style.left = Math.max(0, baseLeft + moveEvent.clientX - startX) + 'px';
-            el.style.top = Math.max(0, baseTop + moveEvent.clientY - startY) + 'px';
+          const dx = moveEvent.clientX - startX;
+          const dy = moveEvent.clientY - startY;
+          let left = baseLeft;
+          let top = baseTop;
+          let width = baseWidth + (corner.includes('e') ? dx : -dx);
+          let height = baseHeight + (corner.includes('s') ? dy : -dy);
+          if (corner.includes('w')) left = baseLeft + dx;
+          if (corner.includes('n')) top = baseTop + dy;
+          width = Math.max(80, Math.min(width, parentRect.width));
+          height = Math.max(60, Math.min(height, parentRect.height));
+          left = Math.max(0, Math.min(left, parentRect.width - width));
+          top = Math.max(0, Math.min(top, parentRect.height - height));
+          el.style.left = left + 'px';
+          el.style.top = top + 'px';
+          el.style.width = width + 'px';
+          el.style.height = height + 'px';
           };
           const up = () => {
-            el.removeEventListener('pointermove', move);
-            el.removeEventListener('pointerup', up);
+          event.target.removeEventListener('pointermove', move);
+          event.target.removeEventListener('pointerup', up);
+          keepImageInBounds(el);
           };
-          el.addEventListener('pointermove', move);
-          el.addEventListener('pointerup', up);
+        event.target.addEventListener('pointermove', move);
+        event.target.addEventListener('pointerup', up);
+      }
+      function makeDraggable(el) {
+        if (el.dataset.dragReady) return;
+        el.dataset.dragReady = '1';
+        if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+        const drag = document.createElement('span');
+        drag.className = 'image-drag-handle';
+        drag.title = 'Drag image';
+        drag.addEventListener('pointerdown', (event) => startMove(el, event));
+        el.appendChild(drag);
+        ['nw','ne','sw','se'].forEach((corner) => {
+          const handle = document.createElement('span');
+          handle.className = 'image-resize-handle ' + corner;
+          handle.title = 'Resize image';
+          handle.addEventListener('pointerdown', (event) => startResize(el, corner, event));
+          el.appendChild(handle);
+        });
+        el.addEventListener('pointerdown', (event) => {
+          if (!document.body.classList.contains('editing') || event.target.closest('.editor-toolbar,.image-drag-handle,.image-resize-handle')) return;
+          selectElement(el);
         });
       }
       function prepareImages() {
@@ -558,6 +671,8 @@ function editorRuntime() {
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('.editor-toolbar')?.remove();
         clone.querySelector('#ppt-html-editor-style')?.remove();
+        clone.querySelectorAll('.image-drag-handle,.image-resize-handle,.ppt-runtime-nav').forEach((node) => node.remove());
+        clone.querySelectorAll('.selected-image,.ppt-active-slide').forEach((node) => node.classList.remove('selected-image','ppt-active-slide'));
         clone.querySelectorAll('[contenteditable]').forEach((node) => node.removeAttribute('contenteditable'));
         clone.querySelector('body')?.classList.remove('editing');
         if (mode === 'scroll') clone.querySelector('body')?.classList.add('scroll-mode');
@@ -582,6 +697,7 @@ function editorRuntime() {
       });
       document.addEventListener('click', (event) => selectElement(event.target), true);
       ensureToolbar();
+      ensureRuntimeNav();
       showSlide(0);
     })();</script>`;
 }
@@ -604,7 +720,8 @@ function injectEditorRuntime(html) {
 
 function originalImageStyle() {
   return `<style id="ppt-original-image-style">
-    .ppt-original-images { display: grid; gap: 14px; align-content: center; justify-items: center; min-width: 260px; max-width: min(48vw, 680px); margin: 0 auto; }
+    section:has(.ppt-original-images), .slide:has(.ppt-original-images), .ai-slide:has(.ppt-original-images) { overflow: hidden; }
+    .ppt-original-images { position: relative; z-index: 2; display: grid; gap: 14px; align-content: center; justify-items: center; min-width: 260px; max-width: min(48vw, 680px); margin: 22px auto 0; clear: both; }
     .ppt-original-images figure { margin: 0; display: grid; place-items: center; width: 100%; }
     .ppt-original-images img { width: 100%; max-height: 56vh; object-fit: contain; border-radius: 8px; background: #fff; }
     .ppt-original-images[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: min(58vw, 820px); }
@@ -836,7 +953,7 @@ Non-negotiable output rules:
 - Body text must be greater than 30pt. Slide titles must be greater than 45pt.
 - No text may overflow the viewport or its box. Do not use scrollable text boxes.
 - If a slide has images, reserve a clear visual area for the original image using exactly <figure data-image-slot="page-number"></figure>. The platform will replace that placeholder with the original PPT image.
-- Include small Prev/Next buttons that stay away from editing controls.
+- Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically.
 - Include window.toggleEdit(force) and window.exportEditedHtml(mode) so the platform editor can work.
 - Use CSS that keeps all sections visible and self-contained; no content should be clipped or hidden by default.
 
