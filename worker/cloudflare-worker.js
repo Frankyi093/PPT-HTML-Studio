@@ -134,9 +134,21 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function looksLikeMarkupNoise(text) {
+  const value = String(text || "").replace(/\s+/g, " ").trim();
+  if (!value) return false;
+  if (/<\/?[a-z][\w.-]*:/i.test(value)) return true;
+  if (/\bxmlns:[\w-]+\s*=|\buri\s*=\s*["']?\{?[0-9a-f-]{8,}/i.test(value)) return true;
+  if (/\b(?:a|p|r|wp|w|mc|v|o|a14|a16):(?:ext|extLst|tbl|tblPr|gridCol|tcPr|ln|solidFill|prstGeom)\b/i.test(value)) return true;
+  if (/[<>][\s\S]*[<>]/.test(value) && /\b(?:xml|xmlns|schema|office|drawing|tblPr|gridCol|extLst)\b/i.test(value)) return true;
+  if (value.length > 120 && /[<>="{}]/.test(value) && /\b(?:xmlns|uri|val|tblPr|gridCol|extLst|schema)\b/i.test(value)) return true;
+  return false;
+}
+
 function isUsefulText(text) {
   const value = String(text || "").replace(/\s+/g, " ").trim();
   if (!value) return false;
+  if (looksLikeMarkupNoise(value)) return false;
   if (/^[\d\s./\\-]+$/.test(value)) return false;
   if (/^[()[\]{}.,;:!?'"`~_\-–—]+$/.test(value)) return false;
   if (/^slide\s*\d+$/i.test(value)) return false;
@@ -404,7 +416,6 @@ function renderSlide(slide, index, total, style) {
     <section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${density}" id="slide-${index + 1}" data-slide-page="${slide.page}" style="--bg:${theme.bg};--ink:${theme.ink};--accent:${theme.accent};--panel:${theme.panel};--font:${theme.font}">
       <div class="slide-inner">
         <header>
-          <span class="chapter editable-text">Chapter ${String(index + 1).padStart(2, "0")}</span>
           ${slide.title ? `<h1 class="editable-text">${escapeHtml(slide.title)}</h1>` : ""}
         </header>
         <main>
@@ -945,12 +956,16 @@ Non-negotiable output rules:
 - This must be the AI-designed deck itself; do not ask another system to apply a local template.
 - Generate exactly ${slides.length} slide sections, one for every input slide, in the same order.
 - Every slide section must include data-slide-page="original page number".
+- Every slide must use the same 16:9 canvas size. Use section dimensions such as width:100vw; height:100vh; box-sizing:border-box, with consistent safe margins.
+- Slide titles must be visually dominant, horizontally centered, and placed in a balanced central title area. Cover/title slides should center the title both horizontally and vertically.
+- Use a clean, elegant, modern education/workshop layout: generous whitespace, simple alignment, readable hierarchy, and no crowded corners.
 - Preserve the original PPT's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
 - Only make agenda/outline numbered pages when the original slide title explicitly says Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
 - Never create placeholder pages titled "Slide 1", "Slide 2", etc.
+- Do not invent repeated labels such as "Chapter 01", "Chapter 02", unless the original slide explicitly contains that chapter text.
 - One core idea per slide. Keep pages clean, ordered, airy, modern education/workshop style.
 - Avoid stacked gradients, heavy shadows, complex textures, excessive decoration, nested cards, and packed grids.
-- Body text must be greater than 30pt. Slide titles must be greater than 45pt.
+- Body text must be greater than 30pt. Slide titles must be greater than 45pt and should usually be 52-72pt.
 - No text may overflow the viewport or its box. Do not use scrollable text boxes.
 - If a slide has images, reserve a clear visual area for the original image using exactly <figure data-image-slot="page-number"></figure>. The platform will replace that placeholder with the original PPT image.
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically.
@@ -1110,7 +1125,8 @@ function publicJob(job, includeInline = false) {
 function normalizeSlidesPayload(rawSlides) {
   const slides = (Array.isArray(rawSlides) ? rawSlides : [])
     .map((slide, index) => {
-      const title = cleanText(slide?.title || "");
+      const rawTitle = cleanText(slide?.title || "");
+      const title = isUsefulText(rawTitle) ? rawTitle : "";
       const body = (Array.isArray(slide?.body) ? slide.body : [])
         .map(cleanText)
         .filter(isUsefulText)
