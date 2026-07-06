@@ -295,6 +295,34 @@ function splitCards(items, max = 10) {
     .slice(0, max);
 }
 
+function textBlocks(items, max = 18) {
+  const cleaned = splitCards(items, max);
+  const shortCount = cleaned.filter((item) => item.length < 34).length;
+  const continuationCount = cleaned.filter((item) => /^(and|or|to|of|in|for|with|on|by|as|the|their|our|your|is|are|was|were|communicate|interact|everyday|lives|working)\b/i.test(item)).length;
+  const hasQuoteFlow = cleaned.some((item) => /[“"]/.test(item)) && cleaned.some((item) => /[”"]/.test(item));
+  const asParagraph = cleaned.length >= 4 && (hasQuoteFlow || shortCount / cleaned.length > 0.55 || continuationCount >= 2);
+  if (!asParagraph) return { items: cleaned, paragraphs: cleaned, asParagraph: false };
+  const paragraphs = [];
+  let current = "";
+  const terminal = /[.!?。！？;；:”"]$/;
+  const startsContinuation = /^(and|or|to|of|in|for|with|on|by|as|the|their|our|your|is|are|was|were|communicate|interact|everyday|lives|working|\(|,|;|:)/i;
+  const hasOpenQuote = (value) => (value.match(/[“"]/g) || []).length > (value.match(/[”"]/g) || []).length;
+  for (const item of cleaned) {
+    if (!current) {
+      current = item;
+      continue;
+    }
+    const join = hasOpenQuote(current) || startsContinuation.test(item) || (!terminal.test(current) && current.length < 180 && item.length < 70);
+    if (join) current = `${current} ${item}`;
+    else {
+      paragraphs.push(current);
+      current = item;
+    }
+  }
+  if (current) paragraphs.push(current);
+  return { items: cleaned, paragraphs: paragraphs.slice(0, Math.max(1, max / 2)), asParagraph: true };
+}
+
 function themeFor(style) {
   const themes = {
     teaching: ["#f8fbff", "#172554", "#3b82f6", "#eef6ff", "Inter, Arial, sans-serif"],
@@ -304,8 +332,8 @@ function themeFor(style) {
     academic: ["#fdfcf8", "#1f2937", "#64748b", "#f4f1ea", "Georgia, 'Times New Roman', serif"],
     instructional: ["#fffdf7", "#1e3a5f", "#0ea5e9", "#edf8ff", "Verdana, Arial, sans-serif"],
     minimal: ["#ffffff", "#111827", "#111827", "#f6f7f9", "Inter, Arial, sans-serif"],
-    healing: ["#fff8ec", "#45352e", "#8abed8", "#f7e7c8"],
-    doodle: ["#fff6df", "#3c2c2c", "#8ecae6", "#ffe4a8"],
+    healing: ["#fff8ec", "#45352e", "#8abed8", "#f7e7c8", "'Segoe Print', 'Comic Sans MS', cursive"],
+    doodle: ["#fff6df", "#3c2c2c", "#8ecae6", "#ffe4a8", "'Segoe Print', 'Comic Sans MS', 'Bradley Hand', cursive"],
     swiss: ["#ffffff", "#14213d", "#2563eb", "#eef2ff"],
     editorial: ["#fffdf8", "#182033", "#b45309", "#f7efe0", "Georgia, 'Times New Roman', serif"],
     vivid: ["#fff7ed", "#172554", "#f97316", "#e0f2fe"],
@@ -316,7 +344,8 @@ function themeFor(style) {
 }
 
 function slideLayout(slide, index) {
-  const items = splitCards(slide.body, 12);
+  const blocks = textBlocks(slide.body, 12);
+  const items = blocks.paragraphs;
   const title = String(slide.title || "").toLowerCase();
   const hasImages = slide.images.length > 0;
   if (index === 0) return "cover";
@@ -331,7 +360,8 @@ function slideLayout(slide, index) {
 function renderSlide(slide, index, total, style) {
   const theme = themeFor(style);
   const hasImages = slide.images.length > 0;
-  const items = splitCards(slide.body, 18);
+  const blocks = textBlocks(slide.body, 18);
+  const items = blocks.paragraphs;
   const layout = slideLayout(slide, index);
   const density = items.length >= 10 ? "density-many" : items.length >= 6 ? "density-medium" : "density-light";
   const lead = items[0] || "";
@@ -341,6 +371,7 @@ function renderSlide(slide, index, total, style) {
       <p>${escapeHtml(item)}</p>
     </div>`).join("");
   const bulletsHtml = items.slice(lead ? 1 : 0, lead ? 12 : 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("");
+  const paragraphHtml = items.map((item) => `<p class="body-paragraph editable-text">${escapeHtml(item)}</p>`).join("");
   const conceptHtml = items.slice(0, 3).map((item) => `<div class="point-card editable-text">${escapeHtml(item)}</div>`).join("");
   const contentHtml = {
     cover: items.length ? `<p class="cover-subtitle editable-text">${escapeHtml(items.slice(0, 2).join(" · "))}</p>` : "",
@@ -353,18 +384,15 @@ function renderSlide(slide, index, total, style) {
       </div>`,
     statement: `
       <div class="statement-block">
-        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
-        ${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}
+        ${blocks.asParagraph ? paragraphHtml : `${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}`}
       </div>`,
     lesson: `
       <div class="lesson-block">
-        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
-        ${items.length > 4 ? `<ul class="quiet-list ${items.length > 8 ? "multi-column" : ""}">${items.slice(1, 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}
+        ${blocks.asParagraph ? paragraphHtml : `${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${items.length > 4 ? `<ul class="quiet-list ${items.length > 8 ? "multi-column" : ""}">${items.slice(1, 14).map((item) => `<li class="editable-text">${escapeHtml(item)}</li>`).join("")}</ul>` : `<div class="concept-row">${conceptHtml}</div>`}`}
       </div>`,
     "image-split": `
       <div class="lesson-block">
-        ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
-        ${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}
+        ${blocks.asParagraph ? paragraphHtml : `${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}`}
       </div>`,
     "image-focus": `
       <div class="lesson-block">
@@ -686,6 +714,9 @@ function buildHtml(slides, style, mode = "paged") {
     .text-only main { grid-template-columns: 1fr; }
     .lead-text { margin: 0; max-width: 980px; font-size: clamp(30px, 2.45vw, 44px); line-height: 1.18; font-weight: 760; letter-spacing: -0.01em; color: var(--ink); }
     .lesson-block, .statement-block, .workshop-prompt { max-width: 1040px; display: grid; gap: 26px; align-content: center; }
+    .body-paragraph { margin: 0; max-width: 1120px; font-size: clamp(27px, 2vw, 36px); line-height: 1.28; color: var(--ink); font-weight: 540; overflow-wrap: anywhere; }
+    .density-many .body-paragraph { font-size: clamp(23px, 1.55vw, 30px); line-height: 1.24; }
+    .body-paragraph + .body-paragraph { margin-top: 8px; color: #334155; }
     .quiet-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; max-width: 940px; }
     .quiet-list.multi-column { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 1120px; column-gap: 34px; }
     .quiet-list li { position: relative; padding-left: 28px; font-size: clamp(24px, 1.85vw, 32px); line-height: 1.34; color: #334155; font-weight: 520; }
