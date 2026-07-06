@@ -40,7 +40,7 @@ const apiProviders = {
   doubao_seed: {
     mode: "ai_api",
     endpoint: "https://ark.cn-beijing.volces.com/api/v3",
-    model: "doubao-seed-2-0-mini-260428",
+    model: "doubao-seed-2-0-lite-260428",
     apiKeyHeader: "Authorization",
     apiKeyPrefix: "Bearer ",
     customHeaders: "",
@@ -113,6 +113,43 @@ const state = {
 };
 
 const el = (id) => document.getElementById(id);
+const API_SECRET_STORAGE_KEY = "ppt-html-studio-api-secret-v2";
+
+function readLocalApiSecret() {
+  try {
+    return JSON.parse(localStorage.getItem(API_SECRET_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalApiSecret(secret) {
+  try {
+    localStorage.setItem(API_SECRET_STORAGE_KEY, JSON.stringify(secret || {}));
+  } catch {
+    // localStorage can be disabled in strict browser modes; generation will still work when a key is typed.
+  }
+}
+
+function localApiKeyForCurrentProvider() {
+  const secret = readLocalApiSecret();
+  const provider = state.apiProvider || inferApiProvider(state.integration);
+  return secret[provider] || secret[state.integration.endpoint || ""] || "";
+}
+
+function maskedKey(value) {
+  return value ? `${value.slice(0, 4)}...${value.slice(-4)}` : "";
+}
+
+function integrationForGeneration() {
+  const integration = collectIntegration(false, { allowClear: false });
+  const savedKey = localApiKeyForCurrentProvider();
+  if (integration.mode !== "local") {
+    integration.apiKey = el("apiKey").value.trim() || savedKey;
+    integration.fallbackToLocal = false;
+  }
+  return integration;
+}
 
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -566,6 +603,7 @@ async function generateInBrowserFallback(reason) {
         body: JSON.stringify({
           filename: state.selectedFile.name,
           style: state.selectedStyle,
+          integration: integrationForGeneration(),
           slides,
           stats,
           fallbackReason: reason,
@@ -652,6 +690,7 @@ async function generate() {
         filename: state.selectedFile.name,
         fileBase64,
         style: state.selectedStyle,
+        integration: integrationForGeneration(),
         options: {
           keepText: el("keepText").checked,
           readableText: el("readableText").checked,
@@ -1217,8 +1256,9 @@ async function loadIntegration() {
 
 function collectIntegration(includeKey = false, options = {}) {
   syncModeFromProvider();
+  const mode = el("apiMode").value;
   const payload = {
-    mode: el("apiMode").value,
+    mode,
     endpoint: el("apiEndpoint").value.trim(),
     apiKeyHeader: el("apiKeyHeader").value,
     apiKeyPrefix: el("apiKeyPrefix").value,
@@ -1226,7 +1266,7 @@ function collectIntegration(includeKey = false, options = {}) {
     workflowPayload: el("workflowPayload").value,
     model: el("apiModel").value.trim(),
     timeoutSec: Number(el("apiTimeout").value || 90),
-    fallbackToLocal: el("fallbackToLocal").checked,
+    fallbackToLocal: mode === "local" ? true : false,
     clearApiKey: Boolean(options.allowClear && el("clearApiKey").checked),
   };
   const apiKey = el("apiKey").value.trim();
@@ -1245,16 +1285,17 @@ function renderIntegration() {
   el("workflowPayload").value = state.integration.workflowPayload || "flat";
   el("apiModel").value = state.integration.model || "";
   el("apiTimeout").value = state.integration.timeoutSec || 90;
-  el("fallbackToLocal").checked = state.integration.fallbackToLocal !== false;
+  el("fallbackToLocal").checked = state.integration.mode === "local";
   el("clearApiKey").checked = false;
   updateProviderUi();
   const isLocalMode = state.integration.mode === "local";
   const modeLabel = isLocalMode ? "Local rules active" : apiProviders[state.apiProvider]?.label || "External API enabled";
-  const keyLabel = !isLocalMode && state.integration.hasApiKey ? ` Key: ${state.integration.apiKeyMasked}` : "";
+  const localKey = localApiKeyForCurrentProvider();
+  const keyLabel = !isLocalMode && (localKey || state.integration.hasApiKey) ? ` Key: ${maskedKey(localKey) || state.integration.apiKeyMasked}` : "";
   el("apiKeyNote").textContent = isLocalMode
     ? "Local rules do not need an API key."
-    : state.integration.hasApiKey
-      ? `Saved key: ${state.integration.apiKeyMasked}. Leave the key field blank to keep it.`
+    : (localKey || state.integration.hasApiKey)
+      ? `Saved key: ${maskedKey(localKey) || state.integration.apiKeyMasked}. Leave the key field blank to keep it.`
       : "No saved key yet. Paste a key once and save.";
   setApiStatus(`${modeLabel}.${keyLabel}`, state.integration.mode === "local" ? "" : "ok");
 }
@@ -1289,6 +1330,7 @@ function applyProviderPreset(provider, overwrite = true) {
     if (Object.prototype.hasOwnProperty.call(preset, "customHeaders")) el("customHeaders").value = preset.customHeaders || "";
     if (preset.workflowPayload) el("workflowPayload").value = preset.workflowPayload;
     if (preset.timeoutSec) el("apiTimeout").value = preset.timeoutSec;
+    el("fallbackToLocal").checked = preset.mode === "local";
   }
   updateProviderUi();
 }
@@ -1302,8 +1344,8 @@ function updateProviderUi() {
   el("apiKey").closest("label").classList.toggle("api-hidden", isLocal);
   if (isLocal) {
     el("apiKeyNote").textContent = "Local rules do not need an API key.";
-  } else if (state.integration.hasApiKey) {
-    el("apiKeyNote").textContent = `Saved key: ${state.integration.apiKeyMasked}. Leave the key field blank to keep it.`;
+  } else if (localApiKeyForCurrentProvider() || state.integration.hasApiKey) {
+    el("apiKeyNote").textContent = `Saved key: ${maskedKey(localApiKeyForCurrentProvider()) || state.integration.apiKeyMasked}. Leave the key field blank to keep it.`;
   } else {
     el("apiKeyNote").textContent = "Paste the API key once. After saving, it is kept locally and reused.";
   }
@@ -1316,6 +1358,22 @@ function setApiStatus(message, kind = "") {
 
 async function saveIntegration(showSuccess = true, allowClear = true) {
   const integration = collectIntegration(true, { allowClear });
+  const typedKey = el("apiKey").value.trim();
+  if (typedKey && integration.mode !== "local") {
+    const secret = readLocalApiSecret();
+    secret[state.apiProvider] = typedKey;
+    if (integration.endpoint) secret[integration.endpoint] = typedKey;
+    writeLocalApiSecret(secret);
+  }
+  if (integration.clearApiKey) {
+    const secret = readLocalApiSecret();
+    delete secret[state.apiProvider];
+    if (integration.endpoint) delete secret[integration.endpoint];
+    writeLocalApiSecret(secret);
+  }
+  if (!integration.apiKey && integration.mode !== "local") {
+    integration.apiKey = localApiKeyForCurrentProvider();
+  }
   const response = await fetch(apiUrl("/api/integration"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
