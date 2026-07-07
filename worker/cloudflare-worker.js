@@ -810,6 +810,54 @@ function originalImageBlock(slide) {
   return `<div class="ppt-original-images" data-original-images="${slide.page}" data-count="${slide.images.length}">${figures}</div>`;
 }
 
+function originalImageFigure(slide, index = 0) {
+  const image = slide?.images?.[Math.max(0, Math.min(Number(index) || 0, (slide.images?.length || 1) - 1))];
+  if (!image) return "";
+  return `<figure class="media-box original-ppt-image" data-original-image="${slide.page}-${index + 1}"><img src="${image.src}" alt="Original PPT slide ${slide.page} image ${index + 1}" /></figure>`;
+}
+
+function parseImageSlotToken(value, fallbackPage = 0) {
+  const token = String(value || "").trim().toLowerCase();
+  const match = token.match(/(?:slide|page)?[-_\s:]*(\d+)(?:[-_\s:]*(\d+|[a-z]))?/i) || token.match(/^(\d+)([a-z])$/i);
+  if (!match) return null;
+  const page = Number(match[1] || fallbackPage);
+  let index = null;
+  if (match[2]) {
+    index = /^[a-z]$/i.test(match[2]) ? match[2].toLowerCase().charCodeAt(0) - 97 : Number(match[2]) - 1;
+  }
+  return { page, index };
+}
+
+function replacementForImageSlot(slide, slot, cursor) {
+  if (!slide?.images?.length || slot?.page !== slide.page) return null;
+  if (Number.isInteger(slot.index)) return originalImageFigure(slide, slot.index);
+  if (slide.images.length === 1) return originalImageFigure(slide, 0);
+  return originalImageFigure(slide, cursor.value++);
+}
+
+function replaceAiImagePlaceholders(section, slide) {
+  if (!slide?.images?.length) return section;
+  const cursor = { value: 0 };
+  let output = String(section || "");
+  const applySlot = (match, slotText) => {
+    const slot = parseImageSlotToken(slotText, slide.page);
+    return replacementForImageSlot(slide, slot, cursor) || match;
+  };
+  output = output.replace(/<figure\b([^>]*data-image-slot\s*=\s*["']?([^"'\s>]+)["']?[^>]*)>[\s\S]*?<\/figure>/gi, (match, attrs, token) => applySlot(match, token));
+  output = output.replace(/<img\b([^>]*(?:alt|title|src)\s*=\s*["'][^"']*(?:page|slide)[-_\s:]*0*\d+[a-z]?[^"']*["'][^>]*)>/gi, (match, attrs) => {
+    const token = attrs.match(/(?:page|slide)[-_\s:]*0*\d+[a-z]?/i)?.[0];
+    const slot = parseImageSlotToken(token, slide.page);
+    const image = slide.images[Math.max(0, Math.min(Number.isInteger(slot?.index) ? slot.index : cursor.value++, slide.images.length - 1))];
+    if (!slot || slot.page !== slide.page || !image) return match;
+    return `<img src="${image.src}" alt="Original PPT slide ${slide.page} image ${(Number.isInteger(slot.index) ? slot.index : cursor.value - 1) + 1}">`;
+  });
+  output = output.replace(/<(figure|div)\b((?:(?!>).)*?(?:placeholder|image-slot|image-box|image-card|media-slot|photo-placeholder|visual-placeholder|visual-card|asset-slot)(?:(?!>).)*?)>[\s\S]*?(?:page|slide)[-_\s:]*0*(\d+)([a-z])?[\s\S]*?<\/\1>/gi, (match, tag, attrs, pageText, letter) => {
+    const slot = parseImageSlotToken(`${pageText}${letter || ""}`, slide.page);
+    return replacementForImageSlot(slide, slot, cursor) || match;
+  });
+  return output;
+}
+
 function countHtmlSlides(html) {
   const output = String(html || "");
   const pageMarkers = output.match(/data-slide-page\s*=/gi);
@@ -823,13 +871,6 @@ function injectOriginalImages(html, slides) {
   if (!slides.some((slide) => slide.images.length)) return html;
   let output = String(html || "");
   const usedPages = new Set();
-  output = output.replace(/<figure\b([^>]*data-image-slot\s*=\s*["']?(\d+)["']?[^>]*)>[\s\S]*?<\/figure>/gi, (match, attrs, pageText) => {
-    const page = Number(pageText);
-    const slide = slides.find((item) => item.page === page);
-    if (!slide?.images?.length) return match;
-    usedPages.add(page);
-    return originalImageBlock(slide);
-  });
   const sections = [...output.matchAll(/<section\b[\s\S]*?<\/section>/gi)];
   if (sections.length) {
     let rebuilt = "";
@@ -838,11 +879,14 @@ function injectOriginalImages(html, slides) {
       const section = match[0];
       const slide = slides[index];
       rebuilt += output.slice(cursor, match.index);
-      if (slide?.images?.length && !usedPages.has(slide.page) && !section.includes("ppt-original-images")) {
-        rebuilt += section.replace(/<\/section>\s*$/i, `${originalImageBlock(slide)}</section>`);
+      const replacedSection = slide?.images?.length ? replaceAiImagePlaceholders(section, slide) : section;
+      const replacedExisting = replacedSection !== section;
+      if (slide?.images?.length && !usedPages.has(slide.page) && !replacedSection.includes("ppt-original-images") && !replacedExisting) {
+        rebuilt += replacedSection.replace(/<\/section>\s*$/i, `${originalImageBlock(slide)}</section>`);
         usedPages.add(slide.page);
       } else {
-        rebuilt += section;
+        rebuilt += replacedSection;
+        if (replacedExisting) usedPages.add(slide.page);
       }
       cursor = match.index + section.length;
     });
@@ -1042,7 +1086,7 @@ Non-negotiable output rules:
 - Body text must be greater than 30pt. Slide titles must be greater than 45pt and should usually be 52-72pt.
 - Text and background colors must have strong visible contrast. Never use white/light text on cream, pale, or white backgrounds; never use dark text on dark backgrounds.
 - No text may overflow the viewport or its box. Do not use scrollable text boxes.
-- If a slide has images, reserve a clear visual area for the original image using exactly <figure data-image-slot="page-number"></figure>. The platform will replace that placeholder with the original PPT image.
+- If a slide has images, reserve clear visual areas for the original PPT images using only empty placeholders. Use <figure data-image-slot="page-number"></figure> for one image, or <figure data-image-slot="page-number-a"></figure>, <figure data-image-slot="page-number-b"></figure> for multiple images. Never create fake image paths, empty <img src=""> tags, or visible labels such as "page-8a".
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically.
 - Include window.toggleEdit(force) and window.exportEditedHtml(mode) so the platform editor can work.
 - Use CSS that keeps all sections visible and self-contained; no content should be clipped or hidden by default.
