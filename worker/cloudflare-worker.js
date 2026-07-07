@@ -162,6 +162,58 @@ function cleanText(text) {
     .trim();
 }
 
+function normalizeTextFragments(texts) {
+  const cleaned = (Array.isArray(texts) ? texts : [])
+    .map(cleanText)
+    .filter(Boolean);
+  const merged = [];
+  for (const item of cleaned) {
+    if (!merged.length) {
+      merged.push(item);
+      continue;
+    }
+    const prev = merged[merged.length - 1];
+    if (/\s+[A-Za-z]$/.test(prev) && /^[a-z][A-Za-z-]*(?:\s|$)/.test(item)) {
+      merged[merged.length - 1] = prev.replace(/\s+([A-Za-z])$/, "$1") + item;
+      continue;
+    }
+    if (/^[A-Za-z]$/.test(prev) && /^[a-z]/.test(item)) {
+      merged[merged.length - 1] = prev + item;
+      continue;
+    }
+    merged.push(item);
+  }
+  return merged.filter(isUsefulText);
+}
+
+function titleLooksBroken(title, body = []) {
+  const value = cleanText(title);
+  if (!value) return true;
+  if (/^[A-Za-z]$/.test(value)) return true;
+  if (/^.{1,2}$/.test(value) && body.some((item) => cleanText(item).length > 8)) return true;
+  if (/^[A-Za-z]{1,2}$/.test(value)) return true;
+  if (looksLikeMarkupNoise(value)) return true;
+  return false;
+}
+
+function slideTitleAndBody(texts) {
+  const normalized = normalizeTextFragments(texts);
+  if (!normalized.length) return { title: "", body: [] };
+  let title = normalized[0];
+  let body = normalized.slice(1);
+  if (titleLooksBroken(title, body)) {
+    const replacementIndex = body.findIndex((item) => !titleLooksBroken(item, []) && cleanText(item).length >= 5);
+    if (replacementIndex >= 0) {
+      title = body[replacementIndex];
+      body = normalized.filter((_, index) => index !== replacementIndex + 1);
+    } else {
+      title = "";
+      body = normalized;
+    }
+  }
+  return { title, body };
+}
+
 function xmlDecode(value) {
   return String(value || "")
     .replace(/&lt;/g, "<")
@@ -273,18 +325,18 @@ async function extractPptx(fileBytes) {
     const relsPath = slidePath.replace("ppt/slides/", "ppt/slides/_rels/") + ".rels";
     const relsXml = zip.file(relsPath) ? await zip.file(relsPath).async("string") : "";
     const rels = relationshipMap(relsXml, slidePath);
-    const texts = extractTexts(slideXml);
+    const texts = normalizeTextFragments(extractTexts(slideXml));
     const images = await extractImages(zip, slideXml, rels, index + 1, extractionStats);
     const isDefaultOnlySlide = texts.length === 1 && /^slide\s*\d+$/i.test(texts[0]) && !images.length;
     if ((!texts.length && !images.length) || isDefaultOnlySlide) {
       extractionStats.skippedBlankSlides += 1;
       continue;
     }
-    const title = texts[0] || "";
+    const { title, body } = slideTitleAndBody(texts);
     slides.push({
       page: index + 1,
       title,
-      body: texts.slice(1),
+      body,
       images,
     });
   }
@@ -623,6 +675,8 @@ function editorRuntime() {
       }
       function prepareImages() {
         document.querySelectorAll('img').forEach((img) => {
+          img.draggable = false;
+          img.addEventListener('dragstart', (event) => event.preventDefault());
           if (img.closest('.media-box,.editable-image-box')) {
             makeDraggable(img.closest('.media-box,.editable-image-box'));
             return;
@@ -686,8 +740,16 @@ function editorRuntime() {
         clone.querySelectorAll('.selected-image,.ppt-active-slide').forEach((node) => node.classList.remove('selected-image','ppt-active-slide'));
         clone.querySelectorAll('[contenteditable]').forEach((node) => node.removeAttribute('contenteditable'));
         clone.querySelector('body')?.classList.remove('editing');
-        if (mode === 'scroll') clone.querySelector('body')?.classList.add('scroll-mode');
-        else clone.querySelector('body')?.classList.remove('scroll-mode');
+        if (mode === 'scroll') {
+          clone.querySelector('body')?.classList.add('scroll-mode');
+          clone.querySelectorAll('.slide,section[data-slide-page],[data-slide-page]').forEach((node) => {
+            node.style.display = 'block';
+            node.style.visibility = 'visible';
+            node.style.opacity = '1';
+          });
+        } else {
+          clone.querySelector('body')?.classList.remove('scroll-mode');
+        }
         return '<!doctype html>\\n' + clone.outerHTML;
       }
       window.toggleEdit = toggleEdit;
@@ -706,7 +768,9 @@ function editorRuntime() {
         if (event.key === 'ArrowRight' || event.key === 'PageDown') nextSlide();
         if (event.key === 'ArrowLeft' || event.key === 'PageUp') prevSlide();
       });
-      document.addEventListener('click', (event) => selectElement(event.target), true);
+      document.addEventListener('click', (event) => {
+        if (document.body.classList.contains('editing')) selectElement(event.target);
+      }, false);
       ensureToolbar();
       ensureRuntimeNav();
       showSlide(0);
@@ -809,6 +873,14 @@ function makeScrollHtml(html) {
   } else if (/<body\b/i.test(output)) {
     output = output.replace(/<body\b([^>]*)>/i, '<body$1 class="scroll-mode">');
   }
+  if (!/ppt-scroll-export-style/.test(output)) {
+    const style = `<style id="ppt-scroll-export-style">body.scroll-mode{overflow:auto!important}body.scroll-mode .slide,body.scroll-mode section[data-slide-page],body.scroll-mode [data-slide-page]{display:block!important;visibility:visible!important;opacity:1!important;min-height:100vh}body.scroll-mode .ppt-runtime-nav,body.scroll-mode .nav{display:none!important}</style>`;
+    output = /<\/head>/i.test(output) ? output.replace(/<\/head>/i, `${style}</head>`) : `${style}${output}`;
+  }
+  output = output.replace(/(<(?:section|div)\b(?=[^>]*(?:class=["'][^"']*\bslide\b|data-slide-page\b))[^>]*\bstyle=["'])([^"']*)(["'][^>]*>)/gi, (match, start, style, end) => {
+    const visibleStyle = String(style).replace(/display\s*:\s*none\s*;?/gi, "display:block;");
+    return `${start}${visibleStyle}${end}`;
+  });
   return output;
 }
 
@@ -832,7 +904,7 @@ function buildHtml(slides, style, mode = "paged") {
     .slide-inner { width: min(1440px, 100vw); height: 100%; margin: 0 auto; padding: clamp(42px, 6vh, 76px) clamp(72px, 8vw, 132px) 64px; display: grid; grid-template-rows: auto 1fr auto; gap: clamp(28px, 5vh, 58px); position: relative; }
     header { display: grid; gap: 14px; text-align: left; max-width: 1120px; }
     .chapter { color: var(--accent); font-size: clamp(17px, 1.45vw, 24px); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-    h1 { margin: 0; font-size: clamp(40px, 4vw, 64px); line-height: 1.05; max-width: 1080px; overflow-wrap: anywhere; letter-spacing: -0.01em; }
+    h1 { margin: 0; font-size: clamp(40px, 4vw, 64px); line-height: 1.05; max-width: 1080px; overflow-wrap: break-word; word-break: normal; hyphens: none; letter-spacing: -0.01em; }
     .cover header { align-self: center; text-align: center; max-width: 1100px; margin: 0 auto; }
     .cover h1 { font-size: clamp(48px, 5.1vw, 78px); }
     .cover-subtitle { margin: 18px auto 0; max-width: 860px; color: #64748b; font-size: clamp(24px, 2vw, 34px); line-height: 1.35; font-weight: 500; }
@@ -842,7 +914,7 @@ function buildHtml(slides, style, mode = "paged") {
     .text-only main { grid-template-columns: 1fr; }
     .lead-text { margin: 0; max-width: 980px; font-size: clamp(30px, 2.45vw, 44px); line-height: 1.18; font-weight: 760; letter-spacing: -0.01em; color: var(--ink); }
     .lesson-block, .statement-block, .workshop-prompt { max-width: 1040px; display: grid; gap: 26px; align-content: center; }
-    .body-paragraph { margin: 0; max-width: 1120px; font-size: clamp(27px, 2vw, 36px); line-height: 1.28; color: var(--ink); font-weight: 540; overflow-wrap: anywhere; }
+    .body-paragraph { margin: 0; max-width: 1120px; font-size: clamp(27px, 2vw, 36px); line-height: 1.28; color: var(--ink); font-weight: 540; overflow-wrap: break-word; word-break: normal; hyphens: none; }
     .density-many .body-paragraph { font-size: clamp(23px, 1.55vw, 30px); line-height: 1.24; }
     .body-paragraph + .body-paragraph { margin-top: 8px; color: #334155; }
     .quiet-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; max-width: 940px; }
@@ -859,7 +931,7 @@ function buildHtml(slides, style, mode = "paged") {
     .agenda-item span { color: var(--accent); font-size: 18px; font-weight: 800; letter-spacing: .04em; }
     .agenda-item p { margin: 0; font-size: clamp(24px, 1.85vw, 32px); line-height: 1.15; font-weight: 650; color: var(--ink); }
     .concept-row { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 18px; max-width: 980px; }
-    .point-card { min-width: 0; border-radius: 8px; background: #ffffff; border: 1px solid #d7e3f4; padding: 22px 24px; font-size: clamp(22px, 1.65vw, 30px); line-height: 1.25; font-weight: 650; overflow-wrap: anywhere; display: flex; align-items: center; box-shadow: none; }
+    .point-card { min-width: 0; border-radius: 8px; background: #ffffff; border: 1px solid #d7e3f4; padding: 22px 24px; font-size: clamp(22px, 1.65vw, 30px); line-height: 1.25; font-weight: 650; overflow-wrap: break-word; word-break: normal; hyphens: none; display: flex; align-items: center; box-shadow: none; }
     .thinking-space { width: min(860px, 68vw); min-height: 180px; border: 1px dashed #b7c7dc; border-radius: 8px; color: #94a3b8; display: grid; place-items: center; font-size: 24px; font-weight: 600; }
     .media-grid { min-height: 0; display: grid; gap: 18px; align-content: center; }
     .image-focus .media-grid { justify-self: center; width: min(72vw, 980px); }
@@ -962,10 +1034,13 @@ Non-negotiable output rules:
 - Preserve the original PPT's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
 - Only make agenda/outline numbered pages when the original slide title explicitly says Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
 - Never create placeholder pages titled "Slide 1", "Slide 2", etc.
+- Never use a single isolated word, a single letter, XML markup, or a broken word fragment as a slide title. If the extracted title looks broken, use the nearest complete phrase from the slide content.
+- Keep words intact. Do not split words across lines by letters, do not create one-letter headings, and do not turn normal sentences into one-word bullet fragments.
 - Do not invent repeated labels such as "Chapter 01", "Chapter 02", unless the original slide explicitly contains that chapter text.
 - One core idea per slide. Keep pages clean, ordered, airy, modern education/workshop style.
 - Avoid stacked gradients, heavy shadows, complex textures, excessive decoration, nested cards, and packed grids.
 - Body text must be greater than 30pt. Slide titles must be greater than 45pt and should usually be 52-72pt.
+- Text and background colors must have strong visible contrast. Never use white/light text on cream, pale, or white backgrounds; never use dark text on dark backgrounds.
 - No text may overflow the viewport or its box. Do not use scrollable text boxes.
 - If a slide has images, reserve a clear visual area for the original image using exactly <figure data-image-slot="page-number"></figure>. The platform will replace that placeholder with the original PPT image.
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically.
@@ -1130,11 +1205,14 @@ function normalizeSlidesPayload(rawSlides) {
   const slides = (Array.isArray(rawSlides) ? rawSlides : [])
     .map((slide, index) => {
       const rawTitle = cleanText(slide?.title || "");
-      const title = isUsefulText(rawTitle) ? rawTitle : "";
-      const body = (Array.isArray(slide?.body) ? slide.body : [])
+      const rawBody = (Array.isArray(slide?.body) ? slide.body : [])
         .map(cleanText)
         .filter(isUsefulText)
         .slice(0, 18);
+      const normalizedText = normalizeTextFragments([rawTitle, ...rawBody]);
+      const titleBody = slideTitleAndBody(normalizedText);
+      const title = titleBody.title;
+      const body = titleBody.body.slice(0, 18);
       const images = (Array.isArray(slide?.images) ? slide.images : [])
         .filter((image) => image?.src && String(image.src).startsWith("data:image/"))
         .slice(0, 4)
