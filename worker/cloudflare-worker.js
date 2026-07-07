@@ -16,7 +16,7 @@ let integrationConfig = {
   customHeaders: "",
   workflowPayload: "flat",
   model: "gpt-4.1-mini",
-  timeoutSec: 90,
+  timeoutSec: 300,
   fallbackToLocal: true,
 };
 
@@ -998,6 +998,10 @@ async function readApiResponse(response) {
   }
 }
 
+function isRecoverableAiError(message) {
+  return /timeout|timed out|aborted|operation was aborted|insufficient balance|insufficient_balance|insufficient quota|insufficient_quota|quota|billing|余额|欠费|限额|rate limit|too many requests/i.test(String(message || ""));
+}
+
 function extractTextFromApiData(data) {
   return data.choices?.[0]?.message?.content
     || data.choices?.[0]?.text
@@ -1021,7 +1025,7 @@ async function callAiApi(slides, config, style) {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: integrationHeaders(config),
-    signal: AbortSignal.timeout(Math.max(30, Number(config.timeoutSec || 180)) * 1000),
+    signal: AbortSignal.timeout(Math.max(120, Number(config.timeoutSec || 300)) * 1000),
     body: JSON.stringify({
       model: config.model || "gpt-4.1-mini",
       messages: [
@@ -1059,7 +1063,7 @@ async function callWorkflowApi(slides, config, style) {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: integrationHeaders(config),
-    signal: AbortSignal.timeout(Math.max(30, Number(config.timeoutSec || 180)) * 1000),
+    signal: AbortSignal.timeout(Math.max(120, Number(config.timeoutSec || 300)) * 1000),
     body: JSON.stringify(body),
   });
   const data = await readApiResponse(response);
@@ -1173,8 +1177,10 @@ async function createJob(payload) {
       pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style);
       aiStatus = { mode: requestConfig.mode, provider: requestConfig.endpoint, used: true, resultType: "html" };
     } catch (error) {
-      aiStatus = { mode: requestConfig.mode, used: false, fallback: false, error: String(error.message || error) };
-      throw new Error(`AI generation failed: ${aiStatus.error}`);
+      const message = String(error.message || error);
+      const canFallback = requestConfig.fallbackToLocal !== false || isRecoverableAiError(message);
+      aiStatus = { mode: requestConfig.mode, used: false, fallback: canFallback, error: message };
+      if (!canFallback) throw new Error(`AI generation failed: ${aiStatus.error}`);
     }
   }
   let scrollHtml = "";
@@ -1245,8 +1251,10 @@ async function createJobFromSlides(payload) {
       pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style);
       aiStatus = { mode: requestConfig.mode, provider: requestConfig.endpoint, used: true, resultType: "html", browserExtracted: true };
     } catch (error) {
-      aiStatus = { mode: requestConfig.mode, used: false, fallback: false, browserExtracted: true, error: String(error.message || error) };
-      throw new Error(`AI generation failed: ${aiStatus.error}`);
+      const message = String(error.message || error);
+      const canFallback = requestConfig.fallbackToLocal !== false || isRecoverableAiError(message);
+      aiStatus = { mode: requestConfig.mode, used: false, fallback: canFallback, browserExtracted: true, error: message };
+      if (!canFallback) throw new Error(`AI generation failed: ${aiStatus.error}`);
     }
   }
   let scrollHtml = "";
