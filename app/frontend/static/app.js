@@ -215,7 +215,7 @@ Rules:
 - Do not invent repeated labels such as "Chapter 01", "Chapter 02", unless the original slide explicitly contains that chapter text.
 - Body text > 30pt, titles > 45pt and usually 52-72pt, no scrollable text boxes, no overflow.
 - Text and background colors must have strong visible contrast. Never use white/light text on cream, pale, or white backgrounds; never use dark text on dark backgrounds.
-- If a slide has images, reserve a clear area using <figure data-image-slot="page-number"></figure>. The platform will insert the original PPT image.
+- If a slide has images, reserve clear visual areas for the original PPT images using only empty placeholders. Use <figure data-image-slot="page-number"></figure> for one image, or <figure data-image-slot="page-number-a"></figure>, <figure data-image-slot="page-number-b"></figure> for multiple images. Never create fake image paths, empty <img src=""> tags, or visible labels such as "page-8a".
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically. Include window.toggleEdit(force), window.exportEditedHtml(mode).
 PPT JSON:
 ${JSON.stringify({ style, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
@@ -251,16 +251,57 @@ function clientImageBlock(slide) {
   return `<div class="ppt-original-images" data-original-images="${slide.page}" data-count="${slide.images.length}">${slide.images.map((image, index) => `<figure class="media-box original-ppt-image"><img src="${image.src}" alt="Original PPT slide ${slide.page} image ${index + 1}"></figure>`).join("")}</div>`;
 }
 
+function clientImageFigure(slide, index = 0) {
+  const image = slide?.images?.[Math.max(0, Math.min(Number(index) || 0, (slide.images?.length || 1) - 1))];
+  if (!image) return "";
+  return `<figure class="media-box original-ppt-image" data-original-image="${slide.page}-${index + 1}"><img src="${image.src}" alt="Original PPT slide ${slide.page} image ${index + 1}"></figure>`;
+}
+
+function clientParseImageSlotToken(value, fallbackPage = 0) {
+  const token = String(value || "").trim().toLowerCase();
+  const match = token.match(/(?:slide|page)?[-_\s:]*(\d+)(?:[-_\s:]*(\d+|[a-z]))?/i) || token.match(/^(\d+)([a-z])$/i);
+  if (!match) return null;
+  const page = Number(match[1] || fallbackPage);
+  let index = null;
+  if (match[2]) index = /^[a-z]$/i.test(match[2]) ? match[2].toLowerCase().charCodeAt(0) - 97 : Number(match[2]) - 1;
+  return { page, index };
+}
+
+function clientReplacementForImageSlot(slide, slot, cursor) {
+  if (!slide?.images?.length || slot?.page !== slide.page) return null;
+  if (Number.isInteger(slot.index)) return clientImageFigure(slide, slot.index);
+  if (slide.images.length === 1) return clientImageFigure(slide, 0);
+  return clientImageFigure(slide, cursor.value++);
+}
+
+function replaceClientAiImagePlaceholders(section, slide) {
+  if (!slide?.images?.length) return section;
+  const cursor = { value: 0 };
+  let output = String(section || "");
+  const applySlot = (match, slotText) => {
+    const slot = clientParseImageSlotToken(slotText, slide.page);
+    return clientReplacementForImageSlot(slide, slot, cursor) || match;
+  };
+  output = output.replace(/<figure\b([^>]*data-image-slot\s*=\s*["']?([^"'\s>]+)["']?[^>]*)>[\s\S]*?<\/figure>/gi, (match, attrs, token) => applySlot(match, token));
+  output = output.replace(/<img\b([^>]*(?:alt|title|src)\s*=\s*["'][^"']*(?:page|slide)[-_\s:]*0*\d+[a-z]?[^"']*["'][^>]*)>/gi, (match, attrs) => {
+    const token = attrs.match(/(?:page|slide)[-_\s:]*0*\d+[a-z]?/i)?.[0];
+    const slot = clientParseImageSlotToken(token, slide.page);
+    const imageIndex = Math.max(0, Math.min(Number.isInteger(slot?.index) ? slot.index : cursor.value++, slide.images.length - 1));
+    const image = slide.images[imageIndex];
+    if (!slot || slot.page !== slide.page || !image) return match;
+    return `<img src="${image.src}" alt="Original PPT slide ${slide.page} image ${imageIndex + 1}">`;
+  });
+  output = output.replace(/<(figure|div)\b((?:(?!>).)*?(?:placeholder|image-slot|image-box|image-card|media-slot|photo-placeholder|visual-placeholder|visual-card|asset-slot)(?:(?!>).)*?)>[\s\S]*?(?:page|slide)[-_\s:]*0*(\d+)([a-z])?[\s\S]*?<\/\1>/gi, (match, tag, attrs, pageText, letter) => {
+    const slot = clientParseImageSlotToken(`${pageText}${letter || ""}`, slide.page);
+    return clientReplacementForImageSlot(slide, slot, cursor) || match;
+  });
+  return output;
+}
+
 function injectClientOriginalImages(html, slides) {
   let output = String(html || "");
   const style = `<style id="ppt-original-image-style">section:has(.ppt-original-images),.slide:has(.ppt-original-images),.ai-slide:has(.ppt-original-images){overflow:hidden}.ppt-original-images{position:relative;z-index:2;display:grid;gap:14px;align-content:center;justify-items:center;max-width:min(56vw,820px);margin:22px auto 0;clear:both}.ppt-original-images figure{margin:0;display:grid;place-items:center;width:100%}.ppt-original-images img{width:100%;max-height:56vh;object-fit:contain;border-radius:8px;background:#fff}.ppt-original-images[data-count="2"],.ppt-original-images[data-count="3"],.ppt-original-images[data-count="4"]{grid-template-columns:repeat(2,minmax(0,1fr))}</style>`;
   const used = new Set();
-  output = output.replace(/<figure\b([^>]*data-image-slot\s*=\s*["']?(\d+)["']?[^>]*)>[\s\S]*?<\/figure>/gi, (match, attrs, pageText) => {
-    const slide = slides.find((item) => item.page === Number(pageText));
-    if (!slide?.images?.length) return match;
-    used.add(slide.page);
-    return clientImageBlock(slide);
-  });
   const sections = [...output.matchAll(/<section\b[\s\S]*?<\/section>/gi)];
   if (sections.length) {
     let rebuilt = "";
@@ -269,9 +310,12 @@ function injectClientOriginalImages(html, slides) {
       const section = match[0];
       const slide = slides[index];
       rebuilt += output.slice(cursor, match.index);
-      rebuilt += slide?.images?.length && !used.has(slide.page) && !section.includes("ppt-original-images")
-        ? section.replace(/<\/section>\s*$/i, `${clientImageBlock(slide)}</section>`)
-        : section;
+      const replacedSection = slide?.images?.length ? replaceClientAiImagePlaceholders(section, slide) : section;
+      const replacedExisting = replacedSection !== section;
+      rebuilt += slide?.images?.length && !used.has(slide.page) && !replacedSection.includes("ppt-original-images") && !replacedExisting
+        ? replacedSection.replace(/<\/section>\s*$/i, `${clientImageBlock(slide)}</section>`)
+        : replacedSection;
+      if (replacedExisting) used.add(slide.page);
       cursor = match.index + section.length;
     });
     rebuilt += output.slice(cursor);
