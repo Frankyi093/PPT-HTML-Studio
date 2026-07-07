@@ -105,7 +105,7 @@ const state = {
     customHeaders: "",
     workflowPayload: "flat",
     model: "gpt-4.1-mini",
-    timeoutSec: 90,
+    timeoutSec: 300,
     fallbackToLocal: true,
     hasApiKey: false,
     apiKeyMasked: "",
@@ -146,9 +146,14 @@ function integrationForGeneration() {
   const savedKey = localApiKeyForCurrentProvider();
   if (integration.mode !== "local") {
     integration.apiKey = el("apiKey").value.trim() || savedKey;
-    integration.fallbackToLocal = false;
+    integration.timeoutSec = Math.max(300, Number(integration.timeoutSec || 300));
+    integration.fallbackToLocal = true;
   }
   return integration;
+}
+
+function isAiRecoverableError(message) {
+  return /timeout|timed out|aborted|operation was aborted|insufficient balance|insufficient_balance|insufficient quota|insufficient_quota|quota|billing|余额|欠费|限额|rate limit|too many requests/i.test(String(message || ""));
 }
 
 function normalizeChatEndpoint(endpoint) {
@@ -761,9 +766,13 @@ async function generateAiDirectlyInBrowser(slides, stats, previousError) {
   const config = integrationForGeneration();
   if (config.mode !== "ai_api") throw new Error(previousError || "Browser direct AI is only available for AI chat APIs.");
   if (!config.apiKey) throw new Error("API key is required for AI generation.");
+  const controller = new AbortController();
+  const timeoutMs = Math.max(120, Number(config.timeoutSec || 300)) * 1000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const response = await fetch(normalizeChatEndpoint(config.endpoint), {
     method: "POST",
     headers: apiHeaders(config),
+    signal: controller.signal,
     body: JSON.stringify({
       model: config.model || "gpt-4.1-mini",
       messages: [
@@ -773,7 +782,7 @@ async function generateAiDirectlyInBrowser(slides, stats, previousError) {
       temperature: 0.2,
       max_tokens: 20000,
     }),
-  });
+  }).finally(() => clearTimeout(timeoutId));
   const text = await response.text();
   let data = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = { text }; }
@@ -818,12 +827,54 @@ async function generateAiDirectlyInBrowser(slides, stats, previousError) {
 }
 
 async function generateInBrowserFallback(reason) {
-  setGenerationOverlay(true, "Cloudflare was overloaded, generating locally in this browser...");
+  setGenerationOverlay(true, "Extracting the PPT locally in this browser for faster generation...");
   const { slides, stats } = await extractPptxInBrowser(state.selectedFile);
   const fallbackIntegration = integrationForGeneration();
+  let fallbackReason = reason;
   if (fallbackIntegration.mode === "ai_api") {
     try {
-      setGenerationOverlay(true, "Extracted PPT locally. Asking AI to design the HTML...");
+      setGenerationOverlay(true, "Extracted PPT locally. Asking AI directly from this browser...");
+      return await generateAiDirectlyInBrowser(slides, stats, reason);
+    } catch (directAiError) {
+      fallbackReason = directAiError.message || reason;
+      console.warn("Direct browser AI generation failed", directAiError);
+      if (isAiRecoverableError(fallbackReason)) {
+        setGenerationOverlay(true, "AI timed out or has insufficient balance. Generating with local rules instead...");
+      } else {
+        setGenerationOverlay(true, "Direct AI call failed. Trying Cloudflare AI proxy...");
+        try {
+          const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              filename: state.selectedFile.name,
+              style: state.selectedStyle,
+              integration: fallbackIntegration,
+              slides,
+              stats,
+              fallbackReason: reason,
+            }),
+          });
+          const data = await readJsonResponse(response, "AI generation failed");
+          const generatedJob = hydrateInlineJob(data.job);
+          state.activeJob = generatedJob;
+          state.jobs.unshift(generatedJob);
+          renderJobs();
+          renderJobSelect();
+          selectJob(generatedJob.id);
+          const aiMessage = formatAiStatus(generatedJob);
+          setStatus(aiMessage ? `Completed. ${aiMessage}` : "Completed. AI preview is ready.", generatedJob.aiStatus?.fallback ? "error" : "ok");
+          return generatedJob;
+        } catch (workerAiError) {
+          fallbackReason = workerAiError.message || fallbackReason;
+          console.warn("Cloudflare AI proxy generation failed", workerAiError);
+          setGenerationOverlay(true, "AI request failed. Generating with local rules instead...");
+        }
+      }
+    }
+  } else if (fallbackIntegration.mode !== "local") {
+    try {
+      setGenerationOverlay(true, "Extracted PPT locally. Asking workflow API to design the HTML...");
       const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -846,13 +897,12 @@ async function generateInBrowserFallback(reason) {
       const aiMessage = formatAiStatus(generatedJob);
       setStatus(aiMessage ? `Completed. ${aiMessage}` : "Completed. AI preview is ready.", generatedJob.aiStatus?.fallback ? "error" : "ok");
       return generatedJob;
-    } catch (aiError) {
-      console.warn("AI generation after browser extraction failed", aiError);
-      setGenerationOverlay(true, "Cloudflare AI request failed. Trying direct browser AI call...");
-      return generateAiDirectlyInBrowser(slides, stats, aiError.message || reason);
+    } catch (workflowError) {
+      fallbackReason = workflowError.message || reason;
+      console.warn("Workflow generation after browser extraction failed", workflowError);
+      setGenerationOverlay(true, "Workflow request failed. Generating with local rules instead...");
     }
   }
-  if (fallbackIntegration.mode !== "local") throw new Error(reason || "AI generation failed. Local fallback is disabled for AI mode.");
   const pagedHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "paged");
   const scrollHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "scroll");
   const id = `LOCAL-${Date.now().toString(36).toUpperCase()}`;
@@ -869,7 +919,7 @@ async function generateInBrowserFallback(reason) {
     inlinePreviewHtml: pagedHtml,
     inlineScrollHtml: scrollHtml,
     inlinePreviewMode: "blob",
-    aiStatus: { mode: state.integration.mode || "local", fallback: true, error: reason },
+    aiStatus: { mode: state.integration.mode || "local", fallback: true, error: fallbackReason },
     share: {
       status: "ready",
       recommendation: stats.skippedImages ? `${stats.embeddedImages} images were embedded. ${stats.skippedImages} oversized images were skipped in browser fallback mode.` : "Browser fallback generated successfully.",
@@ -885,7 +935,7 @@ async function generateInBrowserFallback(reason) {
   renderJobs();
   renderJobSelect();
   selectJob(job.id);
-  setStatus(`Generated locally in your browser to avoid Cloudflare file-processing limits. ${stats.skippedImages ? "Some oversized images were skipped." : ""}`, "ok");
+  setStatus(`Generated with local rules because AI was unavailable or too slow. ${stats.skippedImages ? "Some oversized images were skipped." : ""}`, "ok");
   return job;
 }
 
@@ -910,6 +960,10 @@ async function generate() {
       await new Promise((resolve) => setTimeout(resolve, 160));
     }
     await saveIntegration(false, false);
+    if (state.runtime === "cloudflare-worker-only" && /\.pptx$/i.test(state.selectedFile.name)) {
+      await generateInBrowserFallback("Cloudflare-only fast path: PPT extracted in the browser to avoid Worker timeout.");
+      return;
+    }
     setGenerationOverlay(true, "AI is arranging titles, text, images, and final HTML...");
     const fileBase64 = await fileToBase64(state.selectedFile);
     const response = await fetch(apiUrl("/api/generate"), {
@@ -1494,8 +1548,8 @@ function collectIntegration(includeKey = false, options = {}) {
     customHeaders: el("customHeaders").value.trim(),
     workflowPayload: el("workflowPayload").value,
     model: el("apiModel").value.trim(),
-    timeoutSec: Number(el("apiTimeout").value || 90),
-    fallbackToLocal: mode === "local" ? true : false,
+    timeoutSec: Math.max(300, Number(el("apiTimeout").value || 300)),
+    fallbackToLocal: true,
     clearApiKey: Boolean(options.allowClear && el("clearApiKey").checked),
   };
   const apiKey = el("apiKey").value.trim();
@@ -1513,8 +1567,8 @@ function renderIntegration() {
   el("customHeaders").value = state.integration.customHeaders || "";
   el("workflowPayload").value = state.integration.workflowPayload || "flat";
   el("apiModel").value = state.integration.model || "";
-  el("apiTimeout").value = state.integration.timeoutSec || 90;
-  el("fallbackToLocal").checked = state.integration.mode === "local";
+  el("apiTimeout").value = Math.max(300, Number(state.integration.timeoutSec || 300));
+  el("fallbackToLocal").checked = true;
   el("clearApiKey").checked = false;
   updateProviderUi();
   const isLocalMode = state.integration.mode === "local";
@@ -1559,7 +1613,7 @@ function applyProviderPreset(provider, overwrite = true) {
     if (Object.prototype.hasOwnProperty.call(preset, "customHeaders")) el("customHeaders").value = preset.customHeaders || "";
     if (preset.workflowPayload) el("workflowPayload").value = preset.workflowPayload;
     if (preset.timeoutSec) el("apiTimeout").value = preset.timeoutSec;
-    el("fallbackToLocal").checked = preset.mode === "local";
+    el("fallbackToLocal").checked = true;
   }
   updateProviderUi();
 }
