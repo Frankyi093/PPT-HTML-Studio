@@ -870,6 +870,38 @@ h2 {
   font-weight: 750;
 }
 
+.settings-panel {
+  width: min(560px, calc(100vw - 40px));
+}
+
+.settings-content {
+  padding: 26px 30px 32px;
+  display: grid;
+  gap: 16px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 8px;
+  color: var(--navy);
+  font-weight: 780;
+}
+
+.settings-field select {
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #fff;
+  color: #1f2a44;
+}
+
+.settings-content p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 @keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }
