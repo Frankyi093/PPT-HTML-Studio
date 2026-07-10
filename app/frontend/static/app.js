@@ -742,6 +742,7 @@ Rules:
 - Preserve the original PPT's rough layout type; do not turn every page into an outline, card grid, or numbered list.
 - Never use a single isolated word, a single letter, XML markup, or a broken word fragment as a slide title. If the extracted title looks broken, use the nearest complete phrase from the slide content.
 - Keep words intact. Do not split words across lines by letters, do not create one-letter headings, and do not turn normal sentences into one-word bullet fragments.
+- Never use vertical writing, one-character-per-line text, ultra-narrow text columns, CSS writing-mode vertical, word-break: break-all, or overflow-wrap:anywhere for normal text.
 - Do not invent repeated labels such as "Chapter 01", "Chapter 02", unless the original slide explicitly contains that chapter text.
 - Body text > 30pt, titles > 45pt and usually 52-72pt, no scrollable text boxes, no overflow.
 - Text and background colors must have strong visible contrast. Never use white/light text on cream, pale, or white backgrounds; never use dark text on dark backgrounds.
@@ -785,6 +786,9 @@ function clientImageBlock(slide) {
 function clientInjectedDeckSafetyStyle() {
   return `<style id="ppt-layout-safety-style">
     body:not(.scroll-mode) section[data-slide-page]:first-of-type, body:not(.scroll-mode) .slide:first-of-type, body:not(.scroll-mode) .ai-slide:first-of-type { overflow: hidden !important; }
+    section[data-slide-page] :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .ai-slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item) { writing-mode: horizontal-tb !important; text-orientation: mixed !important; white-space: normal !important; word-break: normal !important; overflow-wrap: normal !important; hyphens: none !important; letter-spacing: normal; }
+    section[data-slide-page] :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .ai-slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p) { min-width: min(320px, 82vw) !important; max-width: min(1040px, 88vw) !important; }
+    section[data-slide-page] :where(h1,h2,h3,h4), .slide :where(h1,h2,h3,h4), .ai-slide :where(h1,h2,h3,h4) { min-width: min(520px, 86vw) !important; max-width: min(1120px, 90vw) !important; }
     body:not(.scroll-mode) .cover .slide-inner { display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; gap: clamp(16px, 3vh, 34px) !important; padding-top: clamp(56px, 8vh, 92px) !important; padding-bottom: clamp(56px, 8vh, 92px) !important; }
     body:not(.scroll-mode) .cover main { display: block !important; min-height: auto !important; }
     body:not(.scroll-mode) .cover footer { position: absolute !important; right: clamp(34px, 5vw, 80px) !important; bottom: 28px !important; }
