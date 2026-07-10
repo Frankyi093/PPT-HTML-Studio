@@ -1,8 +1,7 @@
 const steps = [
-  ["Upload", "Upload your PPT file"],
-  ["Extract", "Extract content from PPT"],
-  ["Optimize", "Apply readability & layout rules"],
-  ["Convert", "Convert to HTML slides"],
+  ["Upload File", "Add your PPT file"],
+  ["Choose Style", "Pick a visual style"],
+  ["Choose Method", "Local rules or AI"],
   ["Edit", "Review and refine HTML"],
 ];
 
@@ -36,14 +35,12 @@ const i18n = {
     apply: "Apply",
     workflowTip: "Workflow tip",
     workflowTipBody: "Follow the steps from top to bottom. Download exports a ZIP with HTML and images.",
-    stepUpload: "Upload",
-    stepUploadDesc: "Upload your PPT file",
-    stepExtract: "Extract",
-    stepExtractDesc: "Extract content from PPT",
-    stepOptimize: "Optimize",
-    stepOptimizeDesc: "Apply readability & layout rules",
-    stepConvert: "Convert",
-    stepConvertDesc: "Convert to HTML slides",
+    stepUpload: "Upload File",
+    stepUploadDesc: "Add your PPT file",
+    stepStyle: "Choose Style",
+    stepStyleDesc: "Pick a visual style",
+    stepMethod: "Choose Method",
+    stepMethodDesc: "Local rules or AI",
     stepEdit: "Edit",
     stepEditDesc: "Review and refine HTML",
     uploadPpt: "Upload PPT",
@@ -207,14 +204,12 @@ const i18n = {
     apply: "\u5e94\u7528",
     workflowTip: "\u5de5\u4f5c\u6d41\u63d0\u793a",
     workflowTipBody: "\u6309\u4ece\u4e0a\u5230\u4e0b\u7684\u6b65\u9aa4\u64cd\u4f5c\u3002\u4e0b\u8f7d\u4f1a\u5bfc\u51fa\u5305\u542b HTML \u548c\u56fe\u7247\u7684 ZIP \u5305\u3002",
-    stepUpload: "\u4e0a\u4f20",
-    stepUploadDesc: "\u4e0a\u4f20 PPT \u6587\u4ef6",
-    stepExtract: "\u63d0\u53d6",
-    stepExtractDesc: "\u63d0\u53d6 PPT \u5185\u5bb9",
-    stepOptimize: "\u4f18\u5316",
-    stepOptimizeDesc: "\u5e94\u7528\u53ef\u8bfb\u6027\u4e0e\u7248\u5f0f\u89c4\u5219",
-    stepConvert: "\u8f6c\u6362",
-    stepConvertDesc: "\u8f6c\u6362\u4e3a HTML \u5e7b\u706f\u7247",
+    stepUpload: "\u4e0a\u4f20\u6587\u4ef6",
+    stepUploadDesc: "\u6dfb\u52a0 PPT \u6587\u4ef6",
+    stepStyle: "\u9009\u62e9\u98ce\u683c",
+    stepStyleDesc: "\u9009\u62e9\u89c6\u89c9\u6837\u5f0f",
+    stepMethod: "\u9009\u62e9\u4f18\u5316\u65b9\u5f0f",
+    stepMethodDesc: "\u672c\u5730\u89c4\u5219\u6216 AI",
     stepEdit: "\u7f16\u8f91",
     stepEditDesc: "\u68c0\u67e5\u5e76\u5fae\u8c03 HTML",
     uploadPpt: "\u4e0a\u4f20 PPT",
@@ -370,9 +365,8 @@ const i18n = {
 
 const stepKeys = [
   ["stepUpload", "stepUploadDesc"],
-  ["stepExtract", "stepExtractDesc"],
-  ["stepOptimize", "stepOptimizeDesc"],
-  ["stepConvert", "stepConvertDesc"],
+  ["stepStyle", "stepStyleDesc"],
+  ["stepMethod", "stepMethodDesc"],
   ["stepEdit", "stepEditDesc"],
 ];
 
@@ -994,7 +988,9 @@ function renderStyles() {
   document.querySelectorAll("[data-style]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedStyle = button.dataset.style;
+      state.activeStep = Math.max(state.activeStep, 1);
       renderStyles();
+      renderSteps();
     });
   });
 }
@@ -1127,6 +1123,7 @@ function handleFile(file) {
     return;
   }
   state.selectedFile = file;
+  state.activeStep = Math.max(state.activeStep, 1);
   el("fileCard").classList.remove("hidden");
   el("fileName").textContent = file.name;
   el("fileMeta").textContent = `${formatBytes(file.size)} ${t("selected")}`;
@@ -1599,7 +1596,7 @@ async function generate() {
   try {
     setGenerationOverlay(true, t("preparingPpt"));
     for (let i = 0; i < labels.length; i += 1) {
-      state.activeStep = i;
+      state.activeStep = Math.min(i, stepKeys.length - 1);
       renderSteps();
       setStatus(`${labels[i]}...`);
       setGenerationOverlay(true, `${labels[i]}...`);
@@ -1628,7 +1625,7 @@ async function generate() {
       }),
     });
     const data = await readJsonResponse(response, state.language === "zh" ? "\u751f\u6210\u5931\u8d25" : "Generation failed");
-    state.activeStep = 4;
+    state.activeStep = 3;
     const generatedJob = hydrateInlineJob(data.job);
     state.activeJob = generatedJob;
     const aiMessage = formatAiStatus(generatedJob);
@@ -2433,13 +2430,19 @@ function bindEvents() {
   dropZone.addEventListener("drop", (event) => handleFile(event.dataTransfer.files[0]));
   el("clearFile").addEventListener("click", () => {
     state.selectedFile = null;
+    state.activeStep = 0;
     fileInput.value = "";
     el("fileCard").classList.add("hidden");
     setStatus("");
+    renderSteps();
   });
   el("runButton").addEventListener("click", generate);
   el("closeGenerationOverlay").addEventListener("click", hideGenerationOverlay);
-  el("apiProvider").addEventListener("change", (event) => applyProviderPreset(event.target.value, true));
+  el("apiProvider").addEventListener("change", (event) => {
+    applyProviderPreset(event.target.value, true);
+    state.activeStep = Math.max(state.activeStep, 2);
+    renderSteps();
+  });
   el("saveApiSettings").addEventListener("click", async () => {
     try {
       setApiStatus(t("savingApiSettings"));
