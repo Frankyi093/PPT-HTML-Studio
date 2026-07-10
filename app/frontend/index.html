@@ -22,24 +22,24 @@
         <ol class="steps" id="steps"></ol>
         <div class="tip">
           <div class="tip-icon">i</div>
-          <strong>Workflow tip</strong>
-          <p>Follow the steps from top to bottom. Download exports a ZIP with HTML and images.</p>
+          <strong id="tipTitle">Workflow tip</strong>
+          <p id="tipBody">Follow the steps from top to bottom. Download exports a ZIP with HTML and images.</p>
         </div>
       </aside>
 
       <section class="main-panel">
         <section class="upload-panel">
           <div class="panel-header">
-            <h1>Upload PPT</h1>
+            <h1 id="uploadTitle">Upload PPT</h1>
             <span id="health" class="health">Checking backend</span>
           </div>
 
           <label class="drop-zone" id="dropZone">
             <input id="fileInput" type="file" accept=".ppt,.pptx">
             <span class="upload-icon">up</span>
-            <strong>Drag & drop your PPT file here</strong>
-            <span>or</span>
-            <button class="button-like" type="button">Upload PPT</button>
+            <strong id="dropStrong">Drag & drop your PPT file here</strong>
+            <span id="dropOr">or</span>
+            <button id="dropButton" class="button-like" type="button">Upload PPT</button>
             <small id="uploadLimitText">Checking upload limit...</small>
           </label>
 
@@ -53,22 +53,22 @@
           </div>
 
           <div class="style-section">
-            <h2>Style</h2>
+            <h2 id="styleTitle">Style</h2>
             <div class="style-tabs" id="styleTabs"></div>
             <div class="rule-grid">
-              <label><input type="checkbox" id="keepText" checked> <span>Keep text unchanged</span><small>Do not modify wording</small></label>
-              <label><input type="checkbox" id="readableText" checked> <span>Readable 16px+</span><small>Ensure text is easy to read</small></label>
-              <label><input type="checkbox" id="imagesIntact" checked> <span>Images intact</span><small>Keep original images visible</small></label>
+              <label><input type="checkbox" id="keepText" checked> <span id="keepTextLabel">Keep text unchanged</span><small id="keepTextSmall">Do not modify wording</small></label>
+              <label><input type="checkbox" id="readableText" checked> <span id="readableTextLabel">Readable 16px+</span><small id="readableTextSmall">Ensure text is easy to read</small></label>
+              <label><input type="checkbox" id="imagesIntact" checked> <span id="imagesIntactLabel">Images intact</span><small id="imagesIntactSmall">Keep original images visible</small></label>
             </div>
           </div>
 
           <details class="advanced api-card" open>
-            <summary>AI connection</summary>
-            <p class="api-intro">Pick a service, paste the key, then save. Your saved API settings stay on this machine and are reused for every generation.</p>
+            <summary id="apiSummary">AI connection</summary>
+            <p id="apiIntro" class="api-intro">Pick a service, paste the key, then save. Your saved API settings stay on this machine and are reused for every generation.</p>
             <input id="apiMode" type="hidden" value="local">
             <div class="api-simple-grid">
               <label>
-                <span>Service</span>
+                <span id="apiProviderLabel">Service</span>
                 <select id="apiProvider">
                   <option value="local">Local rules</option>
                   <option value="deepseek">DeepSeek</option>
@@ -80,24 +80,24 @@
                 </select>
               </label>
               <label id="apiEndpointField">
-                <span>Endpoint</span>
+                <span id="apiEndpointLabel">Endpoint</span>
                 <input id="apiEndpoint" type="url" placeholder="https://api.example.com/v1">
               </label>
               <label id="apiModelField">
-                <span>Model</span>
+                <span id="apiModelLabel">Model</span>
                 <input id="apiModel" type="text" placeholder="deepseek-chat">
               </label>
               <label>
-                <span>API key</span>
+                <span id="apiKeyLabel">API key</span>
                 <input id="apiKey" type="password" autocomplete="off" placeholder="Paste key once, then leave blank">
               </label>
             </div>
             <div class="api-key-note" id="apiKeyNote">No saved key yet.</div>
             <details class="api-advanced">
-              <summary>Advanced connection settings</summary>
+              <summary id="apiAdvancedSummary">Advanced connection settings</summary>
               <div class="api-grid">
                 <label>
-                  <span>API key header</span>
+                  <span id="apiKeyHeaderLabel">API key header</span>
                   <select id="apiKeyHeader">
                     <option value="Authorization">Authorization</option>
                     <option value="X-API-Key">X-API-Key</option>
@@ -106,11 +106,11 @@
                   </select>
                 </label>
                 <label>
-                  <span>API key prefix</span>
+                  <span id="apiKeyPrefixLabel">API key prefix</span>
                   <input id="apiKeyPrefix" type="text" placeholder="Bearer ">
                 </label>
                 <label>
-                  <span>Workflow payload</span>
+                  <span id="workflowPayloadLabel">Workflow payload</span>
                   <select id="workflowPayload">
                     <option value="flat">Flat JSON</option>
                     <option value="input">{ "input": ... }</option>
@@ -118,20 +118,20 @@
                   </select>
                 </label>
                 <label>
-                  <span>Timeout (sec)</span>
+                  <span id="apiTimeoutLabel">Timeout (sec)</span>
                   <input id="apiTimeout" type="number" min="10" max="600" value="90">
                 </label>
                 <label class="api-wide">
-                  <span>Custom headers</span>
+                  <span id="customHeadersLabel">Custom headers</span>
                   <textarea id="customHeaders" rows="3" placeholder='{"X-Workflow-Token":"..."} or Header-Name: value'></textarea>
                 </label>
                 <label class="api-checkbox">
                   <input id="fallbackToLocal" type="checkbox" checked>
-                  <span>Fallback to local rules if API fails</span>
+                  <span id="fallbackToLocalLabel">Fallback to local rules if API fails</span>
                 </label>
                 <label class="api-checkbox">
                   <input id="clearApiKey" type="checkbox">
-                  <span>Clear saved API key on save</span>
+                  <span id="clearApiKeyLabel">Clear saved API key on save</span>
                 </label>
               </div>
             </details>
@@ -148,7 +148,7 @@
 
         <section class="preview-panel">
           <div class="preview-head">
-            <h2>Preview</h2>
+            <h2 id="previewTitle">Preview</h2>
             <div class="preview-controls">
               <select id="jobSelect" aria-label="Select generated job"></select>
               <button class="icon-button" id="openPreview" type="button">Preview</button>
@@ -159,8 +159,8 @@
           <div class="preview-frame">
             <iframe id="previewFrame" title="HTML slide preview"></iframe>
             <div class="preview-empty" id="previewEmpty">
-              <strong>No generated HTML yet</strong>
-              <span>Upload a PPT and run the workflow to see the first slide here.</span>
+              <strong id="previewEmptyTitle">No generated HTML yet</strong>
+              <span id="previewEmptyDesc">Upload a PPT and run the workflow to see the first slide here.</span>
             </div>
           </div>
           <div class="preview-footer">
@@ -187,21 +187,21 @@
 
         <section class="history-panel">
           <div class="history-head">
-            <h2>Job History</h2>
+            <h2 id="historyTitle">Job History</h2>
             <button class="ghost" id="refreshJobs" type="button">Refresh</button>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>File Name</th>
-                  <th>Slides</th>
-                  <th>Style</th>
-                  <th>Status</th>
-                  <th>AI</th>
-                  <th>Updated At</th>
-                  <th>Actions</th>
+                  <th data-i18n="id">ID</th>
+                  <th data-i18n="fileName">File Name</th>
+                  <th data-i18n="slides">Slides</th>
+                  <th data-i18n="style">Style</th>
+                  <th data-i18n="status">Status</th>
+                  <th data-i18n="ai">AI</th>
+                  <th data-i18n="updatedAt">Updated At</th>
+                  <th data-i18n="actions">Actions</th>
                 </tr>
               </thead>
               <tbody id="jobRows"></tbody>
@@ -210,6 +210,27 @@
         </section>
       </section>
     </main>
+  </div>
+  <div id="settingsOverlay" class="help-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <section class="help-panel settings-panel">
+      <header class="help-head">
+        <div>
+          <span id="settingsKicker" class="help-kicker">Interface language</span>
+          <h2 id="settingsTitle">Settings</h2>
+        </div>
+        <button id="closeSettings" class="help-close" type="button" aria-label="Close settings">Close</button>
+      </header>
+      <div class="settings-content">
+        <label class="settings-field">
+          <span id="settingsLanguageLabel">Language</span>
+          <select id="languageSelect">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
+        </label>
+        <p id="settingsHint">This only changes the platform interface. Generated PPT/HTML content stays unchanged.</p>
+      </div>
+    </section>
   </div>
   <div id="generationOverlay" class="generation-overlay hidden" role="status" aria-live="polite" aria-label="Generation in progress">
     <div class="generation-card">
@@ -228,7 +249,7 @@
     <section class="help-panel">
       <header class="help-head">
         <div>
-          <span class="help-kicker">Guide</span>
+          <span id="helpKicker" class="help-kicker">Guide</span>
           <h2 id="helpTitle">API Configuration Tutorial</h2>
         </div>
         <button id="closeHelp" class="help-close" type="button" aria-label="Close help">x</button>
