@@ -463,7 +463,7 @@ function renderSlide(slide, index, total, style) {
         ${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}
       </div>`,
   }[layout] || "";
-  const imageHtml = slide.images.map((image) => `<figure class="media-box"><img src="${image.src}" alt="Slide ${slide.page} image" /></figure>`).join("");
+  const imageHtml = slide.images.map((image, imageIndex) => `<figure class="media-box original-ppt-image"><img src="${image.src}" alt="Original PPT slide ${slide.page} image ${imageIndex + 1}" /></figure>`).join("");
   return `
     <section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${density}" id="slide-${index + 1}" data-slide-page="${slide.page}" style="--bg:${theme.bg};--ink:${theme.ink};--accent:${theme.accent};--panel:${theme.panel};--font:${theme.font}">
       <div class="slide-inner">
@@ -482,6 +482,18 @@ function renderSlide(slide, index, total, style) {
 function editorRuntime() {
   return `
     <style id="ppt-html-editor-style">
+      body:not(.scroll-mode) section[data-slide-page]:first-of-type, body:not(.scroll-mode) .slide:first-of-type, body:not(.scroll-mode) .ai-slide:first-of-type { overflow: hidden !important; }
+      body:not(.scroll-mode) .cover .slide-inner { display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; gap: clamp(16px, 3vh, 34px) !important; padding-top: clamp(56px, 8vh, 92px) !important; padding-bottom: clamp(56px, 8vh, 92px) !important; }
+      body:not(.scroll-mode) .cover main { display: block !important; min-height: auto !important; }
+      body:not(.scroll-mode) .cover footer { position: absolute !important; right: clamp(34px, 5vw, 80px) !important; bottom: 28px !important; }
+      body:not(.scroll-mode) section[data-slide-page]:first-of-type > header, body:not(.scroll-mode) .slide:first-of-type > header, body:not(.scroll-mode) .ai-slide:first-of-type > header { text-align: center !important; max-width: min(1120px, 90vw) !important; margin: clamp(18vh, 24vh, 28vh) auto clamp(2vh, 5vh, 7vh) !important; }
+      body:not(.scroll-mode) .cover > .slide-inner > header { margin: 0 auto !important; }
+      body:not(.scroll-mode) section[data-slide-page]:first-of-type h1, body:not(.scroll-mode) .slide:first-of-type h1, body:not(.scroll-mode) .ai-slide:first-of-type h1 { text-align: center !important; margin-left: auto !important; margin-right: auto !important; max-width: min(1120px, 90vw) !important; line-height: 1.06 !important; }
+      .ppt-original-images, .original-ppt-image { box-sizing: border-box !important; }
+      .ppt-original-images { position: relative !important; z-index: 2 !important; display: grid !important; gap: clamp(10px, 1.4vw, 18px) !important; align-content: center !important; justify-items: center !important; width: min(42vw, 620px) !important; max-width: 100% !important; max-height: 46vh !important; margin: clamp(14px, 2vh, 24px) auto 0 !important; overflow: hidden !important; clear: both !important; }
+      .ppt-original-images[data-count="2"], .ppt-original-images[data-count="3"], .ppt-original-images[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: min(52vw, 780px) !important; max-height: 44vh !important; }
+      .ppt-original-images figure, figure.original-ppt-image { margin: 0 !important; width: 100% !important; min-width: 0 !important; display: grid !important; place-items: center !important; overflow: hidden !important; }
+      .ppt-original-images img, .original-ppt-image img, img[alt^="Original PPT slide"] { display: block !important; width: 100% !important; height: auto !important; max-width: 100% !important; max-height: 44vh !important; object-fit: contain !important; border-radius: 8px !important; }
       .editor-toolbar { position: fixed; z-index: 9999; top: 14px; right: 14px; display: none; align-items: center; gap: 6px; padding: 8px; border: 1px solid rgba(37,99,235,.22); border-radius: 12px; background: rgba(255,255,255,.96); box-shadow: 0 12px 32px rgba(15,23,42,.14); font-family: Arial, sans-serif; }
       body.editing .editor-toolbar { display: flex; }
       .editor-toolbar button, .editor-toolbar select, .editor-toolbar input[type="number"] { height: 30px; border: 1px solid #c7d2fe; border-radius: 8px; background: #fff; color: #1e3a8a; font: 700 12px/1 Arial, sans-serif; padding: 0 8px; }
@@ -796,11 +808,10 @@ function injectEditorRuntime(html) {
 function originalImageStyle() {
   return `<style id="ppt-original-image-style">
     section:has(.ppt-original-images), .slide:has(.ppt-original-images), .ai-slide:has(.ppt-original-images) { overflow: hidden; }
-    .ppt-original-images { position: relative; z-index: 2; display: grid; gap: 14px; align-content: center; justify-items: center; min-width: 260px; max-width: min(48vw, 680px); margin: 22px auto 0; clear: both; }
-    .ppt-original-images figure { margin: 0; display: grid; place-items: center; width: 100%; }
-    .ppt-original-images img { width: 100%; max-height: 56vh; object-fit: contain; border-radius: 8px; background: #fff; }
-    .ppt-original-images[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: min(58vw, 820px); }
-    .ppt-original-images[data-count="3"], .ppt-original-images[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: min(60vw, 900px); }
+    .ppt-original-images { position: relative; z-index: 2; display: grid; gap: clamp(10px, 1.4vw, 18px); align-content: center; justify-items: center; min-width: 220px; width: min(42vw, 620px); max-width: 100%; max-height: 46vh; margin: clamp(14px, 2vh, 24px) auto 0; overflow: hidden; clear: both; }
+    .ppt-original-images figure, figure.original-ppt-image { margin: 0; display: grid; place-items: center; width: 100%; min-width: 0; overflow: hidden; }
+    .ppt-original-images img, .original-ppt-image img, img[alt^="Original PPT slide"] { display: block; width: 100%; height: auto; max-width: 100%; max-height: 44vh; object-fit: contain; border-radius: 8px; background: #fff; }
+    .ppt-original-images[data-count="2"], .ppt-original-images[data-count="3"], .ppt-original-images[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(52vw, 780px); max-height: 44vh; }
   </style>`;
 }
 
@@ -949,12 +960,15 @@ function buildHtml(slides, style, mode = "paged") {
     header { display: grid; gap: 14px; text-align: left; max-width: 1120px; }
     .chapter { color: var(--accent); font-size: clamp(17px, 1.45vw, 24px); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     h1 { margin: 0; font-size: clamp(40px, 4vw, 64px); line-height: 1.05; max-width: 1080px; overflow-wrap: break-word; word-break: normal; hyphens: none; letter-spacing: -0.01em; }
-    .cover header { align-self: center; text-align: center; max-width: 1100px; margin: 0 auto; }
+    .cover .slide-inner { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: clamp(16px, 3vh, 34px); padding-top: clamp(56px, 8vh, 92px); padding-bottom: clamp(56px, 8vh, 92px); }
+    .cover header { text-align: center; max-width: min(1100px, 90vw); margin: 0 auto; }
     .cover h1 { font-size: clamp(48px, 5.1vw, 78px); }
     .cover-subtitle { margin: 18px auto 0; max-width: 860px; color: #64748b; font-size: clamp(24px, 2vw, 34px); line-height: 1.35; font-weight: 500; }
+    .cover main { display: block; min-height: auto; }
+    .cover footer { position: absolute; right: clamp(34px, 5vw, 80px); bottom: 28px; }
     main { min-height: 0; display: grid; gap: clamp(28px, 4vh, 48px); align-items: center; }
-    .image-split main { grid-template-columns: minmax(0, .82fr) minmax(360px, .9fr); }
-    .image-focus main { grid-template-columns: minmax(0, .8fr) minmax(420px, 1fr); }
+    .image-split main { grid-template-columns: minmax(0, .96fr) minmax(300px, .74fr); }
+    .image-focus main { grid-template-columns: minmax(0, .8fr) minmax(340px, .78fr); }
     .text-only main { grid-template-columns: 1fr; }
     .lead-text { margin: 0; max-width: 980px; font-size: clamp(30px, 2.45vw, 44px); line-height: 1.18; font-weight: 760; letter-spacing: -0.01em; color: var(--ink); }
     .lesson-block, .statement-block, .workshop-prompt { max-width: 1040px; display: grid; gap: 26px; align-content: center; }
@@ -977,11 +991,11 @@ function buildHtml(slides, style, mode = "paged") {
     .concept-row { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 18px; max-width: 980px; }
     .point-card { min-width: 0; border-radius: 8px; background: #ffffff; border: 1px solid #d7e3f4; padding: 22px 24px; font-size: clamp(22px, 1.65vw, 30px); line-height: 1.25; font-weight: 650; overflow-wrap: break-word; word-break: normal; hyphens: none; display: flex; align-items: center; box-shadow: none; }
     .thinking-space { width: min(860px, 68vw); min-height: 180px; border: 1px dashed #b7c7dc; border-radius: 8px; color: #94a3b8; display: grid; place-items: center; font-size: 24px; font-weight: 600; }
-    .media-grid { min-height: 0; display: grid; gap: 18px; align-content: center; }
-    .image-focus .media-grid { justify-self: center; width: min(72vw, 980px); }
-    .image-focus .media-grid img { max-height: 66vh; }
+    .media-grid { min-height: 0; display: grid; gap: 16px; align-content: center; justify-self: center; width: min(38vw, 560px); max-width: 100%; }
+    .image-focus .media-grid { justify-self: center; width: min(52vw, 760px); }
+    .image-focus .media-grid img { max-height: 52vh; }
     .media-box { margin: 0; display: grid; place-items: center; min-height: 0; }
-    .media-grid img { width: 100%; max-height: 54vh; object-fit: contain; border-radius: 8px; box-shadow: none; background: #fff; }
+    .media-grid img { width: 100%; height: auto; max-height: 44vh; object-fit: contain; border-radius: 8px; box-shadow: none; background: #fff; }
     footer { justify-self: end; color: #64748b; font-size: 20px; }
     .nav { position: fixed; z-index: 20; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 10px; }
     .nav button { border: 1px solid #d8e2f0; border-radius: 8px; padding: 8px 13px; background: #ffffff; color: #1e3a8a; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: none; }
@@ -1073,7 +1087,7 @@ Non-negotiable output rules:
 - Generate exactly ${slides.length} slide sections, one for every input slide, in the same order.
 - Every slide section must include data-slide-page="original page number".
 - Every slide must use the same 16:9 canvas size. Use section dimensions such as width:100vw; height:100vh; box-sizing:border-box, with consistent safe margins.
-- Slide titles must be visually dominant, horizontally centered, and placed in a balanced central title area. Cover/title slides should center the title both horizontally and vertically.
+- Slide titles must be visually dominant, horizontally centered, and placed in a balanced central title area. The first/cover slide must center the title group both horizontally and vertically, not near the top edge.
 - Use a clean, elegant, modern education/workshop layout: generous whitespace, simple alignment, readable hierarchy, and no crowded corners.
 - Preserve the original PPT's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
 - Only make agenda/outline numbered pages when the original slide title explicitly says Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
@@ -1087,6 +1101,7 @@ Non-negotiable output rules:
 - Text and background colors must have strong visible contrast. Never use white/light text on cream, pale, or white backgrounds; never use dark text on dark backgrounds.
 - No text may overflow the viewport or its box. Do not use scrollable text boxes.
 - If a slide has images, reserve clear visual areas for the original PPT images using only empty placeholders. Use <figure data-image-slot="page-number"></figure> for one image, or <figure data-image-slot="page-number-a"></figure>, <figure data-image-slot="page-number-b"></figure> for multiple images. Never create fake image paths, empty <img src=""> tags, or visible labels such as "page-8a".
+- Image areas must be proportional to the amount of text. Images should usually occupy 28-42% of the slide width, max 44vh tall when text is present, and must never overlap text or navigation.
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically.
 - Include window.toggleEdit(force) and window.exportEditedHtml(mode) so the platform editor can work.
 - Use CSS that keeps all sections visible and self-contained; no content should be clipped or hidden by default.
