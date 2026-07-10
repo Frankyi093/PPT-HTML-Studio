@@ -22,6 +22,376 @@ const styles = [
   ["vivid", "Vivid"],
 ];
 
+const LANGUAGE_STORAGE_KEY = "ppt-html-studio-language";
+const i18n = {
+  en: {
+    help: "Help",
+    settings: "Settings",
+    language: "Language",
+    interfaceLanguage: "Interface language",
+    languageHint: "This only changes the platform interface. Generated PPT/HTML content stays unchanged.",
+    english: "English",
+    chinese: "中文",
+    close: "Close",
+    apply: "Apply",
+    workflowTip: "Workflow tip",
+    workflowTipBody: "Follow the steps from top to bottom. Download exports a ZIP with HTML and images.",
+    stepUpload: "Upload",
+    stepUploadDesc: "Upload your PPT file",
+    stepExtract: "Extract",
+    stepExtractDesc: "Extract content from PPT",
+    stepOptimize: "Optimize",
+    stepOptimizeDesc: "Apply readability & layout rules",
+    stepConvert: "Convert",
+    stepConvertDesc: "Convert to HTML slides",
+    stepEdit: "Edit",
+    stepEditDesc: "Review and refine HTML",
+    uploadPpt: "Upload PPT",
+    checkingBackend: "Checking backend",
+    backendReady: "Backend ready",
+    backendOffline: "Backend offline",
+    dragDrop: "Drag & drop your PPT file here",
+    or: "or",
+    checkingUploadLimit: "Checking upload limit...",
+    selected: "selected",
+    style: "Style",
+    keepText: "Keep text unchanged",
+    keepTextDesc: "Do not modify wording",
+    readable: "Readable 16px+",
+    readableDesc: "Ensure text is easy to read",
+    imagesIntact: "Images intact",
+    imagesIntactDesc: "Keep original images visible",
+    aiConnection: "AI connection",
+    aiIntro: "Pick a service, paste the key, then save. Your saved API settings stay on this machine and are reused for every generation.",
+    service: "Service",
+    endpoint: "Endpoint",
+    model: "Model",
+    apiKey: "API key",
+    apiKeyPlaceholder: "Paste key once, then leave blank",
+    noSavedKey: "No saved key yet.",
+    advancedConnection: "Advanced connection settings",
+    apiKeyHeader: "API key header",
+    apiKeyPrefix: "API key prefix",
+    workflowPayload: "Workflow payload",
+    timeoutSec: "Timeout (sec)",
+    customHeaders: "Custom headers",
+    fallbackLocal: "Fallback to local rules if API fails",
+    clearSavedKey: "Clear saved API key on save",
+    saveConnection: "Save connection",
+    testApi: "Test API",
+    localRulesActive: "Local rules active",
+    generateHtml: "Generate HTML",
+    preview: "Preview",
+    analyzeShare: "Analyze & Share",
+    downloadZip: "Download ZIP",
+    noGenerated: "No generated HTML yet",
+    noGeneratedDesc: "Upload a PPT and run the workflow to see the first slide here.",
+    fit: "Fit",
+    editHtml: "Edit HTML",
+    stopEditing: "Stop Editing",
+    saveEdits: "Save Edits",
+    openScrollHtml: "Open Scroll HTML",
+    shareReadiness: "Share readiness",
+    notChecked: "Not checked",
+    downloadZipPackage: "Download ZIP package",
+    openSingleFile: "Open single-file HTML",
+    openScrollSingleFile: "Open scroll single-file HTML",
+    openReport: "Open report",
+    jobHistory: "Job History",
+    refresh: "Refresh",
+    id: "ID",
+    fileName: "File Name",
+    slides: "Slides",
+    status: "Status",
+    ai: "AI",
+    updatedAt: "Updated At",
+    actions: "Actions",
+    noJobs: "No jobs yet",
+    guide: "Guide",
+    apiTutorial: "API Configuration Tutorial",
+    loadingApiGuide: "Loading API configuration tutorial...",
+    generationTitle: "Generating HTML",
+    generationMessage: "AI is arranging content, images, and layout...",
+    hideGeneration: "Hide generation animation",
+    clearFile: "Clear file",
+    uploadLimitCloudflare: "Cloudflare-only mode supports .pptx files up to about {size}. Old .ppt files require the local Python backend.",
+    uploadLimitServerless: "Serverless mode supports PPT files up to about {size}. Larger files need local running or dedicated storage.",
+    uploadLimitDefault: "Supports .ppt and .pptx up to {size}",
+    fileTooLarge: "{name} is {fileSize}, which is larger than this deployment can safely upload ({limit}). Run the app locally for larger PPT files.",
+    readyGenerate: "Ready to generate.",
+    uploadFirst: "Upload PPT first.",
+    labelsUploading: "Uploading",
+    labelsExtracting: "Extracting",
+    labelsOptimizing: "Optimizing",
+    labelsConverting: "Converting",
+    labelsPreparing: "Preparing editor",
+    preparingPpt: "Preparing the PPT for AI layout generation...",
+    completedBrowserAi: "Completed. AI generated directly in the browser to avoid Cloudflare timeout.",
+    localFallbackDone: "Generated with local rules because AI was unavailable or too slow. {extra}",
+    oversizedSkipped: "Some oversized images were skipped.",
+    generateOrSelect: "Generate or select a job first.",
+    packaging: "Packaging...",
+    packagingStatus: "Packaging current HTML in the browser...",
+    downloadingLatest: "Downloading ZIP package with the latest edited HTML.",
+    saveBrowserOnly: "Edits are saved in this browser. Download ZIP will include the latest edits.",
+    savedEdited: "Edited paged and scroll HTML saved.",
+    couldNotSaveEdited: "Could not save edited HTML.",
+    analyzingShare: "Analyzing share package...",
+    checkingShare: "Checking image paths and building the share package...",
+    shareMissing: "Share package has missing images.",
+    shareReady: "Share package is ready.",
+    shareFirst: "Generate or select a job first, then run Analyze & Share.",
+    checking: "Checking",
+    ready: "Ready",
+    warning: "Check advised",
+    blocked: "Blocked",
+    images: "Images",
+    embedded: "Embedded",
+    missing: "Missing",
+    riskyPaths: "Risky paths",
+    external: "External",
+    localRulesNoKey: "Local rules do not need an API key.",
+    savedKey: "Saved key: {key}. Leave the key field blank to keep it.",
+    pasteKeyOnce: "Paste the API key once. After saving, it is kept locally and reused.",
+    noSavedKeyPaste: "No saved key yet. Paste a key once and save.",
+    externalApiEnabled: "External API enabled",
+    apiSettingsSaved: "API settings saved.",
+    savingApiSettings: "Saving API settings...",
+    testingApi: "Testing API endpoint...",
+    apiTestPassed: "API test passed.",
+    couldNotLoadApi: "Could not load API settings.",
+    couldNotSaveApi: "Could not save API settings",
+    apiTestFailed: "API test failed",
+    backendHealthFailed: "Backend health check failed",
+    externalBackendHealthFailed: "External backend health check failed",
+    openaiReady: "OpenAI-compatible ready",
+    deepseekReady: "DeepSeek ready",
+    doubaoReady: "Doubao Seed 2.0 ready",
+    customAiReady: "Custom AI API ready",
+    workflowReady: "Workflow API ready",
+    difyReady: "Dify workflow ready",
+    aiUsed: "AI used ({provider}, {type}).",
+    aiOptimizedSlides: "optimized slides",
+    aiHtml: "HTML",
+    aiFallback: "AI fallback: {error}",
+    externalApiFailed: "external API failed",
+    configured: "{mode} configured.",
+    local: "Local",
+    aiSlides: "AI slides",
+    fallback: "Fallback",
+    previewButton: "Preview",
+    selectGeneratedJob: "Select generated job",
+    jobsSlides: "{count} slides",
+    clear: "x",
+    providerLocal: "Local rules",
+    providerDeepseek: "DeepSeek",
+    providerDoubao: "Doubao Seed 2.0",
+    providerOpenai: "OpenAI compatible",
+    providerCustomAi: "Custom AI API",
+    providerWorkflow: "Workflow API",
+    providerDify: "Dify workflow",
+    noApiKeyHeader: "No API key header",
+    flatJson: "Flat JSON",
+    inputJson: "{ \"input\": ... }",
+    difyBlocking: "Dify blocking",
+  },
+  zh: {
+    help: "帮助",
+    settings: "设置",
+    language: "语言",
+    interfaceLanguage: "界面语言",
+    languageHint: "这里只切换平台界面语言，不会改变生成的 PPT/HTML 内容。",
+    english: "English",
+    chinese: "中文",
+    close: "关闭",
+    apply: "应用",
+    workflowTip: "工作流提示",
+    workflowTipBody: "按从上到下的步骤操作。下载会导出包含 HTML 和图片的 ZIP 包。",
+    stepUpload: "上传",
+    stepUploadDesc: "上传 PPT 文件",
+    stepExtract: "提取",
+    stepExtractDesc: "提取 PPT 内容",
+    stepOptimize: "优化",
+    stepOptimizeDesc: "应用可读性与版式规则",
+    stepConvert: "转换",
+    stepConvertDesc: "转换为 HTML 幻灯片",
+    stepEdit: "编辑",
+    stepEditDesc: "检查并微调 HTML",
+    uploadPpt: "上传 PPT",
+    checkingBackend: "正在检查后端",
+    backendReady: "后端已就绪",
+    backendOffline: "后端离线",
+    dragDrop: "将 PPT 文件拖到这里",
+    or: "或",
+    checkingUploadLimit: "正在检查上传限制...",
+    selected: "已选择",
+    style: "风格",
+    keepText: "保持文字不变",
+    keepTextDesc: "不修改原文措辞",
+    readable: "可读 16px+",
+    readableDesc: "确保文字清晰易读",
+    imagesIntact: "保留图片",
+    imagesIntactDesc: "保持原图可见",
+    aiConnection: "AI 连接",
+    aiIntro: "选择服务，粘贴密钥后保存。API 设置会保存在本机，并在每次生成时复用。",
+    service: "服务",
+    endpoint: "兼容地址",
+    model: "模型",
+    apiKey: "API 密钥",
+    apiKeyPlaceholder: "粘贴一次密钥，之后可留空",
+    noSavedKey: "尚未保存密钥。",
+    advancedConnection: "高级连接设置",
+    apiKeyHeader: "API 密钥 Header",
+    apiKeyPrefix: "API 密钥前缀",
+    workflowPayload: "工作流参数格式",
+    timeoutSec: "超时时间（秒）",
+    customHeaders: "自定义 Headers",
+    fallbackLocal: "API 失败时回退到本地规则",
+    clearSavedKey: "保存时清除已保存密钥",
+    saveConnection: "保存连接",
+    testApi: "测试 API",
+    localRulesActive: "本地规则已启用",
+    generateHtml: "生成 HTML",
+    preview: "预览",
+    analyzeShare: "分析与分享",
+    downloadZip: "下载 ZIP",
+    noGenerated: "暂无生成的 HTML",
+    noGeneratedDesc: "上传 PPT 并运行工作流后，这里会显示第一页预览。",
+    fit: "适配",
+    editHtml: "编辑 HTML",
+    stopEditing: "停止编辑",
+    saveEdits: "保存修改",
+    openScrollHtml: "打开滑动版 HTML",
+    shareReadiness: "分享检查",
+    notChecked: "未检查",
+    downloadZipPackage: "下载 ZIP 包",
+    openSingleFile: "打开单文件 HTML",
+    openScrollSingleFile: "打开滑动单文件 HTML",
+    openReport: "打开报告",
+    jobHistory: "生成历史",
+    refresh: "刷新",
+    id: "ID",
+    fileName: "文件名",
+    slides: "页数",
+    status: "状态",
+    ai: "AI",
+    updatedAt: "更新时间",
+    actions: "操作",
+    noJobs: "暂无任务",
+    guide: "教程",
+    apiTutorial: "API 配置教程",
+    loadingApiGuide: "正在加载 API 配置教程...",
+    generationTitle: "正在生成 HTML",
+    generationMessage: "AI 正在安排内容、图片和版式...",
+    hideGeneration: "隐藏生成动画",
+    clearFile: "清除文件",
+    uploadLimitCloudflare: "Cloudflare-only 模式支持约 {size} 以内的 .pptx 文件。旧 .ppt 文件需要使用本地 Python 后端。",
+    uploadLimitServerless: "Serverless 模式支持约 {size} 以内的 PPT 文件。更大的文件需要本地运行或专用存储。",
+    uploadLimitDefault: "支持 .ppt 和 .pptx，最大 {size}",
+    fileTooLarge: "{name} 大小为 {fileSize}，超过当前部署可安全上传的限制（{limit}）。更大的 PPT 请在本地运行。",
+    readyGenerate: "已准备生成。",
+    uploadFirst: "请先上传 PPT。",
+    labelsUploading: "上传中",
+    labelsExtracting: "提取中",
+    labelsOptimizing: "优化中",
+    labelsConverting: "转换中",
+    labelsPreparing: "准备编辑器",
+    preparingPpt: "正在准备 PPT 以生成 AI 版式...",
+    completedBrowserAi: "已完成。为避免 Cloudflare 超时，AI 已在浏览器中直接生成。",
+    localFallbackDone: "由于 AI 不可用或响应过慢，已使用本地规则生成。{extra}",
+    oversizedSkipped: "部分过大的图片已跳过。",
+    generateOrSelect: "请先生成或选择一个任务。",
+    packaging: "正在打包...",
+    packagingStatus: "正在浏览器中打包当前 HTML...",
+    downloadingLatest: "正在下载包含最新编辑内容的 ZIP 包。",
+    saveBrowserOnly: "修改已保存在浏览器中。下载 ZIP 会包含最新修改。",
+    savedEdited: "已保存分页版和滑动版 HTML 修改。",
+    couldNotSaveEdited: "无法保存修改后的 HTML。",
+    analyzingShare: "正在分析分享包...",
+    checkingShare: "正在检查图片路径并构建分享包...",
+    shareMissing: "分享包存在缺失图片。",
+    shareReady: "分享包已准备好。",
+    shareFirst: "请先生成或选择任务，然后运行分析与分享。",
+    checking: "检查中",
+    ready: "就绪",
+    warning: "建议检查",
+    blocked: "阻塞",
+    images: "图片",
+    embedded: "已嵌入",
+    missing: "缺失",
+    riskyPaths: "风险路径",
+    external: "外部资源",
+    localRulesNoKey: "本地规则不需要 API 密钥。",
+    savedKey: "已保存密钥：{key}。密钥输入框留空即可继续使用。",
+    pasteKeyOnce: "粘贴一次 API 密钥。保存后会保存在本机并自动复用。",
+    noSavedKeyPaste: "尚未保存密钥。粘贴一次密钥并保存即可。",
+    externalApiEnabled: "外部 API 已启用",
+    apiSettingsSaved: "API 设置已保存。",
+    savingApiSettings: "正在保存 API 设置...",
+    testingApi: "正在测试 API 地址...",
+    apiTestPassed: "API 测试通过。",
+    couldNotLoadApi: "无法加载 API 设置。",
+    couldNotSaveApi: "无法保存 API 设置",
+    apiTestFailed: "API 测试失败",
+    backendHealthFailed: "后端健康检查失败",
+    externalBackendHealthFailed: "外部后端健康检查失败",
+    openaiReady: "OpenAI 兼容接口已就绪",
+    deepseekReady: "DeepSeek 已就绪",
+    doubaoReady: "Doubao Seed 2.0 已就绪",
+    customAiReady: "自定义 AI API 已就绪",
+    workflowReady: "工作流 API 已就绪",
+    difyReady: "Dify 工作流已就绪",
+    aiUsed: "已使用 AI（{provider}，{type}）。",
+    aiOptimizedSlides: "优化后的幻灯片",
+    aiHtml: "HTML",
+    aiFallback: "AI 回退：{error}",
+    externalApiFailed: "外部 API 失败",
+    configured: "{mode} 已配置。",
+    local: "本地",
+    aiSlides: "AI 幻灯片",
+    fallback: "回退",
+    previewButton: "预览",
+    selectGeneratedJob: "选择生成任务",
+    jobsSlides: "{count} 页",
+    clear: "x",
+    providerLocal: "本地规则",
+    providerDeepseek: "DeepSeek",
+    providerDoubao: "Doubao Seed 2.0",
+    providerOpenai: "OpenAI 兼容接口",
+    providerCustomAi: "自定义 AI API",
+    providerWorkflow: "工作流 API",
+    providerDify: "Dify 工作流",
+    noApiKeyHeader: "不发送 API 密钥 Header",
+    flatJson: "扁平 JSON",
+    inputJson: "{ \"input\": ... }",
+    difyBlocking: "Dify 阻塞模式",
+  },
+};
+
+const stepKeys = [
+  ["stepUpload", "stepUploadDesc"],
+  ["stepExtract", "stepExtractDesc"],
+  ["stepOptimize", "stepOptimizeDesc"],
+  ["stepConvert", "stepConvertDesc"],
+  ["stepEdit", "stepEditDesc"],
+];
+
+const styleLabelKeys = {
+  teaching: { en: "Teaching Blue", zh: "教学蓝" },
+  softlesson: { en: "Soft Lesson", zh: "柔和课堂" },
+  webacademic: { en: "Academic Webpage", zh: "学术网页" },
+  clean: { en: "Clean", zh: "清爽" },
+  academic: { en: "Academic", zh: "学术" },
+  instructional: { en: "Instructional", zh: "教学说明" },
+  minimal: { en: "Minimal", zh: "极简" },
+  contrast: { en: "High Contrast", zh: "高对比" },
+  healing: { en: "Healing Hand-drawn", zh: "治愈手绘" },
+  doodle: { en: "Doodle Sketch", zh: "手绘涂鸦" },
+  swiss: { en: "Swiss Grid", zh: "瑞士网格" },
+  editorial: { en: "Editorial", zh: "杂志编辑" },
+  vivid: { en: "Vivid", zh: "鲜明活力" },
+};
+
 const apiProviders = {
   local: {
     mode: "local",
@@ -85,6 +455,7 @@ const apiProviders = {
 const state = {
   selectedFile: null,
   selectedStyle: "teaching",
+  language: localStorage.getItem(LANGUAGE_STORAGE_KEY) === "zh" ? "zh" : "en",
   apiProvider: "local",
   apiBaseUrl: "",
   runtime: "local",
@@ -114,6 +485,171 @@ const state = {
 
 const el = (id) => document.getElementById(id);
 const API_SECRET_STORAGE_KEY = "ppt-html-studio-api-secret-v2";
+
+function t(key, vars = {}) {
+  const bundle = i18n[state.language] || i18n.en;
+  let value = bundle[key] ?? i18n.en[key] ?? key;
+  Object.entries(vars).forEach(([name, replacement]) => {
+    value = value.replaceAll(`{${name}}`, String(replacement ?? ""));
+  });
+  return value;
+}
+
+function styleLabel(key, fallback = "") {
+  return styleLabelKeys[key]?.[state.language] || styleLabelKeys[key]?.en || fallback || key;
+}
+
+function providerLabel(provider) {
+  const map = {
+    local: "localRulesActive",
+    deepseek: "deepseekReady",
+    doubao_seed: "doubaoReady",
+    openai: "openaiReady",
+    custom_ai: "customAiReady",
+    workflow: "workflowReady",
+    dify: "difyReady",
+  };
+  return t(map[provider] || "externalApiEnabled");
+}
+
+function applyLanguage(language) {
+  state.language = language === "zh" ? "zh" : "en";
+  try {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, state.language);
+  } catch {
+    // Non-critical: language will still apply for this session.
+  }
+  document.documentElement.lang = state.language === "zh" ? "zh-CN" : "en";
+  translateStaticUi();
+  renderSteps();
+  renderStyles();
+  renderJobs();
+  renderJobSelect();
+  renderShare(state.activeShare || state.activeJob?.share || null);
+  renderIntegration();
+  updatePreviewEditButton();
+  const uploadLimit = el("uploadLimitText");
+  if (uploadLimit) uploadLimit.textContent = uploadLimitMessage();
+}
+
+function setText(id, key, vars = {}) {
+  const node = el(id);
+  if (node) node.textContent = t(key, vars);
+}
+
+function translateStaticUi() {
+  document.title = "PPT HTML Studio";
+  setText("helpButton", "help");
+  setText("settingsButton", "settings");
+  setText("settingsTitle", "settings");
+  setText("settingsKicker", "interfaceLanguage");
+  setText("settingsHint", "languageHint");
+  setText("closeSettings", "close");
+  setText("settingsLanguageLabel", "language");
+  setText("generationTitle", "generationTitle");
+  setText("generationMessage", "generationMessage");
+  setText("helpTitle", "apiTutorial");
+  setText("helpKicker", "guide");
+  setText("closeHelp", "close");
+  setText("shareTitle", "shareReadiness");
+  setText("shareBadge", "notChecked");
+  setText("health", el("health")?.classList.contains("ok") ? "backendReady" : el("health")?.classList.contains("error") ? "backendOffline" : "checkingBackend");
+  const languageSelect = el("languageSelect");
+  if (languageSelect) languageSelect.value = state.language;
+  const optionText = {
+    apiProvider: {
+      local: t("providerLocal"),
+      deepseek: t("providerDeepseek"),
+      doubao_seed: t("providerDoubao"),
+      openai: t("providerOpenai"),
+      custom_ai: t("providerCustomAi"),
+      workflow: t("providerWorkflow"),
+      dify: t("providerDify"),
+    },
+    apiKeyHeader: {
+      Authorization: "Authorization",
+      "X-API-Key": "X-API-Key",
+      "api-key": "api-key",
+      none: t("noApiKeyHeader"),
+    },
+    workflowPayload: {
+      flat: t("flatJson"),
+      input: t("inputJson"),
+      dify: t("difyBlocking"),
+    },
+  };
+  Object.entries(optionText).forEach(([selectId, labels]) => {
+    const select = el(selectId);
+    if (!select) return;
+    [...select.options].forEach((option) => {
+      option.textContent = labels[option.value] || option.textContent;
+    });
+  });
+  const pairs = [
+    ["uploadTitle", "uploadPpt"],
+    ["dropStrong", "dragDrop"],
+    ["dropOr", "or"],
+    ["dropButton", "uploadPpt"],
+    ["styleTitle", "style"],
+    ["keepTextLabel", "keepText"],
+    ["keepTextSmall", "keepTextDesc"],
+    ["readableTextLabel", "readable"],
+    ["readableTextSmall", "readableDesc"],
+    ["imagesIntactLabel", "imagesIntact"],
+    ["imagesIntactSmall", "imagesIntactDesc"],
+    ["apiSummary", "aiConnection"],
+    ["apiIntro", "aiIntro"],
+    ["apiProviderLabel", "service"],
+    ["apiEndpointLabel", "endpoint"],
+    ["apiModelLabel", "model"],
+    ["apiKeyLabel", "apiKey"],
+    ["apiAdvancedSummary", "advancedConnection"],
+    ["apiKeyHeaderLabel", "apiKeyHeader"],
+    ["apiKeyPrefixLabel", "apiKeyPrefix"],
+    ["workflowPayloadLabel", "workflowPayload"],
+    ["apiTimeoutLabel", "timeoutSec"],
+    ["customHeadersLabel", "customHeaders"],
+    ["fallbackToLocalLabel", "fallbackLocal"],
+    ["clearApiKeyLabel", "clearSavedKey"],
+    ["saveApiSettings", "saveConnection"],
+    ["testApiSettings", "testApi"],
+    ["runButton", "generateHtml"],
+    ["previewTitle", "preview"],
+    ["openPreview", "preview"],
+    ["shareJob", "analyzeShare"],
+    ["downloadJob", "downloadZip"],
+    ["previewEmptyTitle", "noGenerated"],
+    ["previewEmptyDesc", "noGeneratedDesc"],
+    ["fitButton", "fit"],
+    ["saveEditedHtml", "saveEdits"],
+    ["openScrollHtml", "openScrollHtml"],
+    ["downloadShareZip", "downloadZipPackage"],
+    ["openSingleFile", "openSingleFile"],
+    ["openScrollSingleFile", "openScrollSingleFile"],
+    ["openShareReport", "openReport"],
+    ["historyTitle", "jobHistory"],
+    ["refreshJobs", "refresh"],
+    ["tipTitle", "workflowTip"],
+    ["tipBody", "workflowTipBody"],
+  ];
+  pairs.forEach(([id, key]) => setText(id, key));
+  const placeholders = [
+    ["apiKey", "apiKeyPlaceholder"],
+  ];
+  placeholders.forEach(([id, key]) => {
+    const node = el(id);
+    if (node) node.placeholder = t(key);
+  });
+  const jobSelect = el("jobSelect");
+  if (jobSelect) jobSelect.setAttribute("aria-label", t("selectGeneratedJob"));
+  const clearFile = el("clearFile");
+  if (clearFile) clearFile.setAttribute("aria-label", t("clearFile"));
+  const closeGeneration = el("closeGenerationOverlay");
+  if (closeGeneration) closeGeneration.setAttribute("aria-label", t("hideGeneration"));
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+}
 
 function readLocalApiSecret() {
   try {
@@ -418,13 +954,13 @@ async function openHelp() {
   const overlay = el("helpOverlay");
   const content = el("helpContent");
   overlay.classList.remove("hidden");
-  content.innerHTML = "<p>Loading API configuration tutorial...</p>";
+  content.innerHTML = `<p>${escapeHelpHtml(t("loadingApiGuide"))}</p>`;
   try {
     const response = await fetch(apiUrl("/api/help/api-guide"));
-    const data = await readJsonResponse(response, "Could not load API guide.");
+    const data = await readJsonResponse(response, t("loadingApiGuide"));
     content.innerHTML = renderHelpMarkdown(data.markdown || "");
   } catch (error) {
-    content.innerHTML = `<p class="help-error">${escapeHelpHtml(error.message || "Could not load API guide.")}</p>`;
+    content.innerHTML = `<p class="help-error">${escapeHelpHtml(error.message || t("loadingApiGuide"))}</p>`;
   }
 }
 
@@ -432,18 +968,28 @@ function closeHelp() {
   el("helpOverlay").classList.add("hidden");
 }
 
+function openSettings() {
+  el("settingsOverlay").classList.remove("hidden");
+  const select = el("languageSelect");
+  if (select) select.value = state.language;
+}
+
+function closeSettings() {
+  el("settingsOverlay").classList.add("hidden");
+}
+
 function renderSteps() {
-  el("steps").innerHTML = steps.map((step, index) => `
+  el("steps").innerHTML = stepKeys.map(([titleKey, descKey], index) => `
     <li class="${index <= state.activeStep ? "active" : ""}">
       <span>${index + 1}</span>
-      <div><strong>${step[0]}</strong><small>${step[1]}</small></div>
+      <div><strong>${t(titleKey)}</strong><small>${t(descKey)}</small></div>
     </li>
   `).join("");
 }
 
 function renderStyles() {
   el("styleTabs").innerHTML = styles.map(([key, label]) => `
-    <button type="button" class="${state.selectedStyle === key ? "selected" : ""}" data-style="${key}">${label}</button>
+    <button type="button" class="${state.selectedStyle === key ? "selected" : ""}" data-style="${key}">${styleLabel(key, label)}</button>
   `).join("");
   document.querySelectorAll("[data-style]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -519,16 +1065,16 @@ function formatBytes(size) {
 
 function uploadLimitMessage() {
   if (state.runtime === "cloudflare-worker-only") {
-    return `Cloudflare-only mode supports .pptx files up to about ${formatBytes(state.maxUploadBytes)}. Old .ppt files require the local Python backend.`;
+    return t("uploadLimitCloudflare", { size: formatBytes(state.maxUploadBytes) });
   }
   if (state.runtime === "vercel") {
-    return `Serverless mode supports PPT files up to about ${formatBytes(state.maxUploadBytes)}. Larger files need local running or dedicated storage.`;
+    return t("uploadLimitServerless", { size: formatBytes(state.maxUploadBytes) });
   }
-  return `Supports .ppt and .pptx up to ${formatBytes(state.maxUploadBytes)}`;
+  return t("uploadLimitDefault", { size: formatBytes(state.maxUploadBytes) });
 }
 
 function fileTooLargeMessage(file) {
-  return `${file.name} is ${formatBytes(file.size)}, which is larger than this deployment can safely upload (${formatBytes(state.maxUploadBytes)}). Run the app locally for larger PPT files.`;
+  return t("fileTooLarge", { name: file.name, fileSize: formatBytes(file.size), limit: formatBytes(state.maxUploadBytes) });
 }
 
 function enforceUploadLimit(file) {
@@ -583,8 +1129,8 @@ function handleFile(file) {
   state.selectedFile = file;
   el("fileCard").classList.remove("hidden");
   el("fileName").textContent = file.name;
-  el("fileMeta").textContent = `${formatBytes(file.size)} selected`;
-  setStatus("Ready to generate.", "ok");
+  el("fileMeta").textContent = `${formatBytes(file.size)} ${t("selected")}`;
+  setStatus(t("readyGenerate"), "ok");
   state.activeStep = 0;
   renderSteps();
 }
@@ -922,26 +1468,26 @@ async function generateAiDirectlyInBrowser(slides, stats, previousError) {
   renderJobs();
   renderJobSelect();
   selectJob(job.id);
-  setStatus("Completed. AI generated directly in the browser to avoid Cloudflare timeout.", "ok");
+  setStatus(t("completedBrowserAi"), "ok");
   return job;
 }
 
 async function generateInBrowserFallback(reason) {
-  setGenerationOverlay(true, "Extracting the PPT locally in this browser for faster generation...");
+  setGenerationOverlay(true, state.language === "zh" ? "正在浏览器中本地提取 PPT，以加快生成..." : "Extracting the PPT locally in this browser for faster generation...");
   const { slides, stats } = await extractPptxInBrowser(state.selectedFile);
   const fallbackIntegration = integrationForGeneration();
   let fallbackReason = reason;
   if (fallbackIntegration.mode === "ai_api") {
     try {
-      setGenerationOverlay(true, "Extracted PPT locally. Asking AI directly from this browser...");
+      setGenerationOverlay(true, state.language === "zh" ? "已在本地提取 PPT，正在从浏览器直接请求 AI..." : "Extracted PPT locally. Asking AI directly from this browser...");
       return await generateAiDirectlyInBrowser(slides, stats, reason);
     } catch (directAiError) {
       fallbackReason = directAiError.message || reason;
       console.warn("Direct browser AI generation failed", directAiError);
       if (isAiRecoverableError(fallbackReason)) {
-        setGenerationOverlay(true, "AI timed out or has insufficient balance. Generating with local rules instead...");
+        setGenerationOverlay(true, state.language === "zh" ? "AI 超时或余额不足，正在改用本地规则生成..." : "AI timed out or has insufficient balance. Generating with local rules instead...");
       } else {
-        setGenerationOverlay(true, "Direct AI call failed. Trying Cloudflare AI proxy...");
+        setGenerationOverlay(true, state.language === "zh" ? "浏览器直连 AI 失败，正在尝试 Cloudflare AI 代理..." : "Direct AI call failed. Trying Cloudflare AI proxy...");
         try {
           const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
             method: "POST",
@@ -955,7 +1501,7 @@ async function generateInBrowserFallback(reason) {
               fallbackReason: reason,
             }),
           });
-          const data = await readJsonResponse(response, "AI generation failed");
+          const data = await readJsonResponse(response, state.language === "zh" ? "AI 生成失败" : "AI generation failed");
           const generatedJob = hydrateInlineJob(data.job);
           state.activeJob = generatedJob;
           state.jobs.unshift(generatedJob);
@@ -963,18 +1509,18 @@ async function generateInBrowserFallback(reason) {
           renderJobSelect();
           selectJob(generatedJob.id);
           const aiMessage = formatAiStatus(generatedJob);
-          setStatus(aiMessage ? `Completed. ${aiMessage}` : "Completed. AI preview is ready.", generatedJob.aiStatus?.fallback ? "error" : "ok");
+          setStatus(aiMessage ? `${state.language === "zh" ? "已完成。" : "Completed. "}${aiMessage}` : (state.language === "zh" ? "已完成，AI 预览已准备好。" : "Completed. AI preview is ready."), generatedJob.aiStatus?.fallback ? "error" : "ok");
           return generatedJob;
         } catch (workerAiError) {
           fallbackReason = workerAiError.message || fallbackReason;
           console.warn("Cloudflare AI proxy generation failed", workerAiError);
-          setGenerationOverlay(true, "AI request failed. Generating with local rules instead...");
+          setGenerationOverlay(true, state.language === "zh" ? "AI 请求失败，正在改用本地规则生成..." : "AI request failed. Generating with local rules instead...");
         }
       }
     }
   } else if (fallbackIntegration.mode !== "local") {
     try {
-      setGenerationOverlay(true, "Extracted PPT locally. Asking workflow API to design the HTML...");
+      setGenerationOverlay(true, state.language === "zh" ? "已在本地提取 PPT，正在请求工作流 API 设计 HTML..." : "Extracted PPT locally. Asking workflow API to design the HTML...");
       const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -987,7 +1533,7 @@ async function generateInBrowserFallback(reason) {
           fallbackReason: reason,
         }),
       });
-      const data = await readJsonResponse(response, "AI generation failed");
+      const data = await readJsonResponse(response, state.language === "zh" ? "AI 生成失败" : "AI generation failed");
       const generatedJob = hydrateInlineJob(data.job);
       state.activeJob = generatedJob;
       state.jobs.unshift(generatedJob);
@@ -995,12 +1541,12 @@ async function generateInBrowserFallback(reason) {
       renderJobSelect();
       selectJob(generatedJob.id);
       const aiMessage = formatAiStatus(generatedJob);
-      setStatus(aiMessage ? `Completed. ${aiMessage}` : "Completed. AI preview is ready.", generatedJob.aiStatus?.fallback ? "error" : "ok");
+      setStatus(aiMessage ? `${state.language === "zh" ? "已完成。" : "Completed. "}${aiMessage}` : (state.language === "zh" ? "已完成，AI 预览已准备好。" : "Completed. AI preview is ready."), generatedJob.aiStatus?.fallback ? "error" : "ok");
       return generatedJob;
     } catch (workflowError) {
       fallbackReason = workflowError.message || reason;
       console.warn("Workflow generation after browser extraction failed", workflowError);
-      setGenerationOverlay(true, "Workflow request failed. Generating with local rules instead...");
+      setGenerationOverlay(true, state.language === "zh" ? "工作流请求失败，正在改用本地规则生成..." : "Workflow request failed. Generating with local rules instead...");
     }
   }
   const pagedHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "paged");
@@ -1035,23 +1581,23 @@ async function generateInBrowserFallback(reason) {
   renderJobs();
   renderJobSelect();
   selectJob(job.id);
-  setStatus(`Generated with local rules because AI was unavailable or too slow. ${stats.skippedImages ? "Some oversized images were skipped." : ""}`, "ok");
+  setStatus(t("localFallbackDone", { extra: stats.skippedImages ? t("oversizedSkipped") : "" }), "ok");
   return job;
 }
 
 async function generate() {
   if (state.busy) return;
   if (!state.selectedFile) {
-    setStatus("Upload PPT first.", "error");
+    setStatus(t("uploadFirst"), "error");
     return;
   }
   if (!enforceUploadLimit(state.selectedFile)) return;
   state.busy = true;
   state.generationOverlayDismissed = false;
   el("runButton").disabled = true;
-  const labels = ["Uploading", "Extracting", "Optimizing", "Converting", "Preparing editor"];
+  const labels = [t("labelsUploading"), t("labelsExtracting"), t("labelsOptimizing"), t("labelsConverting"), t("labelsPreparing")];
   try {
-    setGenerationOverlay(true, "Preparing the PPT for AI layout generation...");
+    setGenerationOverlay(true, t("preparingPpt"));
     for (let i = 0; i < labels.length; i += 1) {
       state.activeStep = i;
       renderSteps();
@@ -1064,7 +1610,7 @@ async function generate() {
       await generateInBrowserFallback("Cloudflare-only fast path: PPT extracted in the browser to avoid Worker timeout.");
       return;
     }
-    setGenerationOverlay(true, "AI is arranging titles, text, images, and final HTML...");
+    setGenerationOverlay(true, t("generationMessage"));
     const fileBase64 = await fileToBase64(state.selectedFile);
     const response = await fetch(apiUrl("/api/generate"), {
       method: "POST",
@@ -1081,13 +1627,13 @@ async function generate() {
         },
       }),
     });
-    const data = await readJsonResponse(response, "Generation failed");
+    const data = await readJsonResponse(response, state.language === "zh" ? "生成失败" : "Generation failed");
     state.activeStep = 4;
     const generatedJob = hydrateInlineJob(data.job);
     state.activeJob = generatedJob;
     const aiMessage = formatAiStatus(generatedJob);
-    const inlineMessage = generatedJob.inlinePreviewAvailable ? " Inline preview is ready." : "";
-    setStatus(aiMessage ? `Completed. ${aiMessage}${inlineMessage}` : `Completed. Preview is ready.${inlineMessage}`, generatedJob.aiStatus?.fallback ? "error" : "ok");
+    const inlineMessage = generatedJob.inlinePreviewAvailable ? (state.language === "zh" ? " 内联预览已准备好。" : " Inline preview is ready.") : "";
+    setStatus(aiMessage ? `${state.language === "zh" ? "已完成。" : "Completed. "}${aiMessage}${inlineMessage}` : `${state.language === "zh" ? "已完成，预览已准备好。" : "Completed. Preview is ready."}${inlineMessage}`, generatedJob.aiStatus?.fallback ? "error" : "ok");
     await loadJobs();
     const existingIndex = state.jobs.findIndex((job) => job.id === generatedJob.id);
     if (existingIndex >= 0) {
@@ -1118,7 +1664,7 @@ async function generate() {
 
 async function loadJobs() {
   const response = await fetch(apiUrl("/api/jobs"));
-  const data = await readJsonResponse(response, "Could not load jobs");
+  const data = await readJsonResponse(response, state.language === "zh" ? "无法加载任务" : "Could not load jobs");
   state.jobs = (data.jobs || []).map(hydrateInlineJob);
   renderJobs();
   renderJobSelect();
@@ -1136,13 +1682,13 @@ function renderJobs() {
       <td>${renderAiBadge(job)}</td>
       <td>${job.updatedAt}</td>
       <td>
-        <button type="button" data-preview="${job.id}">Preview</button>
-        <button type="button" data-download="${job.id}">Download ZIP</button>
-        <button type="button" data-share="${job.id}">Analyze & Share</button>
+        <button type="button" data-preview="${job.id}">${t("preview")}</button>
+        <button type="button" data-download="${job.id}">${t("downloadZip")}</button>
+        <button type="button" data-share="${job.id}">${t("analyzeShare")}</button>
       </td>
     </tr>
   `).join("");
-  el("jobRows").innerHTML = rows || `<tr><td colspan="8" class="empty-row">No jobs yet</td></tr>`;
+  el("jobRows").innerHTML = rows || `<tr><td colspan="8" class="empty-row">${t("noJobs")}</td></tr>`;
   document.querySelectorAll("[data-preview]").forEach((button) => {
     button.addEventListener("click", () => selectJob(button.dataset.preview));
   });
@@ -1156,7 +1702,7 @@ function renderJobs() {
 
 function renderJobSelect() {
   el("jobSelect").innerHTML = state.jobs.map((job) => `
-    <option value="${job.id}">${job.fileName} (${job.slides} slides)</option>
+    <option value="${job.id}">${job.fileName} (${t("jobsSlides", { count: job.slides })})</option>
   `).join("");
 }
 
@@ -1164,24 +1710,24 @@ function formatAiStatus(job) {
   const status = job?.aiStatus;
   if (!status || status.mode === "local") return "";
   if (status.used) {
-    const type = status.resultType === "slides" ? "optimized slides" : "HTML";
-    return `AI used (${status.provider || status.mode}, ${type}).`;
+    const type = status.resultType === "slides" ? t("aiOptimizedSlides") : t("aiHtml");
+    return t("aiUsed", { provider: status.provider || status.mode, type });
   }
   if (status.fallback) {
-    return `AI fallback: ${status.error || "external API failed"}`;
+    return t("aiFallback", { error: status.error || t("externalApiFailed") });
   }
-  return `${status.mode} configured.`;
+  return t("configured", { mode: status.mode });
 }
 
 function renderAiBadge(job) {
   const status = job.aiStatus || {};
-  if (!status.mode || status.mode === "local") return `<span class="ai-badge local">Local</span>`;
+  if (!status.mode || status.mode === "local") return `<span class="ai-badge local">${t("local")}</span>`;
   if (status.used) {
-    const label = status.resultType === "slides" ? "AI slides" : "AI HTML";
+    const label = status.resultType === "slides" ? t("aiSlides") : "AI HTML";
     return `<span class="ai-badge used" title="${escapeHtml(status.provider || status.mode)}">${label}</span>`;
   }
   if (status.fallback) {
-    return `<span class="ai-badge fallback" title="${escapeHtml(status.error || "")}">Fallback</span>`;
+    return `<span class="ai-badge fallback" title="${escapeHtml(status.error || "")}">${t("fallback")}</span>`;
   }
   return `<span class="ai-badge configured">${escapeHtml(status.mode)}</span>`;
 }
@@ -1267,7 +1813,7 @@ function isPreviewEditing() {
 
 function updatePreviewEditButton(editing = isPreviewEditing()) {
   const button = el("editHtml");
-  if (button) button.textContent = editing ? "Stop Editing" : "Edit HTML";
+  if (button) button.textContent = editing ? t("stopEditing") : t("editHtml");
 }
 
 function versionedUrl(url) {
@@ -1467,7 +2013,7 @@ async function makeClientZipUrl(job, pagedHtml, scrollHtml) {
 
 function setPreviewEditing(force = null) {
   if (!state.activeJob) {
-    setStatus("Generate or select a job first.", "error");
+    setStatus(t("generateOrSelect"), "error");
     return false;
   }
   if (!hasEditablePreview()) {
@@ -1479,7 +2025,7 @@ function setPreviewEditing(force = null) {
     ensurePreviewEditorApi().toggleEdit();
   }
   updatePreviewEditButton(shouldEdit);
-  setStatus(shouldEdit ? "Editing in the preview. Select text, then use style buttons or download ZIP." : "Preview editing stopped.", shouldEdit ? "ok" : "");
+  setStatus(shouldEdit ? (state.language === "zh" ? "正在预览中编辑。选择文字后可调整样式或下载 ZIP。" : "Editing in the preview. Select text, then use style buttons or download ZIP.") : (state.language === "zh" ? "已停止预览编辑。" : "Preview editing stopped."), shouldEdit ? "ok" : "");
   return true;
 }
 
@@ -1519,7 +2065,7 @@ async function savePreviewEditsToServer(job, options = {}) {
   renderJobSelect();
   el("jobSelect").value = state.activeJob.id;
   renderShare(state.activeShare || state.activeJob.share || null);
-  setStatus(data.localOnly ? "Edits are saved in this browser. Download ZIP will include the latest edits." : "Edited paged and scroll HTML saved.", "ok");
+  setStatus(data.localOnly ? t("saveBrowserOnly") : t("savedEdited"), "ok");
   return data;
 }
 
@@ -1530,20 +2076,20 @@ async function downloadJobZip(job) {
   try {
     if (button) {
       button.disabled = true;
-      button.textContent = "Packaging...";
+      button.textContent = t("packaging");
     }
-    setStatus("Packaging current HTML in the browser...");
+    setStatus(t("packagingStatus"));
     const captured = await captureJobHtml(job, true);
     const latestJob = updateLocalJobHtml(job, captured.pagedHtml, captured.scrollHtml);
     const zipUrl = await makeClientZipUrl(latestJob, captured.pagedHtml, captured.scrollHtml);
-    setStatus("Downloading ZIP package with the latest edited HTML.", "ok");
+    setStatus(t("downloadingLatest"), "ok");
     triggerDownload(zipUrl, `${latestJob.id || "optimized-ppt"}.zip`);
   } catch (error) {
-    setStatus(error.message || "Could not package the edited HTML.", "error");
+    setStatus(error.message || (state.language === "zh" ? "无法打包修改后的 HTML。" : "Could not package the edited HTML."), "error");
   } finally {
     if (button) {
       button.disabled = false;
-      button.textContent = oldText || "Download ZIP";
+      button.textContent = oldText || t("downloadZip");
     }
   }
 }
@@ -1557,13 +2103,13 @@ async function analyzeShare(jobId = null) {
   const job = state.jobs.find((item) => item.id === jobId) || state.activeJob;
   const shareButton = el("shareJob");
   if (!job) {
-    setStatus("Generate or select a job first.", "error");
-    renderShareMessage("Generate or select a job first, then run Analyze & Share.", "blocked");
+    setStatus(t("generateOrSelect"), "error");
+    renderShareMessage(t("shareFirst"), "blocked");
     return;
   }
   try {
-    setStatus("Analyzing share package...");
-    renderShareMessage("Checking image paths and building the share package...", "checking");
+    setStatus(t("analyzingShare"));
+    renderShareMessage(t("checkingShare"), "checking");
     if (shareButton) shareButton.disabled = true;
     const response = await fetch(apiUrl(`/api/jobs/${job.id}/share`), { method: "GET", cache: "no-store" });
     const data = await readJsonResponse(response, "Share analysis failed");
@@ -1574,7 +2120,7 @@ async function analyzeShare(jobId = null) {
     renderJobSelect();
     el("jobSelect").value = data.job.id;
     renderShare(data.share);
-    setStatus(data.share.status === "blocked" ? "Share package has missing images." : "Share package is ready.", data.share.status === "blocked" ? "error" : "ok");
+    setStatus(data.share.status === "blocked" ? t("shareMissing") : t("shareReady"), data.share.status === "blocked" ? "error" : "ok");
   } catch (error) {
     setStatus(error.message, "error");
     renderShareMessage(error.message || "Share analysis failed.", "blocked");
@@ -1587,11 +2133,11 @@ function renderShareMessage(message, status = "checking") {
   const panel = el("sharePanel");
   panel.classList.remove("hidden");
   const badgeLabel = {
-    checking: "Checking",
-    ready: "Ready",
-    warning: "Check advised",
-    blocked: "Blocked",
-  }[status] || "Checking";
+    checking: t("checking"),
+    ready: t("ready"),
+    warning: t("warning"),
+    blocked: t("blocked"),
+  }[status] || t("checking");
   el("shareBadge").textContent = badgeLabel;
   el("shareBadge").className = `share-badge ${status}`;
   el("shareSummary").textContent = message;
@@ -1605,15 +2151,15 @@ function renderShare(share) {
     return;
   }
   panel.classList.remove("hidden");
-  el("shareBadge").textContent = share.status === "ready" ? "Ready" : share.status === "warning" ? "Check advised" : "Blocked";
+  el("shareBadge").textContent = share.status === "ready" ? t("ready") : share.status === "warning" ? t("warning") : t("blocked");
   el("shareBadge").className = `share-badge ${share.status}`;
   el("shareSummary").textContent = share.recommendation || "";
   el("shareStats").innerHTML = [
-    ["Images", share.totalImages ?? 0],
-    ["Embedded", share.embeddedImages ?? 0],
-    ["Missing", share.missingImages ?? 0],
-    ["Risky paths", share.riskyPaths ?? 0],
-    ["External", share.externalImages ?? 0],
+    [t("images"), share.totalImages ?? 0],
+    [t("embedded"), share.embeddedImages ?? 0],
+    [t("missing"), share.missingImages ?? 0],
+    [t("riskyPaths"), share.riskyPaths ?? 0],
+    [t("external"), share.externalImages ?? 0],
   ].map(([label, value]) => `<span><strong>${value}</strong>${label}</span>`).join("");
 }
 
@@ -1646,11 +2192,11 @@ function escapeHtml(value) {
 async function loadIntegration() {
   try {
     const response = await fetch(apiUrl("/api/integration"));
-    const data = await readJsonResponse(response, "Could not load API settings");
+    const data = await readJsonResponse(response, t("couldNotLoadApi"));
     state.integration = { ...state.integration, ...(data.integration || {}) };
     renderIntegration();
   } catch {
-    setApiStatus("Could not load API settings.", "error");
+    setApiStatus(t("couldNotLoadApi"), "error");
   }
 }
 
@@ -1689,14 +2235,14 @@ function renderIntegration() {
   el("clearApiKey").checked = false;
   updateProviderUi();
   const isLocalMode = state.integration.mode === "local";
-  const modeLabel = isLocalMode ? "Local rules active" : apiProviders[state.apiProvider]?.label || "External API enabled";
+  const modeLabel = isLocalMode ? t("localRulesActive") : providerLabel(state.apiProvider);
   const localKey = localApiKeyForCurrentProvider();
   const keyLabel = !isLocalMode && (localKey || state.integration.hasApiKey) ? ` Key: ${maskedKey(localKey) || state.integration.apiKeyMasked}` : "";
   el("apiKeyNote").textContent = isLocalMode
-    ? "Local rules do not need an API key."
+    ? t("localRulesNoKey")
     : (localKey || state.integration.hasApiKey)
-      ? `Saved key: ${maskedKey(localKey) || state.integration.apiKeyMasked}. Leave the key field blank to keep it.`
-      : "No saved key yet. Paste a key once and save.";
+      ? t("savedKey", { key: maskedKey(localKey) || state.integration.apiKeyMasked })
+      : t("noSavedKeyPaste");
   setApiStatus(`${modeLabel}.${keyLabel}`, state.integration.mode === "local" ? "" : "ok");
 }
 
@@ -1743,11 +2289,11 @@ function updateProviderUi() {
   el("apiModelField").classList.toggle("api-hidden", isLocal || isWorkflow);
   el("apiKey").closest("label").classList.toggle("api-hidden", isLocal);
   if (isLocal) {
-    el("apiKeyNote").textContent = "Local rules do not need an API key.";
+    el("apiKeyNote").textContent = t("localRulesNoKey");
   } else if (localApiKeyForCurrentProvider() || state.integration.hasApiKey) {
-    el("apiKeyNote").textContent = `Saved key: ${maskedKey(localApiKeyForCurrentProvider()) || state.integration.apiKeyMasked}. Leave the key field blank to keep it.`;
+    el("apiKeyNote").textContent = t("savedKey", { key: maskedKey(localApiKeyForCurrentProvider()) || state.integration.apiKeyMasked });
   } else {
-    el("apiKeyNote").textContent = "Paste the API key once. After saving, it is kept locally and reused.";
+    el("apiKeyNote").textContent = t("pasteKeyOnce");
   }
 }
 
@@ -1779,24 +2325,24 @@ async function saveIntegration(showSuccess = true, allowClear = true) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ integration }),
   });
-  const data = await readJsonResponse(response, "Could not save API settings");
+  const data = await readJsonResponse(response, t("couldNotSaveApi"));
   state.integration = { ...state.integration, ...(data.integration || {}) };
   state.apiProvider = inferApiProvider(state.integration);
   el("apiKey").value = "";
   el("clearApiKey").checked = false;
   renderIntegration();
-  if (showSuccess) setApiStatus("API settings saved.", "ok");
+  if (showSuccess) setApiStatus(t("apiSettingsSaved"), "ok");
   return state.integration;
 }
 
 async function testIntegration() {
   try {
-    setApiStatus("Testing API endpoint...");
+    setApiStatus(t("testingApi"));
     await saveIntegration(false, false);
     const response = await fetch(apiUrl("/api/integration/test"), { method: "POST" });
-    const data = await readJsonResponse(response, "API test failed");
-    if (!data.ok) throw new Error(data.message || data.error || "API test failed");
-    setApiStatus(data.message || "API test passed.", "ok");
+    const data = await readJsonResponse(response, t("apiTestFailed"));
+    if (!data.ok) throw new Error(data.message || data.error || t("apiTestFailed"));
+    setApiStatus(data.message || t("apiTestPassed"), "ok");
   } catch (error) {
     setApiStatus(error.message, "error");
   }
@@ -1806,12 +2352,12 @@ async function checkHealth() {
   try {
     const response = await fetch("/api/health");
     if (!response.ok) throw new Error("bad");
-    let data = await readJsonResponse(response, "Backend health check failed").catch(() => ({}));
+    let data = await readJsonResponse(response, t("backendHealthFailed")).catch(() => ({}));
     const externalBackend = normalizeBaseUrl(data.externalBackendOrigin || data.publicBackendOrigin || "");
     if (externalBackend) {
       state.apiBaseUrl = externalBackend;
       const externalResponse = await fetch(apiUrl("/api/health"));
-      data = await readJsonResponse(externalResponse, "External backend health check failed");
+      data = await readJsonResponse(externalResponse, t("externalBackendHealthFailed"));
       data.runtime = data.runtime || "external";
       data.usingExternalBackend = true;
     } else {
@@ -1828,7 +2374,7 @@ async function checkHealth() {
     } else {
       state.maxUploadBytes = Number(data.maxUploadMb || 100) * 1024 * 1024;
     }
-    el("health").textContent = "Backend ready";
+    el("health").textContent = t("backendReady");
     el("health").classList.add("ok");
     const uploadLimit = el("uploadLimitText");
     if (uploadLimit) {
@@ -1837,12 +2383,13 @@ async function checkHealth() {
     }
   } catch {
     state.apiBaseUrl = "";
-    el("health").textContent = "Backend offline";
+    el("health").textContent = t("backendOffline");
     el("health").classList.add("error");
   }
 }
 
 async function init() {
+  translateStaticUi();
   renderSteps();
   renderStyles();
   bindEvents();
@@ -1861,9 +2408,15 @@ function bindEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !el("helpOverlay").classList.contains("hidden")) closeHelp();
+    if (event.key === "Escape" && !el("settingsOverlay").classList.contains("hidden")) closeSettings();
   });
-  el("settingsButton").addEventListener("click", () => {
-    document.querySelector(".api-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  el("settingsButton").addEventListener("click", openSettings);
+  el("closeSettings").addEventListener("click", closeSettings);
+  el("settingsOverlay").addEventListener("click", (event) => {
+    if (event.target === el("settingsOverlay")) closeSettings();
+  });
+  el("languageSelect").addEventListener("change", (event) => {
+    applyLanguage(event.target.value);
   });
   dropZone.addEventListener("click", (event) => {
     if (event.target.tagName !== "INPUT") fileInput.click();
@@ -1889,7 +2442,7 @@ function bindEvents() {
   el("apiProvider").addEventListener("change", (event) => applyProviderPreset(event.target.value, true));
   el("saveApiSettings").addEventListener("click", async () => {
     try {
-      setApiStatus("Saving API settings...");
+      setApiStatus(t("savingApiSettings"));
       await saveIntegration(true, true);
     } catch (error) {
       setApiStatus(error.message, "error");
