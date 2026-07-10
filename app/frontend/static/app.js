@@ -31,7 +31,7 @@ const i18n = {
     interfaceLanguage: "Interface language",
     languageHint: "This only changes the platform interface. Generated PPT/HTML content stays unchanged.",
     english: "English",
-    chinese: "中文",
+    chinese: "\u4e2d\u6587",
     close: "Close",
     apply: "Apply",
     workflowTip: "Workflow tip",
@@ -196,175 +196,175 @@ const i18n = {
     difyBlocking: "Dify blocking",
   },
   zh: {
-    help: "帮助",
-    settings: "设置",
-    language: "语言",
-    interfaceLanguage: "界面语言",
-    languageHint: "这里只切换平台界面语言，不会改变生成的 PPT/HTML 内容。",
+    help: "\u5e2e\u52a9",
+    settings: "\u8bbe\u7f6e",
+    language: "\u8bed\u8a00",
+    interfaceLanguage: "\u754c\u9762\u8bed\u8a00",
+    languageHint: "\u8fd9\u91cc\u53ea\u5207\u6362\u5e73\u53f0\u754c\u9762\u8bed\u8a00\uff0c\u4e0d\u4f1a\u6539\u53d8\u751f\u6210\u7684 PPT/HTML \u5185\u5bb9\u3002",
     english: "English",
-    chinese: "中文",
-    close: "关闭",
-    apply: "应用",
-    workflowTip: "工作流提示",
-    workflowTipBody: "按从上到下的步骤操作。下载会导出包含 HTML 和图片的 ZIP 包。",
-    stepUpload: "上传",
-    stepUploadDesc: "上传 PPT 文件",
-    stepExtract: "提取",
-    stepExtractDesc: "提取 PPT 内容",
-    stepOptimize: "优化",
-    stepOptimizeDesc: "应用可读性与版式规则",
-    stepConvert: "转换",
-    stepConvertDesc: "转换为 HTML 幻灯片",
-    stepEdit: "编辑",
-    stepEditDesc: "检查并微调 HTML",
-    uploadPpt: "上传 PPT",
-    checkingBackend: "正在检查后端",
-    backendReady: "后端已就绪",
-    backendOffline: "后端离线",
-    dragDrop: "将 PPT 文件拖到这里",
-    or: "或",
-    checkingUploadLimit: "正在检查上传限制...",
-    selected: "已选择",
-    style: "风格",
-    keepText: "保持文字不变",
-    keepTextDesc: "不修改原文措辞",
-    readable: "可读 16px+",
-    readableDesc: "确保文字清晰易读",
-    imagesIntact: "保留图片",
-    imagesIntactDesc: "保持原图可见",
-    aiConnection: "AI 连接",
-    aiIntro: "选择服务，粘贴密钥后保存。API 设置会保存在本机，并在每次生成时复用。",
-    service: "服务",
-    endpoint: "兼容地址",
-    model: "模型",
-    apiKey: "API 密钥",
-    apiKeyPlaceholder: "粘贴一次密钥，之后可留空",
-    noSavedKey: "尚未保存密钥。",
-    advancedConnection: "高级连接设置",
-    apiKeyHeader: "API 密钥 Header",
-    apiKeyPrefix: "API 密钥前缀",
-    workflowPayload: "工作流参数格式",
-    timeoutSec: "超时时间（秒）",
-    customHeaders: "自定义 Headers",
-    fallbackLocal: "API 失败时回退到本地规则",
-    clearSavedKey: "保存时清除已保存密钥",
-    saveConnection: "保存连接",
-    testApi: "测试 API",
-    localRulesActive: "本地规则已启用",
-    generateHtml: "生成 HTML",
-    preview: "预览",
-    analyzeShare: "分析与分享",
-    downloadZip: "下载 ZIP",
-    noGenerated: "暂无生成的 HTML",
-    noGeneratedDesc: "上传 PPT 并运行工作流后，这里会显示第一页预览。",
-    fit: "适配",
-    editHtml: "编辑 HTML",
-    stopEditing: "停止编辑",
-    saveEdits: "保存修改",
-    openScrollHtml: "打开滑动版 HTML",
-    shareReadiness: "分享检查",
-    notChecked: "未检查",
-    downloadZipPackage: "下载 ZIP 包",
-    openSingleFile: "打开单文件 HTML",
-    openScrollSingleFile: "打开滑动单文件 HTML",
-    openReport: "打开报告",
-    jobHistory: "生成历史",
-    refresh: "刷新",
+    chinese: "\u4e2d\u6587",
+    close: "\u5173\u95ed",
+    apply: "\u5e94\u7528",
+    workflowTip: "\u5de5\u4f5c\u6d41\u63d0\u793a",
+    workflowTipBody: "\u6309\u4ece\u4e0a\u5230\u4e0b\u7684\u6b65\u9aa4\u64cd\u4f5c\u3002\u4e0b\u8f7d\u4f1a\u5bfc\u51fa\u5305\u542b HTML \u548c\u56fe\u7247\u7684 ZIP \u5305\u3002",
+    stepUpload: "\u4e0a\u4f20",
+    stepUploadDesc: "\u4e0a\u4f20 PPT \u6587\u4ef6",
+    stepExtract: "\u63d0\u53d6",
+    stepExtractDesc: "\u63d0\u53d6 PPT \u5185\u5bb9",
+    stepOptimize: "\u4f18\u5316",
+    stepOptimizeDesc: "\u5e94\u7528\u53ef\u8bfb\u6027\u4e0e\u7248\u5f0f\u89c4\u5219",
+    stepConvert: "\u8f6c\u6362",
+    stepConvertDesc: "\u8f6c\u6362\u4e3a HTML \u5e7b\u706f\u7247",
+    stepEdit: "\u7f16\u8f91",
+    stepEditDesc: "\u68c0\u67e5\u5e76\u5fae\u8c03 HTML",
+    uploadPpt: "\u4e0a\u4f20 PPT",
+    checkingBackend: "\u6b63\u5728\u68c0\u67e5\u540e\u7aef",
+    backendReady: "\u540e\u7aef\u5df2\u5c31\u7eea",
+    backendOffline: "\u540e\u7aef\u79bb\u7ebf",
+    dragDrop: "\u5c06 PPT \u6587\u4ef6\u62d6\u5230\u8fd9\u91cc",
+    or: "\u6216",
+    checkingUploadLimit: "\u6b63\u5728\u68c0\u67e5\u4e0a\u4f20\u9650\u5236...",
+    selected: "\u5df2\u9009\u62e9",
+    style: "\u98ce\u683c",
+    keepText: "\u4fdd\u6301\u6587\u5b57\u4e0d\u53d8",
+    keepTextDesc: "\u4e0d\u4fee\u6539\u539f\u6587\u63aa\u8f9e",
+    readable: "\u53ef\u8bfb 16px+",
+    readableDesc: "\u786e\u4fdd\u6587\u5b57\u6e05\u6670\u6613\u8bfb",
+    imagesIntact: "\u4fdd\u7559\u56fe\u7247",
+    imagesIntactDesc: "\u4fdd\u6301\u539f\u56fe\u53ef\u89c1",
+    aiConnection: "AI \u8fde\u63a5",
+    aiIntro: "\u9009\u62e9\u670d\u52a1\uff0c\u7c98\u8d34\u5bc6\u94a5\u540e\u4fdd\u5b58\u3002API \u8bbe\u7f6e\u4f1a\u4fdd\u5b58\u5728\u672c\u673a\uff0c\u5e76\u5728\u6bcf\u6b21\u751f\u6210\u65f6\u590d\u7528\u3002",
+    service: "\u670d\u52a1",
+    endpoint: "\u517c\u5bb9\u5730\u5740",
+    model: "\u6a21\u578b",
+    apiKey: "API \u5bc6\u94a5",
+    apiKeyPlaceholder: "\u7c98\u8d34\u4e00\u6b21\u5bc6\u94a5\uff0c\u4e4b\u540e\u53ef\u7559\u7a7a",
+    noSavedKey: "\u5c1a\u672a\u4fdd\u5b58\u5bc6\u94a5\u3002",
+    advancedConnection: "\u9ad8\u7ea7\u8fde\u63a5\u8bbe\u7f6e",
+    apiKeyHeader: "API \u5bc6\u94a5 Header",
+    apiKeyPrefix: "API \u5bc6\u94a5\u524d\u7f00",
+    workflowPayload: "\u5de5\u4f5c\u6d41\u53c2\u6570\u683c\u5f0f",
+    timeoutSec: "\u8d85\u65f6\u65f6\u95f4\uff08\u79d2\uff09",
+    customHeaders: "\u81ea\u5b9a\u4e49 Headers",
+    fallbackLocal: "API \u5931\u8d25\u65f6\u56de\u9000\u5230\u672c\u5730\u89c4\u5219",
+    clearSavedKey: "\u4fdd\u5b58\u65f6\u6e05\u9664\u5df2\u4fdd\u5b58\u5bc6\u94a5",
+    saveConnection: "\u4fdd\u5b58\u8fde\u63a5",
+    testApi: "\u6d4b\u8bd5 API",
+    localRulesActive: "\u672c\u5730\u89c4\u5219\u5df2\u542f\u7528",
+    generateHtml: "\u751f\u6210 HTML",
+    preview: "\u9884\u89c8",
+    analyzeShare: "\u5206\u6790\u4e0e\u5206\u4eab",
+    downloadZip: "\u4e0b\u8f7d ZIP",
+    noGenerated: "\u6682\u65e0\u751f\u6210\u7684 HTML",
+    noGeneratedDesc: "\u4e0a\u4f20 PPT \u5e76\u8fd0\u884c\u5de5\u4f5c\u6d41\u540e\uff0c\u8fd9\u91cc\u4f1a\u663e\u793a\u7b2c\u4e00\u9875\u9884\u89c8\u3002",
+    fit: "\u9002\u914d",
+    editHtml: "\u7f16\u8f91 HTML",
+    stopEditing: "\u505c\u6b62\u7f16\u8f91",
+    saveEdits: "\u4fdd\u5b58\u4fee\u6539",
+    openScrollHtml: "\u6253\u5f00\u6ed1\u52a8\u7248 HTML",
+    shareReadiness: "\u5206\u4eab\u68c0\u67e5",
+    notChecked: "\u672a\u68c0\u67e5",
+    downloadZipPackage: "\u4e0b\u8f7d ZIP \u5305",
+    openSingleFile: "\u6253\u5f00\u5355\u6587\u4ef6 HTML",
+    openScrollSingleFile: "\u6253\u5f00\u6ed1\u52a8\u5355\u6587\u4ef6 HTML",
+    openReport: "\u6253\u5f00\u62a5\u544a",
+    jobHistory: "\u751f\u6210\u5386\u53f2",
+    refresh: "\u5237\u65b0",
     id: "ID",
-    fileName: "文件名",
-    slides: "页数",
-    status: "状态",
+    fileName: "\u6587\u4ef6\u540d",
+    slides: "\u9875\u6570",
+    status: "\u72b6\u6001",
     ai: "AI",
-    updatedAt: "更新时间",
-    actions: "操作",
-    noJobs: "暂无任务",
-    guide: "教程",
-    apiTutorial: "API 配置教程",
-    loadingApiGuide: "正在加载 API 配置教程...",
-    generationTitle: "正在生成 HTML",
-    generationMessage: "AI 正在安排内容、图片和版式...",
-    hideGeneration: "隐藏生成动画",
-    clearFile: "清除文件",
-    uploadLimitCloudflare: "Cloudflare-only 模式支持约 {size} 以内的 .pptx 文件。旧 .ppt 文件需要使用本地 Python 后端。",
-    uploadLimitServerless: "Serverless 模式支持约 {size} 以内的 PPT 文件。更大的文件需要本地运行或专用存储。",
-    uploadLimitDefault: "支持 .ppt 和 .pptx，最大 {size}",
-    fileTooLarge: "{name} 大小为 {fileSize}，超过当前部署可安全上传的限制（{limit}）。更大的 PPT 请在本地运行。",
-    readyGenerate: "已准备生成。",
-    uploadFirst: "请先上传 PPT。",
-    labelsUploading: "上传中",
-    labelsExtracting: "提取中",
-    labelsOptimizing: "优化中",
-    labelsConverting: "转换中",
-    labelsPreparing: "准备编辑器",
-    preparingPpt: "正在准备 PPT 以生成 AI 版式...",
-    completedBrowserAi: "已完成。为避免 Cloudflare 超时，AI 已在浏览器中直接生成。",
-    localFallbackDone: "由于 AI 不可用或响应过慢，已使用本地规则生成。{extra}",
-    oversizedSkipped: "部分过大的图片已跳过。",
-    generateOrSelect: "请先生成或选择一个任务。",
-    packaging: "正在打包...",
-    packagingStatus: "正在浏览器中打包当前 HTML...",
-    downloadingLatest: "正在下载包含最新编辑内容的 ZIP 包。",
-    saveBrowserOnly: "修改已保存在浏览器中。下载 ZIP 会包含最新修改。",
-    savedEdited: "已保存分页版和滑动版 HTML 修改。",
-    couldNotSaveEdited: "无法保存修改后的 HTML。",
-    analyzingShare: "正在分析分享包...",
-    checkingShare: "正在检查图片路径并构建分享包...",
-    shareMissing: "分享包存在缺失图片。",
-    shareReady: "分享包已准备好。",
-    shareFirst: "请先生成或选择任务，然后运行分析与分享。",
-    checking: "检查中",
-    ready: "就绪",
-    warning: "建议检查",
-    blocked: "阻塞",
-    images: "图片",
-    embedded: "已嵌入",
-    missing: "缺失",
-    riskyPaths: "风险路径",
-    external: "外部资源",
-    localRulesNoKey: "本地规则不需要 API 密钥。",
-    savedKey: "已保存密钥：{key}。密钥输入框留空即可继续使用。",
-    pasteKeyOnce: "粘贴一次 API 密钥。保存后会保存在本机并自动复用。",
-    noSavedKeyPaste: "尚未保存密钥。粘贴一次密钥并保存即可。",
-    externalApiEnabled: "外部 API 已启用",
-    apiSettingsSaved: "API 设置已保存。",
-    savingApiSettings: "正在保存 API 设置...",
-    testingApi: "正在测试 API 地址...",
-    apiTestPassed: "API 测试通过。",
-    couldNotLoadApi: "无法加载 API 设置。",
-    couldNotSaveApi: "无法保存 API 设置",
-    apiTestFailed: "API 测试失败",
-    backendHealthFailed: "后端健康检查失败",
-    externalBackendHealthFailed: "外部后端健康检查失败",
-    openaiReady: "OpenAI 兼容接口已就绪",
-    deepseekReady: "DeepSeek 已就绪",
-    doubaoReady: "Doubao Seed 2.0 已就绪",
-    customAiReady: "自定义 AI API 已就绪",
-    workflowReady: "工作流 API 已就绪",
-    difyReady: "Dify 工作流已就绪",
-    aiUsed: "已使用 AI（{provider}，{type}）。",
-    aiOptimizedSlides: "优化后的幻灯片",
+    updatedAt: "\u66f4\u65b0\u65f6\u95f4",
+    actions: "\u64cd\u4f5c",
+    noJobs: "\u6682\u65e0\u4efb\u52a1",
+    guide: "\u6559\u7a0b",
+    apiTutorial: "API \u914d\u7f6e\u6559\u7a0b",
+    loadingApiGuide: "\u6b63\u5728\u52a0\u8f7d API \u914d\u7f6e\u6559\u7a0b...",
+    generationTitle: "\u6b63\u5728\u751f\u6210 HTML",
+    generationMessage: "AI \u6b63\u5728\u5b89\u6392\u5185\u5bb9\u3001\u56fe\u7247\u548c\u7248\u5f0f...",
+    hideGeneration: "\u9690\u85cf\u751f\u6210\u52a8\u753b",
+    clearFile: "\u6e05\u9664\u6587\u4ef6",
+    uploadLimitCloudflare: "Cloudflare-only \u6a21\u5f0f\u652f\u6301\u7ea6 {size} \u4ee5\u5185\u7684 .pptx \u6587\u4ef6\u3002\u65e7 .ppt \u6587\u4ef6\u9700\u8981\u4f7f\u7528\u672c\u5730 Python \u540e\u7aef\u3002",
+    uploadLimitServerless: "Serverless \u6a21\u5f0f\u652f\u6301\u7ea6 {size} \u4ee5\u5185\u7684 PPT \u6587\u4ef6\u3002\u66f4\u5927\u7684\u6587\u4ef6\u9700\u8981\u672c\u5730\u8fd0\u884c\u6216\u4e13\u7528\u5b58\u50a8\u3002",
+    uploadLimitDefault: "\u652f\u6301 .ppt \u548c .pptx\uff0c\u6700\u5927 {size}",
+    fileTooLarge: "{name} \u5927\u5c0f\u4e3a {fileSize}\uff0c\u8d85\u8fc7\u5f53\u524d\u90e8\u7f72\u53ef\u5b89\u5168\u4e0a\u4f20\u7684\u9650\u5236\uff08{limit}\uff09\u3002\u66f4\u5927\u7684 PPT \u8bf7\u5728\u672c\u5730\u8fd0\u884c\u3002",
+    readyGenerate: "\u5df2\u51c6\u5907\u751f\u6210\u3002",
+    uploadFirst: "\u8bf7\u5148\u4e0a\u4f20 PPT\u3002",
+    labelsUploading: "\u4e0a\u4f20\u4e2d",
+    labelsExtracting: "\u63d0\u53d6\u4e2d",
+    labelsOptimizing: "\u4f18\u5316\u4e2d",
+    labelsConverting: "\u8f6c\u6362\u4e2d",
+    labelsPreparing: "\u51c6\u5907\u7f16\u8f91\u5668",
+    preparingPpt: "\u6b63\u5728\u51c6\u5907 PPT \u4ee5\u751f\u6210 AI \u7248\u5f0f...",
+    completedBrowserAi: "\u5df2\u5b8c\u6210\u3002\u4e3a\u907f\u514d Cloudflare \u8d85\u65f6\uff0cAI \u5df2\u5728\u6d4f\u89c8\u5668\u4e2d\u76f4\u63a5\u751f\u6210\u3002",
+    localFallbackDone: "\u7531\u4e8e AI \u4e0d\u53ef\u7528\u6216\u54cd\u5e94\u8fc7\u6162\uff0c\u5df2\u4f7f\u7528\u672c\u5730\u89c4\u5219\u751f\u6210\u3002{extra}",
+    oversizedSkipped: "\u90e8\u5206\u8fc7\u5927\u7684\u56fe\u7247\u5df2\u8df3\u8fc7\u3002",
+    generateOrSelect: "\u8bf7\u5148\u751f\u6210\u6216\u9009\u62e9\u4e00\u4e2a\u4efb\u52a1\u3002",
+    packaging: "\u6b63\u5728\u6253\u5305...",
+    packagingStatus: "\u6b63\u5728\u6d4f\u89c8\u5668\u4e2d\u6253\u5305\u5f53\u524d HTML...",
+    downloadingLatest: "\u6b63\u5728\u4e0b\u8f7d\u5305\u542b\u6700\u65b0\u7f16\u8f91\u5185\u5bb9\u7684 ZIP \u5305\u3002",
+    saveBrowserOnly: "\u4fee\u6539\u5df2\u4fdd\u5b58\u5728\u6d4f\u89c8\u5668\u4e2d\u3002\u4e0b\u8f7d ZIP \u4f1a\u5305\u542b\u6700\u65b0\u4fee\u6539\u3002",
+    savedEdited: "\u5df2\u4fdd\u5b58\u5206\u9875\u7248\u548c\u6ed1\u52a8\u7248 HTML \u4fee\u6539\u3002",
+    couldNotSaveEdited: "\u65e0\u6cd5\u4fdd\u5b58\u4fee\u6539\u540e\u7684 HTML\u3002",
+    analyzingShare: "\u6b63\u5728\u5206\u6790\u5206\u4eab\u5305...",
+    checkingShare: "\u6b63\u5728\u68c0\u67e5\u56fe\u7247\u8def\u5f84\u5e76\u6784\u5efa\u5206\u4eab\u5305...",
+    shareMissing: "\u5206\u4eab\u5305\u5b58\u5728\u7f3a\u5931\u56fe\u7247\u3002",
+    shareReady: "\u5206\u4eab\u5305\u5df2\u51c6\u5907\u597d\u3002",
+    shareFirst: "\u8bf7\u5148\u751f\u6210\u6216\u9009\u62e9\u4efb\u52a1\uff0c\u7136\u540e\u8fd0\u884c\u5206\u6790\u4e0e\u5206\u4eab\u3002",
+    checking: "\u68c0\u67e5\u4e2d",
+    ready: "\u5c31\u7eea",
+    warning: "\u5efa\u8bae\u68c0\u67e5",
+    blocked: "\u963b\u585e",
+    images: "\u56fe\u7247",
+    embedded: "\u5df2\u5d4c\u5165",
+    missing: "\u7f3a\u5931",
+    riskyPaths: "\u98ce\u9669\u8def\u5f84",
+    external: "\u5916\u90e8\u8d44\u6e90",
+    localRulesNoKey: "\u672c\u5730\u89c4\u5219\u4e0d\u9700\u8981 API \u5bc6\u94a5\u3002",
+    savedKey: "\u5df2\u4fdd\u5b58\u5bc6\u94a5\uff1a{key}\u3002\u5bc6\u94a5\u8f93\u5165\u6846\u7559\u7a7a\u5373\u53ef\u7ee7\u7eed\u4f7f\u7528\u3002",
+    pasteKeyOnce: "\u7c98\u8d34\u4e00\u6b21 API \u5bc6\u94a5\u3002\u4fdd\u5b58\u540e\u4f1a\u4fdd\u5b58\u5728\u672c\u673a\u5e76\u81ea\u52a8\u590d\u7528\u3002",
+    noSavedKeyPaste: "\u5c1a\u672a\u4fdd\u5b58\u5bc6\u94a5\u3002\u7c98\u8d34\u4e00\u6b21\u5bc6\u94a5\u5e76\u4fdd\u5b58\u5373\u53ef\u3002",
+    externalApiEnabled: "\u5916\u90e8 API \u5df2\u542f\u7528",
+    apiSettingsSaved: "API \u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002",
+    savingApiSettings: "\u6b63\u5728\u4fdd\u5b58 API \u8bbe\u7f6e...",
+    testingApi: "\u6b63\u5728\u6d4b\u8bd5 API \u5730\u5740...",
+    apiTestPassed: "API \u6d4b\u8bd5\u901a\u8fc7\u3002",
+    couldNotLoadApi: "\u65e0\u6cd5\u52a0\u8f7d API \u8bbe\u7f6e\u3002",
+    couldNotSaveApi: "\u65e0\u6cd5\u4fdd\u5b58 API \u8bbe\u7f6e",
+    apiTestFailed: "API \u6d4b\u8bd5\u5931\u8d25",
+    backendHealthFailed: "\u540e\u7aef\u5065\u5eb7\u68c0\u67e5\u5931\u8d25",
+    externalBackendHealthFailed: "\u5916\u90e8\u540e\u7aef\u5065\u5eb7\u68c0\u67e5\u5931\u8d25",
+    openaiReady: "OpenAI \u517c\u5bb9\u63a5\u53e3\u5df2\u5c31\u7eea",
+    deepseekReady: "DeepSeek \u5df2\u5c31\u7eea",
+    doubaoReady: "Doubao Seed 2.0 \u5df2\u5c31\u7eea",
+    customAiReady: "\u81ea\u5b9a\u4e49 AI API \u5df2\u5c31\u7eea",
+    workflowReady: "\u5de5\u4f5c\u6d41 API \u5df2\u5c31\u7eea",
+    difyReady: "Dify \u5de5\u4f5c\u6d41\u5df2\u5c31\u7eea",
+    aiUsed: "\u5df2\u4f7f\u7528 AI\uff08{provider}\uff0c{type}\uff09\u3002",
+    aiOptimizedSlides: "\u4f18\u5316\u540e\u7684\u5e7b\u706f\u7247",
     aiHtml: "HTML",
-    aiFallback: "AI 回退：{error}",
-    externalApiFailed: "外部 API 失败",
-    configured: "{mode} 已配置。",
-    local: "本地",
-    aiSlides: "AI 幻灯片",
-    fallback: "回退",
-    previewButton: "预览",
-    selectGeneratedJob: "选择生成任务",
-    jobsSlides: "{count} 页",
+    aiFallback: "AI \u56de\u9000\uff1a{error}",
+    externalApiFailed: "\u5916\u90e8 API \u5931\u8d25",
+    configured: "{mode} \u5df2\u914d\u7f6e\u3002",
+    local: "\u672c\u5730",
+    aiSlides: "AI \u5e7b\u706f\u7247",
+    fallback: "\u56de\u9000",
+    previewButton: "\u9884\u89c8",
+    selectGeneratedJob: "\u9009\u62e9\u751f\u6210\u4efb\u52a1",
+    jobsSlides: "{count} \u9875",
     clear: "x",
-    providerLocal: "本地规则",
+    providerLocal: "\u672c\u5730\u89c4\u5219",
     providerDeepseek: "DeepSeek",
     providerDoubao: "Doubao Seed 2.0",
-    providerOpenai: "OpenAI 兼容接口",
-    providerCustomAi: "自定义 AI API",
-    providerWorkflow: "工作流 API",
-    providerDify: "Dify 工作流",
-    noApiKeyHeader: "不发送 API 密钥 Header",
-    flatJson: "扁平 JSON",
+    providerOpenai: "OpenAI \u517c\u5bb9\u63a5\u53e3",
+    providerCustomAi: "\u81ea\u5b9a\u4e49 AI API",
+    providerWorkflow: "\u5de5\u4f5c\u6d41 API",
+    providerDify: "Dify \u5de5\u4f5c\u6d41",
+    noApiKeyHeader: "\u4e0d\u53d1\u9001 API \u5bc6\u94a5 Header",
+    flatJson: "\u6241\u5e73 JSON",
     inputJson: "{ \"input\": ... }",
-    difyBlocking: "Dify 阻塞模式",
+    difyBlocking: "Dify \u963b\u585e\u6a21\u5f0f",
   },
 };
 
@@ -377,19 +377,19 @@ const stepKeys = [
 ];
 
 const styleLabelKeys = {
-  teaching: { en: "Teaching Blue", zh: "教学蓝" },
-  softlesson: { en: "Soft Lesson", zh: "柔和课堂" },
-  webacademic: { en: "Academic Webpage", zh: "学术网页" },
-  clean: { en: "Clean", zh: "清爽" },
-  academic: { en: "Academic", zh: "学术" },
-  instructional: { en: "Instructional", zh: "教学说明" },
-  minimal: { en: "Minimal", zh: "极简" },
-  contrast: { en: "High Contrast", zh: "高对比" },
-  healing: { en: "Healing Hand-drawn", zh: "治愈手绘" },
-  doodle: { en: "Doodle Sketch", zh: "手绘涂鸦" },
-  swiss: { en: "Swiss Grid", zh: "瑞士网格" },
-  editorial: { en: "Editorial", zh: "杂志编辑" },
-  vivid: { en: "Vivid", zh: "鲜明活力" },
+  teaching: { en: "Teaching Blue", zh: "\u6559\u5b66\u84dd" },
+  softlesson: { en: "Soft Lesson", zh: "\u67d4\u548c\u8bfe\u5802" },
+  webacademic: { en: "Academic Webpage", zh: "\u5b66\u672f\u7f51\u9875" },
+  clean: { en: "Clean", zh: "\u6e05\u723d" },
+  academic: { en: "Academic", zh: "\u5b66\u672f" },
+  instructional: { en: "Instructional", zh: "\u6559\u5b66\u8bf4\u660e" },
+  minimal: { en: "Minimal", zh: "\u6781\u7b80" },
+  contrast: { en: "High Contrast", zh: "\u9ad8\u5bf9\u6bd4" },
+  healing: { en: "Healing Hand-drawn", zh: "\u6cbb\u6108\u624b\u7ed8" },
+  doodle: { en: "Doodle Sketch", zh: "\u624b\u7ed8\u6d82\u9e26" },
+  swiss: { en: "Swiss Grid", zh: "\u745e\u58eb\u7f51\u683c" },
+  editorial: { en: "Editorial", zh: "\u6742\u5fd7\u7f16\u8f91" },
+  vivid: { en: "Vivid", zh: "\u9c9c\u660e\u6d3b\u529b" },
 };
 
 const apiProviders = {
@@ -689,7 +689,7 @@ function integrationForGeneration() {
 }
 
 function isAiRecoverableError(message) {
-  return /timeout|timed out|aborted|operation was aborted|insufficient balance|insufficient_balance|insufficient quota|insufficient_quota|quota|billing|余额|欠费|限额|rate limit|too many requests/i.test(String(message || ""));
+  return /timeout|timed out|aborted|operation was aborted|insufficient balance|insufficient_balance|insufficient quota|insufficient_quota|quota|billing|\u4f59\u989d|\u6b20\u8d39|\u9650\u989d|rate limit|too many requests/i.test(String(message || ""));
 }
 
 function normalizeChatEndpoint(endpoint) {
@@ -1168,7 +1168,7 @@ function clientXmlDecode(value) {
 }
 
 function clientCleanText(text) {
-  return String(text || "").replace(/\s+/g, " ").replace(/^[•·\-\s]+/, "").trim();
+  return String(text || "").replace(/\s+/g, " ").replace(/^[\u2022\u00b7\-\s]+/, "").trim();
 }
 
 function clientLooksLikeMarkupNoise(text) {
@@ -1357,14 +1357,14 @@ function clientTextBlocks(items, max = 18) {
   const cleaned = items.filter(clientUsefulText).slice(0, max);
   const shortCount = cleaned.filter((item) => item.length < 34).length;
   const continuationCount = cleaned.filter((item) => /^(and|or|to|of|in|for|with|on|by|as|the|their|our|your|is|are|was|were|communicate|interact|everyday|lives|working)\b/i.test(item)).length;
-  const hasQuoteFlow = cleaned.some((item) => /[“"]/.test(item)) && cleaned.some((item) => /[”"]/.test(item));
+  const hasQuoteFlow = cleaned.some((item) => /[\u201c"]/.test(item)) && cleaned.some((item) => /[\u201d"]/.test(item));
   const asParagraph = cleaned.length >= 4 && (hasQuoteFlow || shortCount / cleaned.length > 0.55 || continuationCount >= 2);
   if (!asParagraph) return { items: cleaned, paragraphs: cleaned, asParagraph: false };
   const paragraphs = [];
   let current = "";
-  const terminal = /[.!?。！？;；:”"]$/;
+  const terminal = /[.!?\u3002\uff01\uff1f;\uff1b:\u201d"]$/;
   const startsContinuation = /^(and|or|to|of|in|for|with|on|by|as|the|their|our|your|is|are|was|were|communicate|interact|everyday|lives|working|\(|,|;|:)/i;
-  const hasOpenQuote = (value) => (value.match(/[“"]/g) || []).length > (value.match(/[”"]/g) || []).length;
+  const hasOpenQuote = (value) => (value.match(/[\u201c"]/g) || []).length > (value.match(/[\u201d"]/g) || []).length;
   for (const item of cleaned) {
     if (!current) {
       current = item;
@@ -1394,7 +1394,7 @@ function buildBrowserFallbackHtml(slides, style, mode = "paged") {
     const paragraphHtml = items.map((item) => `<p class="body-paragraph editable-text">${escapeHtml(item)}</p>`).join("");
     const conceptHtml = items.slice(0, 3).map((item) => `<div class="point-card editable-text">${escapeHtml(item)}</div>`).join("");
     const contentHtml = {
-      cover: items.length ? `<p class="cover-subtitle editable-text">${escapeHtml(items.slice(0, 2).join(" · "))}</p>` : "",
+      cover: items.length ? `<p class="cover-subtitle editable-text">${escapeHtml(items.slice(0, 2).join(" \u00b7 "))}</p>` : "",
       agenda: `<div class="agenda-list">${agendaHtml}</div>`,
       workshop: `<div class="workshop-prompt">${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}<div class="thinking-space editable-text">Class discussion space</div></div>`,
       statement: `<div class="statement-block">${blocks.asParagraph ? paragraphHtml : `${lead ? `<p class="lead-text editable-text">${escapeHtml(lead)}</p>` : ""}${bulletsHtml ? `<ul class="quiet-list">${bulletsHtml}</ul>` : ""}`}</div>`,
@@ -1473,21 +1473,21 @@ async function generateAiDirectlyInBrowser(slides, stats, previousError) {
 }
 
 async function generateInBrowserFallback(reason) {
-  setGenerationOverlay(true, state.language === "zh" ? "正在浏览器中本地提取 PPT，以加快生成..." : "Extracting the PPT locally in this browser for faster generation...");
+  setGenerationOverlay(true, state.language === "zh" ? "\u6b63\u5728\u6d4f\u89c8\u5668\u4e2d\u672c\u5730\u63d0\u53d6 PPT\uff0c\u4ee5\u52a0\u5feb\u751f\u6210..." : "Extracting the PPT locally in this browser for faster generation...");
   const { slides, stats } = await extractPptxInBrowser(state.selectedFile);
   const fallbackIntegration = integrationForGeneration();
   let fallbackReason = reason;
   if (fallbackIntegration.mode === "ai_api") {
     try {
-      setGenerationOverlay(true, state.language === "zh" ? "已在本地提取 PPT，正在从浏览器直接请求 AI..." : "Extracted PPT locally. Asking AI directly from this browser...");
+      setGenerationOverlay(true, state.language === "zh" ? "\u5df2\u5728\u672c\u5730\u63d0\u53d6 PPT\uff0c\u6b63\u5728\u4ece\u6d4f\u89c8\u5668\u76f4\u63a5\u8bf7\u6c42 AI..." : "Extracted PPT locally. Asking AI directly from this browser...");
       return await generateAiDirectlyInBrowser(slides, stats, reason);
     } catch (directAiError) {
       fallbackReason = directAiError.message || reason;
       console.warn("Direct browser AI generation failed", directAiError);
       if (isAiRecoverableError(fallbackReason)) {
-        setGenerationOverlay(true, state.language === "zh" ? "AI 超时或余额不足，正在改用本地规则生成..." : "AI timed out or has insufficient balance. Generating with local rules instead...");
+        setGenerationOverlay(true, state.language === "zh" ? "AI \u8d85\u65f6\u6216\u4f59\u989d\u4e0d\u8db3\uff0c\u6b63\u5728\u6539\u7528\u672c\u5730\u89c4\u5219\u751f\u6210..." : "AI timed out or has insufficient balance. Generating with local rules instead...");
       } else {
-        setGenerationOverlay(true, state.language === "zh" ? "浏览器直连 AI 失败，正在尝试 Cloudflare AI 代理..." : "Direct AI call failed. Trying Cloudflare AI proxy...");
+        setGenerationOverlay(true, state.language === "zh" ? "\u6d4f\u89c8\u5668\u76f4\u8fde AI \u5931\u8d25\uff0c\u6b63\u5728\u5c1d\u8bd5 Cloudflare AI \u4ee3\u7406..." : "Direct AI call failed. Trying Cloudflare AI proxy...");
         try {
           const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
             method: "POST",
@@ -1501,7 +1501,7 @@ async function generateInBrowserFallback(reason) {
               fallbackReason: reason,
             }),
           });
-          const data = await readJsonResponse(response, state.language === "zh" ? "AI 生成失败" : "AI generation failed");
+          const data = await readJsonResponse(response, state.language === "zh" ? "AI \u751f\u6210\u5931\u8d25" : "AI generation failed");
           const generatedJob = hydrateInlineJob(data.job);
           state.activeJob = generatedJob;
           state.jobs.unshift(generatedJob);
@@ -1509,18 +1509,18 @@ async function generateInBrowserFallback(reason) {
           renderJobSelect();
           selectJob(generatedJob.id);
           const aiMessage = formatAiStatus(generatedJob);
-          setStatus(aiMessage ? `${state.language === "zh" ? "已完成。" : "Completed. "}${aiMessage}` : (state.language === "zh" ? "已完成，AI 预览已准备好。" : "Completed. AI preview is ready."), generatedJob.aiStatus?.fallback ? "error" : "ok");
+          setStatus(aiMessage ? `${state.language === "zh" ? "\u5df2\u5b8c\u6210\u3002" : "Completed. "}${aiMessage}` : (state.language === "zh" ? "\u5df2\u5b8c\u6210\uff0cAI \u9884\u89c8\u5df2\u51c6\u5907\u597d\u3002" : "Completed. AI preview is ready."), generatedJob.aiStatus?.fallback ? "error" : "ok");
           return generatedJob;
         } catch (workerAiError) {
           fallbackReason = workerAiError.message || fallbackReason;
           console.warn("Cloudflare AI proxy generation failed", workerAiError);
-          setGenerationOverlay(true, state.language === "zh" ? "AI 请求失败，正在改用本地规则生成..." : "AI request failed. Generating with local rules instead...");
+          setGenerationOverlay(true, state.language === "zh" ? "AI \u8bf7\u6c42\u5931\u8d25\uff0c\u6b63\u5728\u6539\u7528\u672c\u5730\u89c4\u5219\u751f\u6210..." : "AI request failed. Generating with local rules instead...");
         }
       }
     }
   } else if (fallbackIntegration.mode !== "local") {
     try {
-      setGenerationOverlay(true, state.language === "zh" ? "已在本地提取 PPT，正在请求工作流 API 设计 HTML..." : "Extracted PPT locally. Asking workflow API to design the HTML...");
+      setGenerationOverlay(true, state.language === "zh" ? "\u5df2\u5728\u672c\u5730\u63d0\u53d6 PPT\uff0c\u6b63\u5728\u8bf7\u6c42\u5de5\u4f5c\u6d41 API \u8bbe\u8ba1 HTML..." : "Extracted PPT locally. Asking workflow API to design the HTML...");
       const response = await fetch(apiUrl("/api/generate-ai-from-slides"), {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1533,7 +1533,7 @@ async function generateInBrowserFallback(reason) {
           fallbackReason: reason,
         }),
       });
-      const data = await readJsonResponse(response, state.language === "zh" ? "AI 生成失败" : "AI generation failed");
+      const data = await readJsonResponse(response, state.language === "zh" ? "AI \u751f\u6210\u5931\u8d25" : "AI generation failed");
       const generatedJob = hydrateInlineJob(data.job);
       state.activeJob = generatedJob;
       state.jobs.unshift(generatedJob);
@@ -1541,12 +1541,12 @@ async function generateInBrowserFallback(reason) {
       renderJobSelect();
       selectJob(generatedJob.id);
       const aiMessage = formatAiStatus(generatedJob);
-      setStatus(aiMessage ? `${state.language === "zh" ? "已完成。" : "Completed. "}${aiMessage}` : (state.language === "zh" ? "已完成，AI 预览已准备好。" : "Completed. AI preview is ready."), generatedJob.aiStatus?.fallback ? "error" : "ok");
+      setStatus(aiMessage ? `${state.language === "zh" ? "\u5df2\u5b8c\u6210\u3002" : "Completed. "}${aiMessage}` : (state.language === "zh" ? "\u5df2\u5b8c\u6210\uff0cAI \u9884\u89c8\u5df2\u51c6\u5907\u597d\u3002" : "Completed. AI preview is ready."), generatedJob.aiStatus?.fallback ? "error" : "ok");
       return generatedJob;
     } catch (workflowError) {
       fallbackReason = workflowError.message || reason;
       console.warn("Workflow generation after browser extraction failed", workflowError);
-      setGenerationOverlay(true, state.language === "zh" ? "工作流请求失败，正在改用本地规则生成..." : "Workflow request failed. Generating with local rules instead...");
+      setGenerationOverlay(true, state.language === "zh" ? "\u5de5\u4f5c\u6d41\u8bf7\u6c42\u5931\u8d25\uff0c\u6b63\u5728\u6539\u7528\u672c\u5730\u89c4\u5219\u751f\u6210..." : "Workflow request failed. Generating with local rules instead...");
     }
   }
   const pagedHtml = buildBrowserFallbackHtml(slides, state.selectedStyle, "paged");
@@ -1627,13 +1627,13 @@ async function generate() {
         },
       }),
     });
-    const data = await readJsonResponse(response, state.language === "zh" ? "生成失败" : "Generation failed");
+    const data = await readJsonResponse(response, state.language === "zh" ? "\u751f\u6210\u5931\u8d25" : "Generation failed");
     state.activeStep = 4;
     const generatedJob = hydrateInlineJob(data.job);
     state.activeJob = generatedJob;
     const aiMessage = formatAiStatus(generatedJob);
-    const inlineMessage = generatedJob.inlinePreviewAvailable ? (state.language === "zh" ? " 内联预览已准备好。" : " Inline preview is ready.") : "";
-    setStatus(aiMessage ? `${state.language === "zh" ? "已完成。" : "Completed. "}${aiMessage}${inlineMessage}` : `${state.language === "zh" ? "已完成，预览已准备好。" : "Completed. Preview is ready."}${inlineMessage}`, generatedJob.aiStatus?.fallback ? "error" : "ok");
+    const inlineMessage = generatedJob.inlinePreviewAvailable ? (state.language === "zh" ? " \u5185\u8054\u9884\u89c8\u5df2\u51c6\u5907\u597d\u3002" : " Inline preview is ready.") : "";
+    setStatus(aiMessage ? `${state.language === "zh" ? "\u5df2\u5b8c\u6210\u3002" : "Completed. "}${aiMessage}${inlineMessage}` : `${state.language === "zh" ? "\u5df2\u5b8c\u6210\uff0c\u9884\u89c8\u5df2\u51c6\u5907\u597d\u3002" : "Completed. Preview is ready."}${inlineMessage}`, generatedJob.aiStatus?.fallback ? "error" : "ok");
     await loadJobs();
     const existingIndex = state.jobs.findIndex((job) => job.id === generatedJob.id);
     if (existingIndex >= 0) {
@@ -1664,7 +1664,7 @@ async function generate() {
 
 async function loadJobs() {
   const response = await fetch(apiUrl("/api/jobs"));
-  const data = await readJsonResponse(response, state.language === "zh" ? "无法加载任务" : "Could not load jobs");
+  const data = await readJsonResponse(response, state.language === "zh" ? "\u65e0\u6cd5\u52a0\u8f7d\u4efb\u52a1" : "Could not load jobs");
   state.jobs = (data.jobs || []).map(hydrateInlineJob);
   renderJobs();
   renderJobSelect();
@@ -2025,7 +2025,7 @@ function setPreviewEditing(force = null) {
     ensurePreviewEditorApi().toggleEdit();
   }
   updatePreviewEditButton(shouldEdit);
-  setStatus(shouldEdit ? (state.language === "zh" ? "正在预览中编辑。选择文字后可调整样式或下载 ZIP。" : "Editing in the preview. Select text, then use style buttons or download ZIP.") : (state.language === "zh" ? "已停止预览编辑。" : "Preview editing stopped."), shouldEdit ? "ok" : "");
+  setStatus(shouldEdit ? (state.language === "zh" ? "\u6b63\u5728\u9884\u89c8\u4e2d\u7f16\u8f91\u3002\u9009\u62e9\u6587\u5b57\u540e\u53ef\u8c03\u6574\u6837\u5f0f\u6216\u4e0b\u8f7d ZIP\u3002" : "Editing in the preview. Select text, then use style buttons or download ZIP.") : (state.language === "zh" ? "\u5df2\u505c\u6b62\u9884\u89c8\u7f16\u8f91\u3002" : "Preview editing stopped."), shouldEdit ? "ok" : "");
   return true;
 }
 
@@ -2085,7 +2085,7 @@ async function downloadJobZip(job) {
     setStatus(t("downloadingLatest"), "ok");
     triggerDownload(zipUrl, `${latestJob.id || "optimized-ppt"}.zip`);
   } catch (error) {
-    setStatus(error.message || (state.language === "zh" ? "无法打包修改后的 HTML。" : "Could not package the edited HTML."), "error");
+    setStatus(error.message || (state.language === "zh" ? "\u65e0\u6cd5\u6253\u5305\u4fee\u6539\u540e\u7684 HTML\u3002" : "Could not package the edited HTML."), "error");
   } finally {
     if (button) {
       button.disabled = false;
