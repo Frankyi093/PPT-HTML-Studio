@@ -24,6 +24,7 @@ const LANGUAGE_STORAGE_KEY = "ppt-html-studio-language";
 const THEME_STORAGE_KEY = "ppt-html-studio-theme";
 const PREVIEW_DESKTOP_WIDTH = 1280;
 const PREVIEW_DESKTOP_HEIGHT = 720;
+const CUSTOM_STYLE_STORAGE_KEY = "ppt-html-studio-custom-styles-v1";
 const i18n = {
   en: {
     help: "Help",
@@ -57,6 +58,29 @@ const i18n = {
     checkingUploadLimit: "Checking upload limit...",
     selected: "selected",
     style: "Style",
+    customStyle: "Custom style",
+    importPptStyle: "Import PPT style",
+    customStyleKicker: "Custom style",
+    customStyleTitle: "Create a reusable style",
+    customStyleName: "Style name",
+    customStyleTitleFont: "Title font",
+    customStyleBodyFont: "Body font",
+    customStyleLayout: "Layout preference",
+    customStyleBg: "Background",
+    customStyleText: "Text",
+    customStylePrimary: "Primary",
+    customStyleAccent: "Accent",
+    customStylePrompt: "AI prompt addon",
+    customStyleLocalRules: "Local rule summary",
+    saveCustomStyle: "Save style",
+    deleteCustomStyle: "Delete",
+    customStyleSaved: "Custom style saved on this browser.",
+    customStyleDeleted: "Custom style deleted.",
+    customStyleImported: "Imported a style draft from the PPT. Review and save it.",
+    customStyleNeedName: "Please enter a style name.",
+    customStyleNoDelete: "This style has not been saved yet.",
+    customStyleImportPptxOnly: "Please import a .pptx file.",
+    customStyleAnalyzing: "Analyzing PPT style...",
     keepText: "Keep text unchanged",
     keepTextDesc: "Do not modify wording",
     readable: "Readable 16px+",
@@ -229,6 +253,29 @@ const i18n = {
     checkingUploadLimit: "\u6b63\u5728\u68c0\u67e5\u4e0a\u4f20\u9650\u5236...",
     selected: "\u5df2\u9009\u62e9",
     style: "\u98ce\u683c",
+    customStyle: "\u81ea\u5b9a\u4e49\u98ce\u683c",
+    importPptStyle: "\u5bfc\u5165 PPT \u98ce\u683c",
+    customStyleKicker: "\u81ea\u5b9a\u4e49\u98ce\u683c",
+    customStyleTitle: "\u521b\u5efa\u53ef\u590d\u7528\u98ce\u683c",
+    customStyleName: "\u98ce\u683c\u540d\u79f0",
+    customStyleTitleFont: "\u6807\u9898\u5b57\u4f53",
+    customStyleBodyFont: "\u6b63\u6587\u5b57\u4f53",
+    customStyleLayout: "\u7248\u5f0f\u504f\u597d",
+    customStyleBg: "\u80cc\u666f\u8272",
+    customStyleText: "\u6587\u5b57\u8272",
+    customStylePrimary: "\u4e3b\u8272",
+    customStyleAccent: "\u5f3a\u8c03\u8272",
+    customStylePrompt: "AI \u63d0\u793a\u8bcd\u8865\u5145",
+    customStyleLocalRules: "\u672c\u5730\u89c4\u5219\u6458\u8981",
+    saveCustomStyle: "\u4fdd\u5b58\u98ce\u683c",
+    deleteCustomStyle: "\u5220\u9664",
+    customStyleSaved: "\u81ea\u5b9a\u4e49\u98ce\u683c\u5df2\u4fdd\u5b58\u5728\u672c\u6d4f\u89c8\u5668\u3002",
+    customStyleDeleted: "\u81ea\u5b9a\u4e49\u98ce\u683c\u5df2\u5220\u9664\u3002",
+    customStyleImported: "\u5df2\u4ece PPT \u751f\u6210\u98ce\u683c\u8349\u7a3f\uff0c\u68c0\u67e5\u540e\u4fdd\u5b58\u5373\u53ef\u4f7f\u7528\u3002",
+    customStyleNeedName: "\u8bf7\u8f93\u5165\u98ce\u683c\u540d\u79f0\u3002",
+    customStyleNoDelete: "\u8fd9\u4e2a\u98ce\u683c\u5c1a\u672a\u4fdd\u5b58\u3002",
+    customStyleImportPptxOnly: "\u8bf7\u5bfc\u5165 .pptx \u6587\u4ef6\u3002",
+    customStyleAnalyzing: "\u6b63\u5728\u5206\u6790 PPT \u98ce\u683c...",
     keepText: "\u4fdd\u6301\u6587\u5b57\u4e0d\u53d8",
     keepTextDesc: "\u4e0d\u4fee\u6539\u539f\u6587\u63aa\u8f9e",
     readable: "\u53ef\u8bfb 16px+",
@@ -471,10 +518,70 @@ const apiProviders = {
   },
 };
 
+function safeJsonParse(value, fallback) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeCustomStyle(style = {}) {
+  const id = String(style.id || `custom-${Date.now().toString(36)}`).replace(/[^a-z0-9_-]/gi, "").slice(0, 48);
+  const name = String(style.name || "Custom Style").trim().slice(0, 60);
+  const colors = style.colors || {};
+  const typography = style.typography || {};
+  return {
+    id: id.startsWith("custom-") ? id : `custom-${id}`,
+    name,
+    source: style.source || "manual",
+    colors: {
+      background: sanitizeHex(colors.background, "#f8fbff"),
+      text: sanitizeHex(colors.text, "#10203f"),
+      primary: sanitizeHex(colors.primary, "#2563eb"),
+      accent: sanitizeHex(colors.accent, "#38bdf8"),
+      panel: sanitizeHex(colors.panel, "#ffffff"),
+    },
+    typography: {
+      titleFont: sanitizeFont(typography.titleFont || "Inter, Arial, sans-serif"),
+      bodyFont: sanitizeFont(typography.bodyFont || "Inter, Arial, sans-serif"),
+    },
+    layout: ["balanced", "centered", "two-column", "image-focus", "minimal"].includes(style.layout) ? style.layout : "balanced",
+    promptAddon: String(style.promptAddon || "").trim().slice(0, 1600),
+    localRules: String(style.localRules || "").trim().slice(0, 1200),
+    createdAt: style.createdAt || new Date().toISOString(),
+    updatedAt: style.updatedAt || new Date().toISOString(),
+  };
+}
+
+function loadCustomStyles() {
+  const raw = safeJsonParse(localStorage.getItem(CUSTOM_STYLE_STORAGE_KEY), []);
+  return (Array.isArray(raw) ? raw : []).map(normalizeCustomStyle).slice(0, 24);
+}
+
+function persistCustomStyles() {
+  try {
+    localStorage.setItem(CUSTOM_STYLE_STORAGE_KEY, JSON.stringify(state.customStyles));
+  } catch {
+    setStatus("Could not save custom styles in this browser.", "error");
+  }
+}
+
+function sanitizeHex(value, fallback) {
+  const normalized = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : fallback;
+}
+
+function sanitizeFont(value) {
+  return String(value || "Inter, Arial, sans-serif").replace(/[<>{};]/g, "").slice(0, 120);
+}
+
 const state = {
   selectedFile: null,
   selectedStyle: "teaching",
   stylesExpanded: false,
+  customStyles: loadCustomStyles(),
+  editingCustomStyleId: null,
   language: localStorage.getItem(LANGUAGE_STORAGE_KEY) === "zh" ? "zh" : "en",
   theme: localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light",
   apiProvider: "local",
@@ -517,6 +624,8 @@ function t(key, vars = {}) {
 }
 
 function styleLabel(key, fallback = "") {
+  const custom = state.customStyles?.find((style) => style.id === key);
+  if (custom) return custom.name;
   return styleLabelKeys[key]?.[state.language] || styleLabelKeys[key]?.en || fallback || key;
 }
 
@@ -631,6 +740,23 @@ function translateStaticUi() {
     ["dropOr", "or"],
     ["dropButton", "uploadPpt"],
     ["styleTitle", "style"],
+    ["newCustomStyle", "customStyle"],
+    ["importStylePpt", "importPptStyle"],
+    ["customStyleKicker", "customStyleKicker"],
+    ["customStyleTitle", "customStyleTitle"],
+    ["closeCustomStyle", "close"],
+    ["customStyleNameLabel", "customStyleName"],
+    ["customStyleTitleFontLabel", "customStyleTitleFont"],
+    ["customStyleBodyFontLabel", "customStyleBodyFont"],
+    ["customStyleLayoutLabel", "customStyleLayout"],
+    ["customStyleBgLabel", "customStyleBg"],
+    ["customStyleTextLabel", "customStyleText"],
+    ["customStylePrimaryLabel", "customStylePrimary"],
+    ["customStyleAccentLabel", "customStyleAccent"],
+    ["customStylePromptLabel", "customStylePrompt"],
+    ["customStyleLocalLabel", "customStyleLocalRules"],
+    ["saveCustomStyle", "saveCustomStyle"],
+    ["deleteCustomStyle", "deleteCustomStyle"],
     ["keepTextLabel", "keepText"],
     ["keepTextSmall", "keepTextDesc"],
     ["readableTextLabel", "readable"],
@@ -753,6 +879,10 @@ function apiHeaders(config) {
 }
 
 function clientStylePrompt(style) {
+  const custom = state.customStyles.find((item) => item.id === style);
+  if (custom) {
+    return `Custom style "${custom.name}": background ${custom.colors.background}, text ${custom.colors.text}, primary ${custom.colors.primary}, accent ${custom.colors.accent}, title font ${custom.typography.titleFont}, body font ${custom.typography.bodyFont}, layout preference ${custom.layout}. ${custom.promptAddon || custom.localRules || "Use this style consistently while preserving readability and images."}`;
+  }
   const map = {
     teaching: "Teaching Blue: calm education technology, navy text, blue accents, lecture-friendly hierarchy.",
     softlesson: "Soft Lesson: warm white background, gentle blue accents, quiet workshop feeling.",
@@ -771,6 +901,7 @@ function clientStylePrompt(style) {
 }
 
 function clientAiPrompt(slides, style) {
+  const custom = state.customStyles.find((item) => item.id === style);
   const compactSlides = slides.map((slide) => ({
     page: slide.page,
     title: slide.title,
@@ -797,8 +928,9 @@ Rules:
 - If a slide has images, reserve clear visual areas for the original PPT images using only empty placeholders. Use <figure data-image-slot="page-number"></figure> for one image, or <figure data-image-slot="page-number-a"></figure>, <figure data-image-slot="page-number-b"></figure> for multiple images. Never create fake image paths, empty <img src=""> tags, or visible labels such as "page-8a".
 - Image areas must be proportional to the amount of text. Images should usually occupy 28-42% of the slide width, max 44vh tall when text is present, and must never overlap text or navigation.
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically. Include window.toggleEdit(force), window.exportEditedHtml(mode).
+${custom ? `Custom style local rule summary: ${custom.localRules || "Use the saved custom style parameters."}` : ""}
 PPT JSON:
-${JSON.stringify({ style, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
+${JSON.stringify({ style, customStyle: custom, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
 }
 
 function extractHtmlFromAiText(text) {
@@ -1044,6 +1176,31 @@ function closeSettings() {
   el("settingsOverlay").classList.add("hidden");
 }
 
+function activeCustomStyle() {
+  return state.customStyles.find((style) => style.id === state.selectedStyle) || null;
+}
+
+function customStylePreviewMeta(custom) {
+  const swatches = [
+    custom.colors?.background || "#f8fbff",
+    custom.colors?.primary || "#2563eb",
+    custom.colors?.accent || "#38bdf8",
+  ];
+  const layoutMap = {
+    centered: "soft",
+    "two-column": "line",
+    "image-focus": "blocks",
+    minimal: "minimal",
+    balanced: "bar",
+  };
+  return {
+    swatches,
+    font: custom.typography?.titleFont?.split(",")[0]?.replace(/['"]/g, "") || "Custom",
+    sample: custom.layout || "Custom",
+    layout: layoutMap[custom.layout] || "bar",
+  };
+}
+
 function renderSteps() {
   el("steps").innerHTML = stepKeys.map(([titleKey, descKey], index) => `
     <li class="${index <= state.activeStep ? "active" : ""}">
@@ -1063,11 +1220,19 @@ function renderStyles() {
   }
   const tabs = el("styleTabs");
   tabs.classList.toggle("is-collapsed", !state.stylesExpanded);
-  tabs.innerHTML = styles.map(([key, label]) => {
-    const preview = stylePreview(key);
+  const allStyles = [
+    ...styles.map(([key, label]) => ({ key, label, custom: false, preview: stylePreview(key) })),
+    ...state.customStyles.map((custom) => ({
+      key: custom.id,
+      label: custom.name,
+      custom: true,
+      preview: customStylePreviewMeta(custom),
+    })),
+  ];
+  tabs.innerHTML = allStyles.map(({ key, label, custom, preview }) => {
     const swatches = preview.swatches.map((color) => `<span style="--swatch:${color}"></span>`).join("");
     return `
-    <button type="button" class="style-card ${state.selectedStyle === key ? "selected" : ""}" data-style="${key}" aria-label="${styleLabel(key, label)}">
+    <button type="button" class="style-card ${custom ? "custom-style-card" : ""} ${state.selectedStyle === key ? "selected" : ""}" data-style="${key}" aria-label="${styleLabel(key, label)}">
       <span class="style-preview style-preview-${preview.layout}" aria-hidden="true">
         <span class="style-preview-title"></span>
         <span class="style-preview-lines"><i></i><i></i><i></i></span>
@@ -1088,6 +1253,105 @@ function renderStyles() {
       renderSteps();
     });
   });
+}
+
+function openCustomStyle(style = null) {
+  const saved = style?.id && state.customStyles.some((item) => item.id === style.id);
+  const custom = style ? normalizeCustomStyle(style) : normalizeCustomStyle({
+    name: "",
+    colors: { background: "#f8fbff", text: "#10203f", primary: "#2563eb", accent: "#38bdf8", panel: "#ffffff" },
+    typography: { titleFont: "Inter, Arial, sans-serif", bodyFont: "Inter, Arial, sans-serif" },
+    layout: "balanced",
+    promptAddon: "",
+    localRules: "",
+  });
+  state.editingCustomStyleId = saved ? style.id : null;
+  el("customStyleName").value = style?.name || "";
+  el("customStyleTitleFont").value = custom.typography.titleFont;
+  el("customStyleBodyFont").value = custom.typography.bodyFont;
+  el("customStyleLayout").value = custom.layout;
+  el("customStyleBg").value = custom.colors.background;
+  el("customStyleText").value = custom.colors.text;
+  el("customStylePrimary").value = custom.colors.primary;
+  el("customStyleAccent").value = custom.colors.accent;
+  el("customStylePrompt").value = custom.promptAddon;
+  el("customStyleLocalRules").value = custom.localRules;
+  el("customStyleStatus").textContent = "";
+  el("deleteCustomStyle").disabled = !saved;
+  updateCustomStylePreview();
+  el("customStyleOverlay").classList.remove("hidden");
+}
+
+function closeCustomStyle() {
+  el("customStyleOverlay").classList.add("hidden");
+}
+
+function customStyleFromForm() {
+  const existing = state.customStyles.find((style) => style.id === state.editingCustomStyleId);
+  return normalizeCustomStyle({
+    id: existing?.id || `custom-${Date.now().toString(36)}`,
+    name: el("customStyleName").value.trim(),
+    colors: {
+      background: el("customStyleBg").value,
+      text: el("customStyleText").value,
+      primary: el("customStylePrimary").value,
+      accent: el("customStyleAccent").value,
+      panel: "#ffffff",
+    },
+    typography: {
+      titleFont: el("customStyleTitleFont").value,
+      bodyFont: el("customStyleBodyFont").value,
+    },
+    layout: el("customStyleLayout").value,
+    promptAddon: el("customStylePrompt").value,
+    localRules: el("customStyleLocalRules").value,
+    source: existing?.source || "manual",
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+function updateCustomStylePreview() {
+  const preview = el("customStylePreview");
+  if (!preview) return;
+  const style = customStyleFromForm();
+  preview.style.setProperty("--custom-preview-bg", style.colors.background);
+  preview.style.setProperty("--custom-preview-text", style.colors.text);
+  preview.style.setProperty("--custom-preview-primary", style.colors.primary);
+  preview.style.setProperty("--custom-preview-accent", style.colors.accent);
+  preview.style.setProperty("--custom-preview-title-font", style.typography.titleFont);
+  preview.style.setProperty("--custom-preview-body-font", style.typography.bodyFont);
+}
+
+function saveCustomStyleFromForm() {
+  if (!el("customStyleName").value.trim()) {
+    el("customStyleStatus").textContent = t("customStyleNeedName");
+    return;
+  }
+  const style = customStyleFromForm();
+  const index = state.customStyles.findIndex((item) => item.id === style.id);
+  if (index >= 0) state.customStyles[index] = style;
+  else state.customStyles.push(style);
+  state.selectedStyle = style.id;
+  state.stylesExpanded = true;
+  persistCustomStyles();
+  renderStyles();
+  renderSteps();
+  el("customStyleStatus").textContent = t("customStyleSaved");
+}
+
+function deleteCustomStyleFromForm() {
+  if (!state.editingCustomStyleId) {
+    el("customStyleStatus").textContent = t("customStyleNoDelete");
+    return;
+  }
+  state.customStyles = state.customStyles.filter((style) => style.id !== state.editingCustomStyleId);
+  if (state.selectedStyle === state.editingCustomStyleId) state.selectedStyle = "teaching";
+  persistCustomStyles();
+  renderStyles();
+  renderSteps();
+  closeCustomStyle();
+  setStatus(t("customStyleDeleted"), "ok");
 }
 
 function setStatus(message, kind = "") {
@@ -1429,6 +1693,88 @@ async function extractPptxInBrowser(file) {
   return { slides, stats };
 }
 
+function topFrequency(values, fallback) {
+  const counts = new Map();
+  values.filter(Boolean).forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || fallback;
+}
+
+function readableTextColor(background) {
+  const hex = sanitizeHex(background, "#ffffff").slice(1);
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.62 ? "#10203f" : "#f8fbff";
+}
+
+async function analyzeStylePptx(file) {
+  if (!/\.pptx$/i.test(file?.name || "")) throw new Error(t("customStyleImportPptxOnly"));
+  const JSZipRuntime = await loadClientZipRuntime();
+  const zip = await JSZipRuntime.loadAsync(await file.arrayBuffer());
+  const xmlPaths = Object.keys(zip.files).filter((name) => /^ppt\/(theme|slides)\//i.test(name) && /\.xml$/i.test(name));
+  const colors = [];
+  const fonts = [];
+  let imageSlides = 0;
+  let totalSlides = 0;
+  let textRuns = 0;
+  for (const path of xmlPaths) {
+    const xml = await zip.file(path).async("string");
+    [...xml.matchAll(/<a:srgbClr\b[^>]*\bval="([0-9A-Fa-f]{6})"/g)].forEach((match) => colors.push(`#${match[1].toLowerCase()}`));
+    [...xml.matchAll(/\btypeface="([^"]+)"/g)].forEach((match) => {
+      const font = clientXmlDecode(match[1]).trim();
+      if (font && !/^\+/.test(font)) fonts.push(font);
+    });
+    if (/^ppt\/slides\/slide\d+\.xml$/i.test(path)) {
+      totalSlides += 1;
+      if (/<p:pic\b|r:embed="/i.test(xml)) imageSlides += 1;
+      textRuns += (xml.match(/<a:t\b/g) || []).length;
+    }
+  }
+  const bg = topFrequency(colors.filter((color) => !["#000000", "#ffffff"].includes(color)), "#f8fbff");
+  const primary = topFrequency(colors.filter((color) => color !== bg && color !== "#ffffff"), "#2563eb");
+  const accent = topFrequency(colors.filter((color) => color !== bg && color !== primary), "#38bdf8");
+  const titleFont = topFrequency(fonts, "Inter");
+  const bodyFont = topFrequency(fonts.filter((font) => font !== titleFont), titleFont || "Arial");
+  const imageRatio = totalSlides ? imageSlides / totalSlides : 0;
+  const avgTextRuns = totalSlides ? textRuns / totalSlides : 0;
+  const layout = imageRatio > 0.45 ? "image-focus" : avgTextRuns > 18 ? "two-column" : avgTextRuns < 7 ? "minimal" : "balanced";
+  const nameBase = file.name.replace(/\.pptx$/i, "").replace(/[_-]+/g, " ").trim().slice(0, 34) || "Imported PPT";
+  return normalizeCustomStyle({
+    id: `custom-${Date.now().toString(36)}`,
+    name: `${nameBase} Style`,
+    source: "imported-ppt",
+    colors: {
+      background: bg,
+      text: readableTextColor(bg),
+      primary,
+      accent,
+      panel: "#ffffff",
+    },
+    typography: {
+      titleFont: `${titleFont}, Arial, sans-serif`,
+      bodyFont: `${bodyFont}, Arial, sans-serif`,
+    },
+    layout,
+    promptAddon: `Use the imported PPT visual language: background ${bg}, primary color ${primary}, accent ${accent}, title font mood "${titleFont}", body font mood "${bodyFont}", and a ${layout} layout rhythm. Preserve images, avoid overlap, keep strong contrast, and keep slides airy.`,
+    localRules: `Imported from ${file.name}. Favor ${layout} layouts, ${imageRatio > 0.35 ? "medium image areas" : "text-first structure"}, large centered titles, readable body text, and colors ${bg}, ${primary}, ${accent}.`,
+  });
+}
+
+async function importCustomStyleFromPpt(file) {
+  try {
+    setStatus(t("customStyleAnalyzing"));
+    const style = await analyzeStylePptx(file);
+    openCustomStyle(style);
+    el("customStyleStatus").textContent = t("customStyleImported");
+    setStatus(t("customStyleImported"), "ok");
+  } catch (error) {
+    setStatus(error.message || t("customStyleImportPptxOnly"), "error");
+  } finally {
+    el("styleImportInput").value = "";
+  }
+}
+
 function clientEditorRuntime() {
   return `${clientInjectedDeckSafetyStyle()}<style id="ppt-html-editor-style">.editor-toolbar{position:fixed;z-index:9999;top:14px;right:14px;display:none;gap:6px;padding:8px;border:1px solid #c7d2fe;border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.16);font-family:Arial,sans-serif}body.editing .editor-toolbar{display:flex}.editor-toolbar button,.editor-toolbar select,.editor-toolbar input{height:30px;border:1px solid #c7d2fe;border-radius:8px;background:#fff;color:#1e3a8a;font:700 12px Arial;padding:0 8px}body.editing .editable-text,body.editing [contenteditable=true]{outline:2px dashed #60a5fa;outline-offset:3px}.media-box,.editable-image-box{position:relative;overflow:visible;min-width:80px;min-height:60px}.media-box img,.editable-image-box img{width:100%;height:100%;object-fit:contain;display:block}body.editing .selected-image{outline:2px dashed #2563eb;outline-offset:4px;z-index:50}.image-drag-handle,.image-resize-handle{display:none;position:absolute;z-index:60}.selected-image>.image-drag-handle,.selected-image>.image-resize-handle{display:block}.image-drag-handle{left:50%;top:-18px;transform:translateX(-50%);width:42px;height:14px;border-radius:999px;background:#2563eb;cursor:grab}.image-resize-handle{width:13px;height:13px;border:2px solid #fff;border-radius:4px;background:#f59e0b;box-shadow:0 0 0 1px rgba(15,23,42,.24)}.image-resize-handle.nw{left:-8px;top:-8px;cursor:nwse-resize}.image-resize-handle.ne{right:-8px;top:-8px;cursor:nesw-resize}.image-resize-handle.sw{left:-8px;bottom:-8px;cursor:nesw-resize}.image-resize-handle.se{right:-8px;bottom:-8px;cursor:nwse-resize}.ppt-runtime-nav{position:fixed;z-index:9990;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:8px}.ppt-runtime-nav button,button[onclick*="nextSlide"],button[onclick*="prevSlide"]{min-width:46px!important;height:32px!important;padding:0 12px!important;border-radius:8px!important;border:1px solid rgba(37,99,235,.22)!important;background:rgba(255,255,255,.9)!important;color:#1e3a8a!important;font:800 14px/1 Arial,sans-serif!important;box-shadow:0 8px 22px rgba(15,23,42,.12)!important}.ppt-runtime-nav button:last-child{background:#2563eb!important;color:#fff!important}body.scroll-mode .ppt-runtime-nav{display:none}</style><script>(()=>{let i=0;const slides=[...document.querySelectorAll('.slide,section[data-slide-page],.ai-slide,[data-slide-page]')].filter(n=>!n.closest('.editor-toolbar,.ppt-runtime-nav'));let selected=null;slides.forEach(s=>{s.classList.add('ppt-runtime-slide');if(!s.style.position)s.style.position='relative'});function show(n){if(!slides.length)return;i=Math.max(0,Math.min(n,slides.length-1));slides.forEach((s,k)=>{const a=k===i;s.classList.toggle('active',a);s.classList.toggle('ppt-active-slide',a);if(!document.body.classList.contains('scroll-mode'))s.style.display=a?(s.dataset.originalDisplay||'block'):'none'})}function next(){show(i+1)}function prev(){show(i-1)}function nav(){if(document.querySelector('.ppt-runtime-nav'))return;const n=document.createElement('div');n.className='ppt-runtime-nav';n.innerHTML='<button type="button">Prev</button><button type="button">Next</button>';n.children[0].onclick=e=>{e.preventDefault();prev()};n.children[1].onclick=e=>{e.preventDefault();next()};document.body.appendChild(n)}function apply(p,v){const t=selected&&!selected.matches('.media-box,.editable-image-box,img')?selected:document.activeElement;if(t&&t!==document.body)t.style[p]=v}function toolbar(){if(document.querySelector('.editor-toolbar'))return;const t=document.createElement('div');t.className='editor-toolbar';t.innerHTML='<select data-font><option value="Arial,sans-serif">Arial</option><option value="Georgia,serif">Georgia</option><option value="Times New Roman,serif">Times</option><option value="Verdana,sans-serif">Verdana</option><option value="Microsoft YaHei,sans-serif">Microsoft YaHei</option></select><input data-size type="number" min="12" max="120" value="30"><input data-color type="color" value="#172554"><button data-bold>B</button><button data-italic>I</button><button data-underline>U</button>';document.body.appendChild(t);t.querySelector('[data-font]').onchange=e=>apply('fontFamily',e.target.value);t.querySelector('[data-size]').onchange=e=>apply('fontSize',e.target.value+'px');t.querySelector('[data-color]').oninput=e=>apply('color',e.target.value);t.querySelector('[data-bold]').onclick=()=>document.execCommand('bold');t.querySelector('[data-italic]').onclick=()=>document.execCommand('italic');t.querySelector('[data-underline]').onclick=()=>document.execCommand('underline')}function sel(el){selected=el&&el.closest('.media-box,.editable-image-box,.editable-text,.point-card,h1,.chapter,[contenteditable=true]');document.querySelectorAll('.selected-image').forEach(n=>n.classList.remove('selected-image'));if(selected?.matches?.('.media-box,.editable-image-box'))selected.classList.add('selected-image')}function move(el,e){e.preventDefault();e.stopPropagation();sel(el);const r=el.getBoundingClientRect(),p=(slides[i]||document.body).getBoundingClientRect(),sx=e.clientX,sy=e.clientY,bl=r.left-p.left,bt=r.top-p.top;el.style.position='absolute';el.style.left=bl+'px';el.style.top=bt+'px';el.style.width=r.width+'px';el.style.height=r.height+'px';const mm=m=>{el.style.left=Math.max(0,Math.min(bl+m.clientX-sx,p.width-r.width))+'px';el.style.top=Math.max(0,Math.min(bt+m.clientY-sy,p.height-r.height))+'px'};const up=()=>{e.target.removeEventListener('pointermove',mm);e.target.removeEventListener('pointerup',up)};e.target.addEventListener('pointermove',mm);e.target.addEventListener('pointerup',up)}function resize(el,c,e){e.preventDefault();e.stopPropagation();sel(el);const r=el.getBoundingClientRect(),p=(slides[i]||document.body).getBoundingClientRect(),sx=e.clientX,sy=e.clientY,bl=r.left-p.left,bt=r.top-p.top;el.style.position='absolute';const mm=m=>{const dx=m.clientX-sx,dy=m.clientY-sy;let w=r.width+(c.includes('e')?dx:-dx),h=r.height+(c.includes('s')?dy:-dy),l=c.includes('w')?bl+dx:bl,t=c.includes('n')?bt+dy:bt;w=Math.max(80,Math.min(w,p.width));h=Math.max(60,Math.min(h,p.height));l=Math.max(0,Math.min(l,p.width-w));t=Math.max(0,Math.min(t,p.height-h));Object.assign(el.style,{left:l+'px',top:t+'px',width:w+'px',height:h+'px'})};const up=()=>{e.target.removeEventListener('pointermove',mm);e.target.removeEventListener('pointerup',up)};e.target.addEventListener('pointermove',mm);e.target.addEventListener('pointerup',up)}function prep(){document.querySelectorAll('img').forEach(img=>{img.draggable=false;img.ondragstart=e=>e.preventDefault();let box=img.closest('.media-box,.editable-image-box');if(!box){box=document.createElement('span');box.className='editable-image-box';img.parentNode.insertBefore(box,img);box.appendChild(img)}if(box.dataset.dragReady)return;if(getComputedStyle(box).position==='static')box.style.position='relative';box.dataset.dragReady='1';const d=document.createElement('span');d.className='image-drag-handle';d.onpointerdown=e=>move(box,e);box.appendChild(d);['nw','ne','sw','se'].forEach(c=>{const h=document.createElement('span');h.className='image-resize-handle '+c;h.onpointerdown=e=>resize(box,c,e);box.appendChild(h)});box.onpointerdown=e=>{if(document.body.classList.contains('editing')&&!e.target.closest('.image-drag-handle,.image-resize-handle'))sel(box)}})}window.toggleEdit=force=>{const editing=typeof force==='boolean'?force:!document.body.classList.contains('editing');toolbar();document.body.classList.toggle('editing',editing);document.querySelectorAll('h1,.chapter,.point-card,.editable-text,p,li').forEach(n=>n.contentEditable=editing?'true':'false');if(editing)prep()};window.exportEditedHtml=async(mode='paged')=>{const c=document.documentElement.cloneNode(true);c.querySelector('.editor-toolbar')?.remove();c.querySelector('#ppt-html-editor-style')?.remove();c.querySelectorAll('.image-drag-handle,.image-resize-handle,.ppt-runtime-nav').forEach(n=>n.remove());c.querySelectorAll('[contenteditable]').forEach(n=>n.removeAttribute('contenteditable'));c.querySelector('body')?.classList.remove('editing');if(mode==='scroll'){c.querySelector('body')?.classList.add('scroll-mode');c.querySelectorAll('.slide,section[data-slide-page],[data-slide-page]').forEach(n=>{n.style.display='block';n.style.visibility='visible';n.style.opacity='1'})}else c.querySelector('body')?.classList.remove('scroll-mode');return '<!doctype html>\\n'+c.outerHTML};window.nextSlide=next;window.prevSlide=prev;window.showSlide=show;document.addEventListener('click',e=>{if(document.body.classList.contains('editing'))sel(e.target)},false);nav();show(0)})();</script>`;
 }
@@ -1473,6 +1819,7 @@ function clientTextBlocks(items, max = 18) {
 }
 
 function clientLocalStyleVariantCss() {
+  const customCss = state.customStyles.map((style) => customStyleCss(style)).join("");
   return `<style id="ppt-local-style-variants">
     body.style-teaching .slide{background:#f8fbff}body.style-teaching .slide-inner{border-top:10px solid #3b82f6}body.style-teaching .point-card{background:#eef6ff;border-color:#bfdbfe}
     body.style-softlesson .slide{background:radial-gradient(circle at 88% 14%,rgba(139,199,247,.2),transparent 28%),#fffaf3}body.style-softlesson .slide-inner{padding-top:clamp(58px,8vh,96px)}body.style-softlesson h1{color:#23395d;text-align:center;margin-inline:auto}body.style-softlesson .point-card{background:#fff8ec;border-color:#d9ecff;border-radius:18px}
@@ -1487,7 +1834,19 @@ function clientLocalStyleVariantCss() {
     body.style-editorial .slide{background:#fffdf8}body.style-editorial .slide-inner{padding-left:clamp(92px,11vw,170px)}body.style-editorial h1,body.style-editorial .lead-text{font-family:Georgia,'Times New Roman',serif}body.style-editorial .lead-text{border-left:4px solid #b45309;padding-left:24px}body.style-editorial .point-card{background:#faf2e4;border-color:#e8d2b2}
     body.style-vivid .slide{background:linear-gradient(135deg,#fff7ed 0%,#f8fbff 62%,#eff6ff 100%)}body.style-vivid .chapter{background:#f97316;color:#fff;width:max-content;padding:5px 12px;border-radius:999px}body.style-vivid .point-card{background:#fff7ed;border-color:#fed7aa}
     body.style-academic .media-box img,body.style-editorial .media-box img{border:1px solid rgba(31,41,55,.16)}body.style-vivid .media-box img,body.style-teaching .media-box img{border:1px solid rgba(37,99,235,.18)}
+    ${customCss}
   </style>`;
+}
+
+function customStyleCss(style) {
+  const cls = `style-${style.id}`;
+  const c = style.colors;
+  const t = style.typography;
+  const centered = style.layout === "centered" ? `body.${cls} header{text-align:center;margin-inline:auto}body.${cls} h1{text-align:center;margin-inline:auto}` : "";
+  const minimal = style.layout === "minimal" ? `body.${cls} .point-card{background:transparent;border-width:0 0 1px 0;border-radius:0}` : "";
+  const twoColumn = style.layout === "two-column" ? `body.${cls} .text-only .lesson-block,body.${cls} .text-only .statement-block{max-width:1180px}body.${cls} .text-only .quiet-list.multi-column{grid-template-columns:repeat(2,minmax(0,1fr))}` : "";
+  const imageFocus = style.layout === "image-focus" ? `body.${cls} .media-grid{width:min(44vw,660px)}body.${cls} .image-focus .media-grid{width:min(58vw,820px)}` : "";
+  return `body.${cls} .slide{background:${c.background};color:${c.text};font-family:${t.bodyFont}}body.${cls} h1{font-family:${t.titleFont};color:${c.text}}body.${cls} .lead-text,body.${cls} .body-paragraph,body.${cls} .quiet-list li,body.${cls} .agenda-item p{font-family:${t.bodyFont};color:${c.text}}body.${cls} .chapter,body.${cls} .agenda-item span{color:${c.primary}}body.${cls} .quiet-list li:before,body.${cls} .quiet-list li::before{background:${c.accent}}body.${cls} .point-card{background:${c.panel};border-color:${c.accent};color:${c.text}}body.${cls} .media-box img{border:1px solid ${c.accent};border-radius:8px}${centered}${minimal}${twoColumn}${imageFocus}`;
 }
 
 function buildBrowserFallbackHtmlBase(slides, style, mode = "paged") {
@@ -1610,6 +1969,7 @@ async function generateInBrowserFallback(reason) {
             body: JSON.stringify({
               filename: state.selectedFile.name,
               style: state.selectedStyle,
+              customStyle: activeCustomStyle(),
               integration: fallbackIntegration,
               slides,
               stats,
@@ -1642,6 +2002,7 @@ async function generateInBrowserFallback(reason) {
         body: JSON.stringify({
           filename: state.selectedFile.name,
           style: state.selectedStyle,
+          customStyle: activeCustomStyle(),
           integration: integrationForGeneration(),
           slides,
           stats,
@@ -1734,6 +2095,7 @@ async function generate() {
         filename: state.selectedFile.name,
         fileBase64,
         style: state.selectedStyle,
+        customStyle: activeCustomStyle(),
         integration: integrationForGeneration(),
         options: {
           keepText: el("keepText").checked,
@@ -2577,6 +2939,7 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !el("helpOverlay").classList.contains("hidden")) closeHelp();
     if (event.key === "Escape" && !el("settingsOverlay").classList.contains("hidden")) closeSettings();
+    if (event.key === "Escape" && !el("customStyleOverlay").classList.contains("hidden")) closeCustomStyle();
   });
   el("settingsButton").addEventListener("click", openSettings);
   el("closeSettings").addEventListener("click", closeSettings);
@@ -2588,6 +2951,19 @@ function bindEvents() {
   });
   el("themeSelect")?.addEventListener("change", (event) => {
     applyTheme(event.target.value);
+  });
+  el("newCustomStyle")?.addEventListener("click", () => openCustomStyle(activeCustomStyle()));
+  el("importStylePpt")?.addEventListener("click", () => el("styleImportInput")?.click());
+  el("styleImportInput")?.addEventListener("change", (event) => importCustomStyleFromPpt(event.target.files?.[0]));
+  el("closeCustomStyle")?.addEventListener("click", closeCustomStyle);
+  el("customStyleOverlay")?.addEventListener("click", (event) => {
+    if (event.target === el("customStyleOverlay")) closeCustomStyle();
+  });
+  el("saveCustomStyle")?.addEventListener("click", saveCustomStyleFromForm);
+  el("deleteCustomStyle")?.addEventListener("click", deleteCustomStyleFromForm);
+  ["customStyleName", "customStyleTitleFont", "customStyleBodyFont", "customStyleLayout", "customStyleBg", "customStyleText", "customStylePrimary", "customStyleAccent", "customStylePrompt", "customStyleLocalRules"].forEach((id) => {
+    el(id)?.addEventListener("input", updateCustomStylePreview);
+    el(id)?.addEventListener("change", updateCustomStylePreview);
   });
   el("toggleStyles")?.addEventListener("click", () => {
     state.stylesExpanded = !state.stylesExpanded;
