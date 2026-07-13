@@ -79,6 +79,7 @@ const i18n = {
     customStyleImported: "Imported a style draft from the PPT. Review and save it.",
     customStyleNeedName: "Please enter a style name.",
     customStyleNoDelete: "This style has not been saved yet.",
+    customStyleConfirmDelete: "Delete this custom style?",
     customStyleImportPptxOnly: "Please import a .pptx file.",
     customStyleAnalyzing: "Analyzing PPT style...",
     keepText: "Keep text unchanged",
@@ -274,6 +275,7 @@ const i18n = {
     customStyleImported: "\u5df2\u4ece PPT \u751f\u6210\u98ce\u683c\u8349\u7a3f\uff0c\u68c0\u67e5\u540e\u4fdd\u5b58\u5373\u53ef\u4f7f\u7528\u3002",
     customStyleNeedName: "\u8bf7\u8f93\u5165\u98ce\u683c\u540d\u79f0\u3002",
     customStyleNoDelete: "\u8fd9\u4e2a\u98ce\u683c\u5c1a\u672a\u4fdd\u5b58\u3002",
+    customStyleConfirmDelete: "\u786e\u5b9a\u5220\u9664\u8fd9\u4e2a\u81ea\u5b9a\u4e49\u98ce\u683c\u5417\uff1f",
     customStyleImportPptxOnly: "\u8bf7\u5bfc\u5165 .pptx \u6587\u4ef6\u3002",
     customStyleAnalyzing: "\u6b63\u5728\u5206\u6790 PPT \u98ce\u683c...",
     keepText: "\u4fdd\u6301\u6587\u5b57\u4e0d\u53d8",
@@ -1233,6 +1235,7 @@ function renderStyles() {
     const swatches = preview.swatches.map((color) => `<span style="--swatch:${color}"></span>`).join("");
     return `
     <button type="button" class="style-card ${custom ? "custom-style-card" : ""} ${state.selectedStyle === key ? "selected" : ""}" data-style="${key}" aria-label="${styleLabel(key, label)}">
+      ${custom ? `<span class="custom-style-delete" role="button" tabindex="0" data-delete-style="${key}" aria-label="${t("deleteCustomStyle")}">x</span>` : ""}
       <span class="style-preview style-preview-${preview.layout}" aria-hidden="true">
         <span class="style-preview-title"></span>
         <span class="style-preview-lines"><i></i><i></i><i></i></span>
@@ -1245,6 +1248,17 @@ function renderStyles() {
       <span class="style-swatches" aria-hidden="true">${swatches}</span>
     </button>`;
   }).join("");
+  document.querySelectorAll("[data-delete-style]").forEach((control) => {
+    const runDelete = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteCustomStyleById(control.dataset.deleteStyle, true);
+    };
+    control.addEventListener("click", runDelete);
+    control.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") runDelete(event);
+    });
+  });
   document.querySelectorAll("[data-style]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedStyle = button.dataset.style;
@@ -1345,12 +1359,22 @@ function deleteCustomStyleFromForm() {
     el("customStyleStatus").textContent = t("customStyleNoDelete");
     return;
   }
-  state.customStyles = state.customStyles.filter((style) => style.id !== state.editingCustomStyleId);
-  if (state.selectedStyle === state.editingCustomStyleId) state.selectedStyle = "teaching";
+  deleteCustomStyleById(state.editingCustomStyleId, false);
+}
+
+function deleteCustomStyleById(styleId, ask = true) {
+  const style = state.customStyles.find((item) => item.id === styleId);
+  if (!style) return;
+  if (ask && !window.confirm(t("customStyleConfirmDelete"))) return;
+  state.customStyles = state.customStyles.filter((item) => item.id !== styleId);
+  if (state.selectedStyle === styleId) state.selectedStyle = "teaching";
+  if (state.editingCustomStyleId === styleId) {
+    state.editingCustomStyleId = null;
+    closeCustomStyle();
+  }
   persistCustomStyles();
   renderStyles();
   renderSteps();
-  closeCustomStyle();
   setStatus(t("customStyleDeleted"), "ok");
 }
 
@@ -1708,6 +1732,73 @@ function readableTextColor(background) {
   return luminance > 0.62 ? "#10203f" : "#f8fbff";
 }
 
+function clientExtractSlideStyleProfile(slideXml, index) {
+  const texts = clientNormalizeTextFragments(clientExtractTexts(slideXml));
+  const colors = [...slideXml.matchAll(/<a:srgbClr\b[^>]*\bval="([0-9A-Fa-f]{6})"/g)].map((match) => `#${match[1].toLowerCase()}`);
+  const fonts = [...slideXml.matchAll(/\btypeface="([^"]+)"/g)]
+    .map((match) => clientXmlDecode(match[1]).trim())
+    .filter((font) => font && !/^\+/.test(font));
+  const hasImages = /<p:pic\b|r:embed="/i.test(slideXml);
+  const textBoxes = [...slideXml.matchAll(/<p:sp\b[\s\S]*?<\/p:sp>/g)].map((match) => {
+    const block = match[0];
+    const text = clientCleanText(clientExtractTexts(block).join(" "));
+    const off = block.match(/<a:off\b[^>]*\bx="(-?\d+)"[^>]*\by="(-?\d+)"/);
+    const ext = block.match(/<a:ext\b[^>]*\bcx="(\d+)"[^>]*\bcy="(\d+)"/);
+    return {
+      text,
+      x: Number(off?.[1] || 0),
+      y: Number(off?.[2] || 0),
+      cx: Number(ext?.[1] || 0),
+      cy: Number(ext?.[2] || 0),
+    };
+  }).filter((box) => box.text);
+  const firstBox = textBoxes[0] || {};
+  const isTitleLike = index === 0 || (texts.length <= 3 && !hasImages) || (texts.length <= 4 && firstBox.y > 900000 && firstBox.y < 3000000);
+  const titlePlacement = firstBox.x && firstBox.cx
+    ? ((firstBox.x + firstBox.cx / 2) > 5000000 && (firstBox.x + firstBox.cx / 2) < 7200000 ? "centered" : firstBox.x < 2200000 ? "left" : "right")
+    : "unknown";
+  return {
+    index,
+    texts,
+    textCount: texts.length,
+    colors,
+    fonts,
+    hasImages,
+    imageCount: (slideXml.match(/<p:pic\b|r:embed="/gi) || []).length,
+    isTitleLike,
+    titlePlacement,
+    boxCount: textBoxes.length,
+  };
+}
+
+function summarizeImportedProfiles(profiles) {
+  const titleProfiles = profiles.filter((profile) => profile.isTitleLike);
+  const contentProfiles = profiles.filter((profile) => !profile.isTitleLike);
+  const source = contentProfiles.length ? contentProfiles : profiles;
+  const titlePlacement = topFrequency(titleProfiles.map((profile) => profile.titlePlacement).filter((value) => value !== "unknown"), "centered");
+  const imageRatio = source.length ? source.filter((profile) => profile.hasImages).length / source.length : 0;
+  const avgContentText = source.length ? source.reduce((sum, profile) => sum + profile.textCount, 0) / source.length : 0;
+  const avgContentImages = source.length ? source.reduce((sum, profile) => sum + profile.imageCount, 0) / source.length : 0;
+  const layout = imageRatio > 0.48 ? "image-focus" : avgContentText > 16 ? "two-column" : avgContentText < 6 ? "minimal" : titlePlacement === "centered" ? "centered" : "balanced";
+  return {
+    titlePage: {
+      count: titleProfiles.length,
+      placement: titlePlacement,
+      font: topFrequency(titleProfiles.flatMap((profile) => profile.fonts), ""),
+      colors: titleProfiles.flatMap((profile) => profile.colors).slice(0, 30),
+    },
+    contentPage: {
+      count: contentProfiles.length,
+      avgText: Number(avgContentText.toFixed(1)),
+      avgImages: Number(avgContentImages.toFixed(1)),
+      imageRatio: Number(imageRatio.toFixed(2)),
+      layout,
+      font: topFrequency(contentProfiles.flatMap((profile) => profile.fonts), ""),
+      colors: contentProfiles.flatMap((profile) => profile.colors).slice(0, 60),
+    },
+  };
+}
+
 async function analyzeStylePptx(file) {
   if (!/\.pptx$/i.test(file?.name || "")) throw new Error(t("customStyleImportPptxOnly"));
   const JSZipRuntime = await loadClientZipRuntime();
@@ -1715,6 +1806,7 @@ async function analyzeStylePptx(file) {
   const xmlPaths = Object.keys(zip.files).filter((name) => /^ppt\/(theme|slides)\//i.test(name) && /\.xml$/i.test(name));
   const colors = [];
   const fonts = [];
+  const slideProfiles = [];
   let imageSlides = 0;
   let totalSlides = 0;
   let textRuns = 0;
@@ -1726,19 +1818,26 @@ async function analyzeStylePptx(file) {
       if (font && !/^\+/.test(font)) fonts.push(font);
     });
     if (/^ppt\/slides\/slide\d+\.xml$/i.test(path)) {
+      const slideIndex = Number(path.match(/slide(\d+)\.xml/i)?.[1] || totalSlides + 1);
+      const profile = clientExtractSlideStyleProfile(xml, slideIndex - 1);
+      slideProfiles.push(profile);
       totalSlides += 1;
       if (/<p:pic\b|r:embed="/i.test(xml)) imageSlides += 1;
       textRuns += (xml.match(/<a:t\b/g) || []).length;
     }
   }
-  const bg = topFrequency(colors.filter((color) => !["#000000", "#ffffff"].includes(color)), "#f8fbff");
-  const primary = topFrequency(colors.filter((color) => color !== bg && color !== "#ffffff"), "#2563eb");
-  const accent = topFrequency(colors.filter((color) => color !== bg && color !== primary), "#38bdf8");
-  const titleFont = topFrequency(fonts, "Inter");
-  const bodyFont = topFrequency(fonts.filter((font) => font !== titleFont), titleFont || "Arial");
+  const summary = summarizeImportedProfiles(slideProfiles);
+  const titleColors = summary.titlePage.colors;
+  const contentColors = summary.contentPage.colors;
+  const mergedColors = [...contentColors, ...titleColors, ...colors].filter((color) => !["#000000", "#ffffff"].includes(color));
+  const bg = topFrequency(mergedColors, "#f8fbff");
+  const primary = topFrequency([...titleColors, ...mergedColors].filter((color) => color !== bg && color !== "#ffffff"), "#2563eb");
+  const accent = topFrequency([...contentColors, ...mergedColors].filter((color) => color !== bg && color !== primary), "#38bdf8");
+  const titleFont = summary.titlePage.font || topFrequency(fonts, "Inter");
+  const bodyFont = summary.contentPage.font || topFrequency(fonts.filter((font) => font !== titleFont), titleFont || "Arial");
   const imageRatio = totalSlides ? imageSlides / totalSlides : 0;
   const avgTextRuns = totalSlides ? textRuns / totalSlides : 0;
-  const layout = imageRatio > 0.45 ? "image-focus" : avgTextRuns > 18 ? "two-column" : avgTextRuns < 7 ? "minimal" : "balanced";
+  const layout = summary.contentPage.layout || (imageRatio > 0.45 ? "image-focus" : avgTextRuns > 18 ? "two-column" : avgTextRuns < 7 ? "minimal" : "balanced");
   const nameBase = file.name.replace(/\.pptx$/i, "").replace(/[_-]+/g, " ").trim().slice(0, 34) || "Imported PPT";
   return normalizeCustomStyle({
     id: `custom-${Date.now().toString(36)}`,
@@ -1756,8 +1855,8 @@ async function analyzeStylePptx(file) {
       bodyFont: `${bodyFont}, Arial, sans-serif`,
     },
     layout,
-    promptAddon: `Use the imported PPT visual language: background ${bg}, primary color ${primary}, accent ${accent}, title font mood "${titleFont}", body font mood "${bodyFont}", and a ${layout} layout rhythm. Preserve images, avoid overlap, keep strong contrast, and keep slides airy.`,
-    localRules: `Imported from ${file.name}. Favor ${layout} layouts, ${imageRatio > 0.35 ? "medium image areas" : "text-first structure"}, large centered titles, readable body text, and colors ${bg}, ${primary}, ${accent}.`,
+    promptAddon: `Use the imported PPT visual language from all ${totalSlides} slides, not only the first page. Recreate title/cover pages with ${summary.titlePage.placement} title placement, title font mood "${titleFont}", background ${bg}, primary ${primary}. Recreate content pages with ${layout} rhythm, body font mood "${bodyFont}", image ratio about ${summary.contentPage.imageRatio}, average text density ${summary.contentPage.avgText}. Preserve original images, avoid overlap, keep strong contrast, and keep slides airy.`,
+    localRules: `Imported from ${file.name}. Title pages: ${summary.titlePage.placement} titles, ${summary.titlePage.count} title-like pages sampled, use ${titleFont} and strong primary accents. Content pages: ${summary.contentPage.count} pages sampled, layout=${layout}, avgText=${summary.contentPage.avgText}, avgImages=${summary.contentPage.avgImages}; ${imageRatio > 0.35 ? "reserve medium image areas" : "favor text-first structure"}; colors ${bg}, ${primary}, ${accent}.`,
   });
 }
 
@@ -1785,7 +1884,7 @@ async function refineImportedStyleWithAi(draft) {
         model: config.model || "gpt-4.1-mini",
         messages: [
           { role: "system", content: "You summarize PPT visual style into reusable design rules. Return only JSON." },
-          { role: "user", content: `Improve this imported PPT style JSON. Keep the same schema. Make localRules practical for deterministic HTML generation and promptAddon useful for AI slide generation. Preserve colors and fonts unless contrast is unsafe.\n${JSON.stringify(draft)}` },
+          { role: "user", content: `Improve this imported PPT style JSON. Keep the same schema. Make localRules practical for deterministic HTML generation and promptAddon useful for AI slide generation. The style must restore both title/cover pages and normal content pages from the whole deck, not just the first slide. In localRules and promptAddon, explicitly describe title page rules and content page rules. Preserve colors and fonts unless contrast is unsafe.\n${JSON.stringify(draft)}` },
         ],
         temperature: 0.15,
         max_tokens: 1800,
