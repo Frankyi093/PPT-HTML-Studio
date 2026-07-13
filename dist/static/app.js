@@ -1761,10 +1761,53 @@ async function analyzeStylePptx(file) {
   });
 }
 
+function extractJsonObject(text) {
+  const raw = String(text || "").trim();
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
+  const candidate = fenced || raw;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  return safeJsonParse(candidate.slice(start, end + 1), null);
+}
+
+async function refineImportedStyleWithAi(draft) {
+  const config = integrationForGeneration();
+  if (config.mode !== "ai_api" || !config.apiKey || !config.endpoint) return draft;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), Math.max(30, Math.min(120, Number(config.timeoutSec || 60))) * 1000);
+  try {
+    const response = await fetch(normalizeChatEndpoint(config.endpoint), {
+      method: "POST",
+      headers: apiHeaders(config),
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: config.model || "gpt-4.1-mini",
+        messages: [
+          { role: "system", content: "You summarize PPT visual style into reusable design rules. Return only JSON." },
+          { role: "user", content: `Improve this imported PPT style JSON. Keep the same schema. Make localRules practical for deterministic HTML generation and promptAddon useful for AI slide generation. Preserve colors and fonts unless contrast is unsafe.\n${JSON.stringify(draft)}` },
+        ],
+        temperature: 0.15,
+        max_tokens: 1800,
+      }),
+    });
+    const text = await response.text();
+    const data = safeJsonParse(text, { text });
+    if (!response.ok) return draft;
+    const refined = extractJsonObject(extractAiText(data)) || extractJsonObject(text);
+    return refined ? normalizeCustomStyle({ ...draft, ...refined, id: draft.id, source: "imported-ppt-ai" }) : draft;
+  } catch {
+    return draft;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function importCustomStyleFromPpt(file) {
   try {
     setStatus(t("customStyleAnalyzing"));
-    const style = await analyzeStylePptx(file);
+    const draft = await analyzeStylePptx(file);
+    const style = await refineImportedStyleWithAi(draft);
     openCustomStyle(style);
     el("customStyleStatus").textContent = t("customStyleImported");
     setStatus(t("customStyleImported"), "ok");
