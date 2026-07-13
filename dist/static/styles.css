@@ -100,23 +100,20 @@ html[data-theme="dark"] {
 html[data-theme="dark"] body {
   color: #eef4ff;
   background:
-    radial-gradient(circle at 8% 10%, rgba(59, 111, 245, .35), transparent 27%),
-    radial-gradient(circle at 76% -4%, rgba(118, 96, 255, .32), transparent 28%),
-    radial-gradient(circle at 94% 70%, rgba(28, 215, 201, .20), transparent 24%),
-    radial-gradient(circle at 18% 92%, rgba(255, 122, 188, .14), transparent 26%),
-    linear-gradient(135deg, #071126 0%, #0b1834 48%, #101827 100%);
+    radial-gradient(circle at 12% 0%, rgba(59, 111, 245, .12), transparent 30%),
+    linear-gradient(135deg, #071126 0%, #0a1428 100%);
 }
 
 html[data-theme="dark"] body::before {
-  opacity: .76;
-  filter: blur(38px) saturate(1.25);
+  opacity: .28;
+  filter: blur(42px) saturate(1.02);
 }
 
 html[data-theme="dark"] body::after {
   background:
-    linear-gradient(rgba(159,190,255,.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(159,190,255,.08) 1px, transparent 1px);
-  opacity: .42;
+    linear-gradient(rgba(159,190,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(159,190,255,.035) 1px, transparent 1px);
+  opacity: .18;
 }
 
 button,
