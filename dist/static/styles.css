@@ -152,17 +152,19 @@ html[data-theme="dark"] .upload-panel,
 html[data-theme="dark"] .preview-panel,
 html[data-theme="dark"] .history-panel,
 html[data-theme="dark"] .help-panel {
-  background:
-    linear-gradient(145deg, rgba(17, 29, 62, .78), rgba(13, 22, 48, .58)),
-    radial-gradient(circle at 8% 0%, rgba(105,230,255,.08), transparent 36%);
+  background: #111d3e;
   border-color: rgba(159,190,255,.16);
 }
 
 html[data-theme="dark"] .rail {
-  background:
-    linear-gradient(180deg, rgba(16, 38, 86, .95), rgba(10, 23, 52, .96)),
-    radial-gradient(circle at 20% 0%, rgba(105,230,255,.14), transparent 32%);
+  background: #0a1734;
   border-color: rgba(159,190,255,.12);
+}
+
+html[data-theme="dark"] .upload-panel::before,
+html[data-theme="dark"] .preview-panel::before,
+html[data-theme="dark"] .history-panel::before {
+  display: none;
 }
 
 html[data-theme="dark"] :where(h1,h2,h3,strong,.brand,.settings-field,.advanced summary,.style-card-name,.job-card-title strong,th,td) {
@@ -650,17 +652,13 @@ h2 {
 }
 
 html[data-theme="dark"] :where(.drop-zone,.file-card,.style-card,.rule-grid label,.advanced,.api-key-note,.preview-frame,.share-panel,.job-card,.empty-job-card,.table-wrap,.job-meta span) {
-  background:
-    linear-gradient(145deg, rgba(20, 35, 74, .74), rgba(13, 22, 48, .46)),
-    radial-gradient(circle at 0% 0%, rgba(105,230,255,.08), transparent 34%);
+  background: #152448;
   border-color: rgba(159,190,255,.16);
 }
 
 html[data-theme="dark"] .style-tabs .selected,
 html[data-theme="dark"] .job-card.active {
-  background:
-    linear-gradient(145deg, rgba(28, 52, 110, .82), rgba(13, 22, 48, .62)),
-    radial-gradient(circle at 16% 0%, rgba(127,176,255,.18), transparent 38%);
+  background: #1b3164;
   border-color: rgba(127,176,255,.42);
 }
 
@@ -865,7 +863,7 @@ html[data-theme="dark"] input,
 html[data-theme="dark"] select,
 html[data-theme="dark"] textarea,
 html[data-theme="dark"] .preview-controls select {
-  background: rgba(10, 18, 38, .76);
+  background: #0c1731;
   color: #eef4ff;
   border-color: rgba(159,190,255,.22);
 }
@@ -877,14 +875,14 @@ html[data-theme="dark"] textarea::placeholder {
 
 html[data-theme="dark"] button:not(.run-button):not(.primary),
 html[data-theme="dark"] .button-like {
-  background: rgba(18, 32, 67, .72);
+  background: #14264f;
   color: #dbe8ff;
   border-color: rgba(159,190,255,.22);
 }
 
 html[data-theme="dark"] .preview-frame iframe,
 html[data-theme="dark"] .job-thumb iframe {
-  background: #fff;
+  background: #101d3d;
 }
 
 .api-simple-grid input:focus,
