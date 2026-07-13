@@ -7,25 +7,29 @@ const steps = [
 
 const styles = [
   ["teaching", "Teaching Blue"],
+  ["academic", "Academic Style"],
+  ["swiss", "Swiss Grid"],
   ["softlesson", "Soft Lesson"],
   ["clean", "Clean"],
-  ["academic", "Academic Style"],
   ["instructional", "Instructional"],
   ["minimal", "Minimal"],
   ["contrast", "High Contrast"],
   ["healing", "Healing Hand-drawn"],
   ["doodle", "Doodle Sketch"],
-  ["swiss", "Swiss Grid"],
   ["editorial", "Editorial"],
   ["vivid", "Vivid"],
 ];
 
 const LANGUAGE_STORAGE_KEY = "ppt-html-studio-language";
+const THEME_STORAGE_KEY = "ppt-html-studio-theme";
 const i18n = {
   en: {
     help: "Help",
     settings: "Settings",
     language: "Language",
+    appearance: "Appearance",
+    lightMode: "Light mode",
+    darkMode: "Dark mode",
     interfaceLanguage: "Interface language",
     languageHint: "This only changes the platform interface. Generated PPT/HTML content stays unchanged.",
     english: "English",
@@ -195,6 +199,9 @@ const i18n = {
     help: "\u5e2e\u52a9",
     settings: "\u8bbe\u7f6e",
     language: "\u8bed\u8a00",
+    appearance: "\u5916\u89c2",
+    lightMode: "\u6d45\u8272\u6a21\u5f0f",
+    darkMode: "\u6df1\u8272\u6a21\u5f0f",
     interfaceLanguage: "\u754c\u9762\u8bed\u8a00",
     languageHint: "\u8fd9\u91cc\u53ea\u5207\u6362\u5e73\u53f0\u754c\u9762\u8bed\u8a00\uff0c\u4e0d\u4f1a\u6539\u53d8\u751f\u6210\u7684 PPT/HTML \u5185\u5bb9\u3002",
     english: "English",
@@ -467,6 +474,7 @@ const state = {
   selectedStyle: "teaching",
   stylesExpanded: false,
   language: localStorage.getItem(LANGUAGE_STORAGE_KEY) === "zh" ? "zh" : "en",
+  theme: localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light",
   apiProvider: "local",
   apiBaseUrl: "",
   runtime: "local",
@@ -543,6 +551,18 @@ function applyLanguage(language) {
   if (uploadLimit) uploadLimit.textContent = uploadLimitMessage();
 }
 
+function applyTheme(theme) {
+  state.theme = theme === "dark" ? "dark" : "light";
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, state.theme);
+  } catch {
+    // Non-critical: theme still applies for this session.
+  }
+  document.documentElement.dataset.theme = state.theme;
+  const themeSelect = el("themeSelect");
+  if (themeSelect) themeSelect.value = state.theme;
+}
+
 function setText(id, key, vars = {}) {
   const node = el(id);
   if (node) node.textContent = t(key, vars);
@@ -557,6 +577,7 @@ function translateStaticUi() {
   setText("settingsHint", "languageHint");
   setText("closeSettings", "close");
   setText("settingsLanguageLabel", "language");
+  setText("settingsThemeLabel", "appearance");
   setText("generationTitle", "generationTitle");
   setText("generationMessage", "generationMessage");
   setText("helpTitle", "apiTutorial");
@@ -567,6 +588,8 @@ function translateStaticUi() {
   setText("health", el("health")?.classList.contains("ok") ? "backendReady" : el("health")?.classList.contains("error") ? "backendOffline" : "checkingBackend");
   const languageSelect = el("languageSelect");
   if (languageSelect) languageSelect.value = state.language;
+  const themeSelect = el("themeSelect");
+  if (themeSelect) themeSelect.value = state.theme;
   const optionText = {
     apiProvider: {
       local: t("providerLocal"),
@@ -587,6 +610,10 @@ function translateStaticUi() {
       flat: t("flatJson"),
       input: t("inputJson"),
       dify: t("difyBlocking"),
+    },
+    themeSelect: {
+      light: t("lightMode"),
+      dark: t("darkMode"),
     },
   };
   Object.entries(optionText).forEach(([selectId, labels]) => {
@@ -1007,6 +1034,8 @@ function openSettings() {
   el("settingsOverlay").classList.remove("hidden");
   const select = el("languageSelect");
   if (select) select.value = state.language;
+  const themeSelect = el("themeSelect");
+  if (themeSelect) themeSelect.value = state.theme;
 }
 
 function closeSettings() {
@@ -1450,8 +1479,8 @@ function clientLocalStyleVariantCss() {
     body.style-instructional .slide{background:#f7fcff}body.style-instructional .agenda-item span{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:#0ea5e9;color:#fff}body.style-instructional .thinking-space{background:#f0f9ff;border-style:solid}
     body.style-minimal .slide{background:#fff}body.style-minimal .slide-inner{padding-left:clamp(96px,12vw,190px);padding-right:clamp(96px,12vw,190px)}body.style-minimal .chapter{color:#111827;opacity:.46}body.style-minimal .quiet-list li:before{width:24px;height:2px;border-radius:0;top:.74em;background:#111827}
     body.style-contrast .slide{background:#0f172a;color:#fff}body.style-contrast h1,body.style-contrast .lead-text{color:#fff}body.style-contrast .quiet-list li,body.style-contrast .body-paragraph,body.style-contrast footer{color:rgba(255,255,255,.86)}body.style-contrast .point-card{background:#111827;color:#fff;border-color:rgba(56,189,248,.5)}
-    body.style-healing .slide{background:radial-gradient(circle at 12% 18%,rgba(158,208,235,.18),transparent 24%),#fff8ec}body.style-healing h1,body.style-healing .lead-text,body.style-healing .point-card{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-healing .point-card{background:#fffaf0;border:1px dashed #d9c39f;border-radius:14px}
-    body.style-doodle .slide{background:#fff4d8}body.style-doodle h1,body.style-doodle .body-paragraph,body.style-doodle .point-card,body.style-doodle .lead-text{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-doodle .point-card,body.style-doodle .media-box img{border:2px solid #3c2c2c;border-radius:8px;transform:rotate(-.25deg)}body.style-doodle .quiet-list li:before{border-radius:2px;transform:rotate(12deg)}
+    body.style-healing .slide{background:radial-gradient(circle at 12% 18%,rgba(158,208,235,.2),transparent 24%),radial-gradient(circle at 88% 80%,rgba(247,231,200,.45),transparent 24%),#fffaf0}body.style-healing h1{font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif;color:#45352e;text-align:center;margin-inline:auto}body.style-healing .lead-text,body.style-healing .body-paragraph{font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif;color:#5b463a}body.style-healing .point-card{background:rgba(255,255,248,.82);border:1px dashed #9ed0eb;border-radius:18px;color:#4a3b31}body.style-healing .quiet-list li:before{background:#9ed0eb;width:10px;height:10px;opacity:.75}body.style-healing .media-box img{border:1px solid #ead7ba;border-radius:18px}
+    body.style-doodle .slide{background:#fff4d8}body.style-doodle h1,body.style-doodle .body-paragraph,body.style-doodle .point-card,body.style-doodle .lead-text{font-family:'Segoe Print','Comic Sans MS',cursive;color:#3c2c2c}body.style-doodle .point-card,body.style-doodle .media-box img{border:2px solid #3c2c2c;border-radius:8px;transform:rotate(-.45deg);background:#fff9e8}body.style-doodle .quiet-list li:before{border-radius:2px;transform:rotate(12deg);background:#3c2c2c}
     body.style-swiss .slide-inner{background-image:linear-gradient(rgba(37,99,235,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.075) 1px,transparent 1px);background-size:46px 46px}body.style-swiss h1{font-family:'Arial Narrow',Arial,sans-serif;text-transform:uppercase;letter-spacing:-.015em}body.style-swiss .point-card{border:0;border-left:7px solid #2563eb;border-radius:0;background:rgba(255,255,255,.86)}
     body.style-editorial .slide{background:#fffdf8}body.style-editorial .slide-inner{padding-left:clamp(92px,11vw,170px)}body.style-editorial h1,body.style-editorial .lead-text{font-family:Georgia,'Times New Roman',serif}body.style-editorial .lead-text{border-left:4px solid #b45309;padding-left:24px}body.style-editorial .point-card{background:#faf2e4;border-color:#e8d2b2}
     body.style-vivid .slide{background:linear-gradient(135deg,#fff7ed 0%,#f8fbff 62%,#eff6ff 100%)}body.style-vivid .chapter{background:#f97316;color:#fff;width:max-content;padding:5px 12px;border-radius:999px}body.style-vivid .point-card{background:#fff7ed;border-color:#fed7aa}
@@ -1756,6 +1785,38 @@ async function loadJobs() {
 }
 
 function renderJobs() {
+  const cards = state.jobs.map((job) => {
+    const mode = job.aiStatus?.used
+      ? (job.aiStatus?.resultType === "html" ? "AI HTML" : t("aiSlides"))
+      : job.aiStatus?.fallback
+        ? t("fallback")
+        : t("local");
+    const previewSrc = job.previewUrl || "";
+    return `
+      <article class="job-card ${state.activeJob?.id === job.id ? "active" : ""}">
+        <button class="job-thumb" type="button" data-preview="${job.id}" aria-label="${t("preview")} ${escapeHtml(job.fileName)}">
+          ${previewSrc ? `<iframe src="${previewSrc}" title="${escapeHtml(job.fileName)} thumbnail" loading="lazy"></iframe>` : `<span>${escapeHtml(styleLabel(job.style, job.style))}</span>`}
+        </button>
+        <div class="job-card-body">
+          <div class="job-card-title">
+            <strong>${escapeHtml(job.fileName)}</strong>
+            <span>${escapeHtml(styleLabel(job.style, job.style))}</span>
+          </div>
+          <div class="job-meta">
+            <span>${t("jobsSlides", { count: job.slides })}</span>
+            <span>${mode}</span>
+            <span>${escapeHtml(job.status || "")}</span>
+          </div>
+          <div class="job-card-actions">
+            <button type="button" data-preview="${job.id}">${t("preview")}</button>
+            <button type="button" data-download="${job.id}">${t("downloadZip")}</button>
+            <button type="button" data-share="${job.id}">${t("analyzeShare")}</button>
+          </div>
+        </div>
+      </article>`;
+  }).join("");
+  const cardRoot = el("jobCards");
+  if (cardRoot) cardRoot.innerHTML = cards || `<div class="empty-job-card">${t("noJobs")}</div>`;
   const rows = state.jobs.map((job) => `
     <tr>
       <td>${job.id}</td>
@@ -1827,6 +1888,10 @@ function selectJob(jobId) {
   renderShare(job.share || null);
   const aiMessage = formatAiStatus(job);
   if (aiMessage) setStatus(aiMessage, job.aiStatus?.fallback ? "error" : "ok");
+  document.querySelectorAll(".job-card").forEach((card) => {
+    const trigger = card.querySelector("[data-preview]");
+    card.classList.toggle("active", trigger?.dataset.preview === job.id);
+  });
   updatePreviewEditButton(false);
 }
 
@@ -2473,6 +2538,7 @@ async function checkHealth() {
 }
 
 async function init() {
+  applyTheme(state.theme);
   translateStaticUi();
   renderSteps();
   renderStyles();
@@ -2501,6 +2567,9 @@ function bindEvents() {
   });
   el("languageSelect").addEventListener("change", (event) => {
     applyLanguage(event.target.value);
+  });
+  el("themeSelect")?.addEventListener("change", (event) => {
+    applyTheme(event.target.value);
   });
   el("toggleStyles")?.addEventListener("click", () => {
     state.stylesExpanded = !state.stylesExpanded;
