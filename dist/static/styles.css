@@ -1479,7 +1479,7 @@ html[data-theme="dark"] .job-thumb iframe {
 .job-cards {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  grid-template-columns: 1fr;
   gap: 14px;
 }
 
