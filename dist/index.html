@@ -192,7 +192,8 @@
             <h2 id="historyTitle">Job History</h2>
             <button class="ghost" id="refreshJobs" type="button">Refresh</button>
           </div>
-          <div class="table-wrap">
+          <div class="job-cards" id="jobCards"></div>
+          <div class="table-wrap history-table">
             <table>
               <thead>
                 <tr>
@@ -228,6 +229,13 @@
           <select id="languageSelect">
             <option value="en">English</option>
             <option value="zh">中文</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span id="settingsThemeLabel">Appearance</span>
+          <select id="themeSelect">
+            <option value="light">Light mode</option>
+            <option value="dark">Dark mode</option>
           </select>
         </label>
         <p id="settingsHint">This only changes the platform interface. Generated PPT/HTML content stays unchanged.</p>
