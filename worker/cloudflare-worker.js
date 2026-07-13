@@ -390,15 +390,14 @@ function textBlocks(items, max = 18) {
 function themeFor(style) {
   const themes = {
     teaching: ["#f8fbff", "#172554", "#3b82f6", "#eef6ff", "Inter, Arial, sans-serif"],
-    softlesson: ["#f8fbff", "#1f3b67", "#477fb2", "#eaf4ff"],
-    webacademic: ["#ffffff", "#1e293b", "#2563eb", "#f1f5f9", "Inter, Arial, sans-serif"],
+    softlesson: ["#fffaf3", "#23395d", "#82b7d8", "#fff8ec", "Nunito, Inter, Arial, sans-serif"],
     clean: ["#ffffff", "#111827", "#2563eb", "#f8fafc", "Arial, sans-serif"],
     academic: ["#fdfcf8", "#1f2937", "#64748b", "#f4f1ea", "Georgia, 'Times New Roman', serif"],
     instructional: ["#fffdf7", "#1e3a5f", "#0ea5e9", "#edf8ff", "Verdana, Arial, sans-serif"],
     minimal: ["#ffffff", "#111827", "#111827", "#f6f7f9", "Inter, Arial, sans-serif"],
     healing: ["#fff8ec", "#45352e", "#8abed8", "#f7e7c8", "'Segoe Print', 'Comic Sans MS', cursive"],
     doodle: ["#fff6df", "#3c2c2c", "#8ecae6", "#ffe4a8", "'Segoe Print', 'Comic Sans MS', 'Bradley Hand', cursive"],
-    swiss: ["#ffffff", "#14213d", "#2563eb", "#eef2ff"],
+    swiss: ["#ffffff", "#14213d", "#2563eb", "#eef2ff", "'Arial Narrow', Arial, sans-serif"],
     editorial: ["#fffdf8", "#182033", "#b45309", "#f7efe0", "Georgia, 'Times New Roman', serif"],
     vivid: ["#fff7ed", "#172554", "#f97316", "#e0f2fe"],
     contrast: ["#0f172a", "#ffffff", "#38bdf8", "#1e293b"],
@@ -942,6 +941,24 @@ function makeScrollHtml(html) {
   return output;
 }
 
+function localStyleVariantCss() {
+  return `<style id="ppt-local-style-variants">
+    body.style-teaching .slide{background:#f8fbff}body.style-teaching .slide-inner{border-top:10px solid #3b82f6}body.style-teaching .point-card{background:#eef6ff;border-color:#bfdbfe}
+    body.style-softlesson .slide{background:radial-gradient(circle at 88% 14%,rgba(139,199,247,.2),transparent 28%),#fffaf3}body.style-softlesson .slide-inner{padding-top:clamp(58px,8vh,96px)}body.style-softlesson h1{color:#23395d;text-align:center;margin-inline:auto}body.style-softlesson .point-card{background:#fff8ec;border-color:#d9ecff;border-radius:18px}
+    body.style-clean .slide{background:#fff}body.style-clean .chapter{color:#111827;letter-spacing:.18em}body.style-clean .point-card{background:transparent;border-color:#d1d5db;border-radius:0;border-width:0 0 1px 0;padding-left:0}
+    body.style-academic .slide{background:#fbfaf6}body.style-academic h1{font-family:Georgia,'Times New Roman',serif;color:#1f2937}body.style-academic header:after{content:"";width:min(760px,70vw);height:2px;background:#8a6f42;opacity:.45}body.style-academic .point-card{background:#f5efe4;border-color:#d6c6a9}
+    body.style-instructional .slide{background:#f7fcff}body.style-instructional .agenda-item span{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:#0ea5e9;color:#fff}body.style-instructional .thinking-space{background:#f0f9ff;border-style:solid}
+    body.style-minimal .slide{background:#fff}body.style-minimal .slide-inner{padding-left:clamp(96px,12vw,190px);padding-right:clamp(96px,12vw,190px)}body.style-minimal .chapter{color:#111827;opacity:.46}body.style-minimal .quiet-list li::before{width:24px;height:2px;border-radius:0;top:.74em;background:#111827}
+    body.style-contrast .slide{background:#0f172a;color:#fff}body.style-contrast h1,body.style-contrast .lead-text{color:#fff}body.style-contrast .quiet-list li,body.style-contrast .body-paragraph,body.style-contrast footer{color:rgba(255,255,255,.86)}body.style-contrast .point-card{background:#111827;color:#fff;border-color:rgba(56,189,248,.5)}
+    body.style-healing .slide{background:radial-gradient(circle at 12% 18%,rgba(158,208,235,.18),transparent 24%),#fff8ec}body.style-healing h1,body.style-healing .lead-text,body.style-healing .point-card{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-healing .point-card{background:#fffaf0;border:1px dashed #d9c39f;border-radius:14px}
+    body.style-doodle .slide{background:#fff4d8}body.style-doodle h1,body.style-doodle .body-paragraph,body.style-doodle .point-card,body.style-doodle .lead-text{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-doodle .point-card,body.style-doodle .media-grid img{border:2px solid #3c2c2c;border-radius:8px;transform:rotate(-.25deg)}body.style-doodle .quiet-list li::before{border-radius:2px;transform:rotate(12deg)}
+    body.style-swiss .slide-inner{background-image:linear-gradient(rgba(37,99,235,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.075) 1px,transparent 1px);background-size:46px 46px}body.style-swiss h1{font-family:'Arial Narrow',Arial,sans-serif;text-transform:uppercase;letter-spacing:-.015em}body.style-swiss .point-card{border:0;border-left:7px solid #2563eb;border-radius:0;background:rgba(255,255,255,.86)}
+    body.style-editorial .slide{background:#fffdf8}body.style-editorial .slide-inner{padding-left:clamp(92px,11vw,170px)}body.style-editorial h1,body.style-editorial .lead-text{font-family:Georgia,'Times New Roman',serif}body.style-editorial .lead-text{border-left:4px solid #b45309;padding-left:24px}body.style-editorial .point-card{background:#faf2e4;border-color:#e8d2b2}
+    body.style-vivid .slide{background:linear-gradient(135deg,#fff7ed 0%,#f8fbff 62%,#eff6ff 100%)}body.style-vivid .chapter{background:#f97316;color:#fff;width:max-content;padding:5px 12px;border-radius:999px}body.style-vivid .point-card{background:#fff7ed;border-color:#fed7aa}
+    body.style-academic .media-grid img,body.style-editorial .media-grid img{border:1px solid rgba(31,41,55,.16)}body.style-vivid .media-grid img,body.style-teaching .media-grid img{border:1px solid rgba(37,99,235,.18)}
+  </style>`;
+}
+
 function buildHtml(slides, style, mode = "paged") {
   const bodyClass = `${mode === "scroll" ? "scroll-mode " : ""}style-${style}`;
   const slideHtml = slides.map((slide, index) => renderSlide(slide, index, slides.length, style)).join("\n");
@@ -1026,8 +1043,6 @@ function buildHtml(slides, style, mode = "paged") {
     body.style-vivid .chapter { background: var(--accent); color: #fff; width: fit-content; padding: 5px 12px; border-radius: 999px; letter-spacing: .04em; }
     body.style-vivid .point-card { background: #fff7ed; border-color: #fed7aa; }
     body.style-instructional .thinking-space { background: #f0f9ff; border-style: solid; }
-    body.style-webacademic .slide-inner { max-width: 1320px; }
-    body.style-webacademic .lead-text { max-width: 1120px; font-weight: 650; }
     body.style-softlesson .point-card, body.style-teaching .point-card { background: var(--panel); }
     @media (max-width: 900px) {
       .slide-inner { padding: 34px 28px 50px; }
@@ -1037,6 +1052,7 @@ function buildHtml(slides, style, mode = "paged") {
       .point-card, .quiet-list li, .agenda-item p { font-size: 26px; }
     }
   </style>
+  ${localStyleVariantCss()}
 </head>
 <body class="${bodyClass}">
   ${slideHtml}
@@ -1056,7 +1072,6 @@ function stylePrompt(style) {
   const directions = {
     teaching: "Teaching Blue: calm education technology, navy text, blue accents, lecture-friendly hierarchy, concise academic wording.",
     softlesson: "Soft Lesson: warm white background, gentle blue accents, quiet workshop feeling, large readable text and spacious examples.",
-    webacademic: "Academic Webpage: polished long-form web presentation, section rhythm, editorial spacing, restrained cards only when useful.",
     clean: "Clean: minimalist black and blue, strong typographic hierarchy, almost no decoration, generous margins.",
     academic: "Academic: scholarly, serif title accents allowed, formal structure, no playful decoration, focus on clarity.",
     instructional: "Instructional: classroom-ready, clear steps, practice prompts, visual anchors, leave space for teacher explanation.",
