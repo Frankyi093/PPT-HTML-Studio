@@ -8,9 +8,8 @@ const steps = [
 const styles = [
   ["teaching", "Teaching Blue"],
   ["softlesson", "Soft Lesson"],
-  ["webacademic", "Academic Webpage"],
   ["clean", "Clean"],
-  ["academic", "Academic"],
+  ["academic", "Academic Style"],
   ["instructional", "Instructional"],
   ["minimal", "Minimal"],
   ["contrast", "High Contrast"],
@@ -373,9 +372,8 @@ const stepKeys = [
 const styleLabelKeys = {
   teaching: { en: "Teaching Blue", zh: "\u6559\u5b66\u84dd" },
   softlesson: { en: "Soft Lesson", zh: "\u67d4\u548c\u8bfe\u5802" },
-  webacademic: { en: "Academic Webpage", zh: "\u5b66\u672f\u7f51\u9875" },
   clean: { en: "Clean", zh: "\u6e05\u723d" },
-  academic: { en: "Academic", zh: "\u5b66\u672f" },
+  academic: { en: "Academic Style", zh: "\u5b66\u672f\u98ce" },
   instructional: { en: "Instructional", zh: "\u6559\u5b66\u8bf4\u660e" },
   minimal: { en: "Minimal", zh: "\u6781\u7b80" },
   contrast: { en: "High Contrast", zh: "\u9ad8\u5bf9\u6bd4" },
@@ -386,6 +384,24 @@ const styleLabelKeys = {
   vivid: { en: "Vivid", zh: "\u9c9c\u660e\u6d3b\u529b" },
 };
 
+const stylePreviewMeta = {
+  teaching: { swatches: ["#17356f", "#4fbfff", "#edf6ff"], font: "Inter", sample: "Lesson", layout: "bar" },
+  softlesson: { swatches: ["#f9fbff", "#8bc7f7", "#dbeafe"], font: "Rounded", sample: "Calm", layout: "soft" },
+  clean: { swatches: ["#ffffff", "#111827", "#2563eb"], font: "Arial", sample: "Clean", layout: "line" },
+  academic: { swatches: ["#fdfcf8", "#1f2937", "#8a6f42"], font: "Georgia", sample: "Research", layout: "paper" },
+  instructional: { swatches: ["#fffdf7", "#0ea5e9", "#edf8ff"], font: "Verdana", sample: "Step", layout: "steps" },
+  minimal: { swatches: ["#ffffff", "#111827", "#f6f7f9"], font: "Inter", sample: "Less", layout: "minimal" },
+  contrast: { swatches: ["#0f172a", "#ffffff", "#38bdf8"], font: "Bold", sample: "Focus", layout: "contrast" },
+  healing: { swatches: ["#fff6df", "#3f3128", "#9ed0eb"], font: "Hand", sample: "Sketch", layout: "doodle" },
+  doodle: { swatches: ["#fff4d8", "#3c2c2c", "#8bd3ff"], font: "Marker", sample: "Doodle", layout: "scribble" },
+  swiss: { swatches: ["#ffffff", "#2563eb", "#111827"], font: "Grid", sample: "Swiss", layout: "grid" },
+  editorial: { swatches: ["#fbfaf7", "#111827", "#b08a57"], font: "Serif", sample: "Editorial", layout: "magazine" },
+  vivid: { swatches: ["#fff7ed", "#f97316", "#2563eb"], font: "Product", sample: "Vivid", layout: "blocks" },
+};
+
+function stylePreview(key) {
+  return stylePreviewMeta[key] || stylePreviewMeta.teaching;
+}
 const apiProviders = {
   local: {
     mode: "local",
@@ -1004,9 +1020,23 @@ function renderSteps() {
 }
 
 function renderStyles() {
-  el("styleTabs").innerHTML = styles.map(([key, label]) => `
-    <button type="button" class="${state.selectedStyle === key ? "selected" : ""}" data-style="${key}">${styleLabel(key, label)}</button>
-  `).join("");
+  el("styleTabs").innerHTML = styles.map(([key, label]) => {
+    const preview = stylePreview(key);
+    const swatches = preview.swatches.map((color) => `<span style="--swatch:${color}"></span>`).join("");
+    return `
+    <button type="button" class="style-card ${state.selectedStyle === key ? "selected" : ""}" data-style="${key}" aria-label="${styleLabel(key, label)}">
+      <span class="style-preview style-preview-${preview.layout}" aria-hidden="true">
+        <span class="style-preview-title"></span>
+        <span class="style-preview-lines"><i></i><i></i><i></i></span>
+        <span class="style-preview-blocks"><i></i><i></i></span>
+      </span>
+      <span class="style-card-body">
+        <span class="style-card-name">${styleLabel(key, label)}</span>
+        <span class="style-card-sample" data-font="${preview.font}">${preview.sample}</span>
+      </span>
+      <span class="style-swatches" aria-hidden="true">${swatches}</span>
+    </button>`;
+  }).join("");
   document.querySelectorAll("[data-style]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedStyle = button.dataset.style;
@@ -2499,3 +2529,5 @@ function bindEvents() {
 }
 
 init();
+
+
