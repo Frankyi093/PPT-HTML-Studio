@@ -22,6 +22,8 @@ const styles = [
 
 const LANGUAGE_STORAGE_KEY = "ppt-html-studio-language";
 const THEME_STORAGE_KEY = "ppt-html-studio-theme";
+const PREVIEW_DESKTOP_WIDTH = 1280;
+const PREVIEW_DESKTOP_HEIGHT = 720;
 const i18n = {
   en: {
     help: "Help",
@@ -1893,6 +1895,21 @@ function selectJob(jobId) {
     card.classList.toggle("active", trigger?.dataset.preview === job.id);
   });
   updatePreviewEditButton(false);
+  syncPreviewScale();
+}
+
+function syncPreviewScale() {
+  const frame = el("previewFrame");
+  const shell = frame?.closest(".preview-frame");
+  if (!frame || !shell) return;
+  const mobilePreview = window.matchMedia("(max-width: 720px)").matches;
+  if (!mobilePreview) {
+    shell.style.removeProperty("--preview-scale");
+    return;
+  }
+  const rect = shell.getBoundingClientRect();
+  const scale = Math.min(rect.width / PREVIEW_DESKTOP_WIDTH, rect.height / PREVIEW_DESKTOP_HEIGHT);
+  shell.style.setProperty("--preview-scale", String(Math.max(0.1, Math.min(1, scale || 1))));
 }
 
 function previewWindow() {
@@ -2543,6 +2560,7 @@ async function init() {
   renderSteps();
   renderStyles();
   bindEvents();
+  syncPreviewScale();
   await checkHealth();
   await loadIntegration();
   await loadJobs();
@@ -2617,7 +2635,16 @@ function bindEvents() {
   el("openPreview").addEventListener("click", () => {
     if (state.activeJob) window.open(state.activeJob.previewUrl, "_blank");
   });
-  el("previewFrame").addEventListener("load", () => updatePreviewEditButton(false));
+  el("previewFrame").addEventListener("load", () => {
+    updatePreviewEditButton(false);
+    syncPreviewScale();
+  });
+  window.addEventListener("resize", syncPreviewScale);
+  window.addEventListener("orientationchange", syncPreviewScale);
+  if ("ResizeObserver" in window) {
+    const previewResizeObserver = new ResizeObserver(syncPreviewScale);
+    previewResizeObserver.observe(el("previewFrame").closest(".preview-frame"));
+  }
   el("editHtml").addEventListener("click", () => setPreviewEditing(null));
   el("saveEditedHtml").addEventListener("click", async () => {
     try {
