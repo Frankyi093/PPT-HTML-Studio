@@ -54,8 +54,13 @@
           <div class="style-section">
             <div class="style-head">
               <h2 id="styleTitle">Style</h2>
-              <button id="toggleStyles" class="style-toggle" type="button">Show all</button>
+              <div class="style-actions">
+                <button id="newCustomStyle" class="style-toggle" type="button">Custom style</button>
+                <button id="importStylePpt" class="style-toggle" type="button">Import PPT style</button>
+                <button id="toggleStyles" class="style-toggle" type="button">Show all</button>
+              </div>
             </div>
+            <input id="styleImportInput" type="file" accept=".pptx" hidden>
             <div class="style-tabs" id="styleTabs"></div>
             <div class="rule-grid">
               <label><input type="checkbox" id="keepText" checked> <span id="keepTextLabel">Keep text unchanged</span><small id="keepTextSmall">Do not modify wording</small></label>
@@ -239,6 +244,49 @@
           </select>
         </label>
         <p id="settingsHint">This only changes the platform interface. Generated PPT/HTML content stays unchanged.</p>
+      </div>
+    </section>
+  </div>
+  <div id="customStyleOverlay" class="help-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="customStyleTitle">
+    <section class="help-panel custom-style-panel">
+      <header class="help-head">
+        <div>
+          <span id="customStyleKicker" class="help-kicker">Custom style</span>
+          <h2 id="customStyleTitle">Create a reusable style</h2>
+        </div>
+        <button id="closeCustomStyle" class="help-close" type="button" aria-label="Close custom style">Close</button>
+      </header>
+      <div class="help-content custom-style-content">
+        <div class="custom-style-grid">
+          <label><span id="customStyleNameLabel">Style name</span><input id="customStyleName" type="text" placeholder="Workshop Blue"></label>
+          <label><span id="customStyleTitleFontLabel">Title font</span><input id="customStyleTitleFont" type="text" placeholder="Inter, Arial, sans-serif"></label>
+          <label><span id="customStyleBodyFontLabel">Body font</span><input id="customStyleBodyFont" type="text" placeholder="Inter, Arial, sans-serif"></label>
+          <label><span id="customStyleLayoutLabel">Layout preference</span>
+            <select id="customStyleLayout">
+              <option value="balanced">Balanced</option>
+              <option value="centered">Centered title</option>
+              <option value="two-column">Two-column</option>
+              <option value="image-focus">Image focus</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </label>
+          <label><span id="customStyleBgLabel">Background</span><input id="customStyleBg" type="color" value="#f8fbff"></label>
+          <label><span id="customStyleTextLabel">Text</span><input id="customStyleText" type="color" value="#10203f"></label>
+          <label><span id="customStylePrimaryLabel">Primary</span><input id="customStylePrimary" type="color" value="#2563eb"></label>
+          <label><span id="customStyleAccentLabel">Accent</span><input id="customStyleAccent" type="color" value="#38bdf8"></label>
+          <label class="custom-style-wide"><span id="customStylePromptLabel">AI prompt addon</span><textarea id="customStylePrompt" rows="5" placeholder="Describe the visual style for AI generation..."></textarea></label>
+          <label class="custom-style-wide"><span id="customStyleLocalLabel">Local rule summary</span><textarea id="customStyleLocalRules" rows="4" placeholder="Describe layout rules for local generation..."></textarea></label>
+        </div>
+        <div class="custom-style-preview" id="customStylePreview">
+          <strong>Preview</strong>
+          <span>Large centered title</span>
+          <p>Readable content with image-safe layout.</p>
+        </div>
+        <div class="api-actions custom-style-buttons">
+          <button type="button" id="saveCustomStyle">Save style</button>
+          <button type="button" id="deleteCustomStyle">Delete</button>
+          <span id="customStyleStatus" class="api-status"></span>
+        </div>
       </div>
     </section>
   </div>
