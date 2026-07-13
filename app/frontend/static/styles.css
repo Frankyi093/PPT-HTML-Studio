@@ -626,6 +626,7 @@ h2 {
 
 .style-tabs button,
 .style-card {
+  position: relative;
   min-height: 96px;
   border: 1px solid rgba(255,255,255,.56);
   border-radius: 16px;
@@ -668,6 +669,37 @@ h2 {
   font-weight: 850;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+
+.custom-style-delete {
+  position: absolute;
+  z-index: 3;
+  top: 7px;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(239,68,68,.28);
+  border-radius: 999px;
+  background: rgba(255,255,255,.82);
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(15,23,42,.1);
+}
+
+.custom-style-delete:hover {
+  border-color: rgba(239,68,68,.5);
+  background: #fff1f2;
+}
+
+html[data-theme="dark"] .custom-style-delete {
+  background: #1d2b52;
+  border-color: rgba(248,113,113,.36);
+  color: #fca5a5;
+  box-shadow: none;
 }
 
 html[data-theme="dark"] :where(.drop-zone,.file-card,.style-card,.rule-grid label,.advanced,.api-key-note,.preview-frame,.share-panel,.job-card,.empty-job-card,.table-wrap,.job-meta span) {
