@@ -465,6 +465,7 @@ const apiProviders = {
 const state = {
   selectedFile: null,
   selectedStyle: "teaching",
+  stylesExpanded: false,
   language: localStorage.getItem(LANGUAGE_STORAGE_KEY) === "zh" ? "zh" : "en",
   apiProvider: "local",
   apiBaseUrl: "",
@@ -726,14 +727,16 @@ function clientStylePrompt(style) {
   const map = {
     teaching: "Teaching Blue: calm education technology, navy text, blue accents, lecture-friendly hierarchy.",
     softlesson: "Soft Lesson: warm white background, gentle blue accents, quiet workshop feeling.",
+    clean: "Clean: minimalist black and blue, strong typographic hierarchy, almost no decoration, generous margins.",
+    academic: "Academic: scholarly, formal, serif title accents, clear lecture structure.",
+    instructional: "Instructional: classroom-ready, clear steps, practice prompts, visual anchors, leave space for teacher explanation.",
+    minimal: "Minimal: few elements, simple typography, high whitespace.",
+    contrast: "High Contrast: accessible dark/light contrast and bold hierarchy.",
     healing: "Healing Hand-drawn: soft hand-drawn workshop style, warm paper feeling, sketch-like but readable.",
     doodle: "Doodle Sketch: playful marker style, hand-drawn typography, sparse doodle accents, clean classroom layout.",
     swiss: "Swiss Grid: strict grid, strong typography, blue rules, no decoration.",
     editorial: "Editorial: magazine-like, elegant serif titles, large whitespace, pull-quote rhythm.",
-    academic: "Academic: scholarly, formal, serif title accents, clear lecture structure.",
-    minimal: "Minimal: few elements, simple typography, high whitespace.",
     vivid: "Vivid: bright education product energy, controlled accent blocks.",
-    contrast: "High Contrast: accessible dark/light contrast and bold hierarchy.",
   };
   return map[style] || map.teaching;
 }
@@ -1020,7 +1023,16 @@ function renderSteps() {
 }
 
 function renderStyles() {
-  el("styleTabs").innerHTML = styles.map(([key, label]) => {
+  const toggle = el("toggleStyles");
+  if (toggle) {
+    toggle.textContent = state.stylesExpanded
+      ? (state.language === "zh" ? "\u6536\u8d77\u98ce\u683c" : "Collapse")
+      : (state.language === "zh" ? "\u5c55\u5f00\u5168\u90e8" : "Show all");
+    toggle.setAttribute("aria-expanded", String(state.stylesExpanded));
+  }
+  const tabs = el("styleTabs");
+  tabs.classList.toggle("is-collapsed", !state.stylesExpanded);
+  tabs.innerHTML = styles.map(([key, label]) => {
     const preview = stylePreview(key);
     const swatches = preview.swatches.map((color) => `<span style="--swatch:${color}"></span>`).join("");
     return `
@@ -1429,7 +1441,25 @@ function clientTextBlocks(items, max = 18) {
   return { items: cleaned, paragraphs: paragraphs.slice(0, Math.max(1, max / 2)), asParagraph: true };
 }
 
-function buildBrowserFallbackHtml(slides, style, mode = "paged") {
+function clientLocalStyleVariantCss() {
+  return `<style id="ppt-local-style-variants">
+    body.style-teaching .slide{background:#f8fbff}body.style-teaching .slide-inner{border-top:10px solid #3b82f6}body.style-teaching .point-card{background:#eef6ff;border-color:#bfdbfe}
+    body.style-softlesson .slide{background:radial-gradient(circle at 88% 14%,rgba(139,199,247,.2),transparent 28%),#fffaf3}body.style-softlesson .slide-inner{padding-top:clamp(58px,8vh,96px)}body.style-softlesson h1{color:#23395d;text-align:center;margin-inline:auto}body.style-softlesson .point-card{background:#fff8ec;border-color:#d9ecff;border-radius:18px}
+    body.style-clean .slide{background:#fff}body.style-clean .chapter{color:#111827;letter-spacing:.18em}body.style-clean .point-card{background:transparent;border-color:#d1d5db;border-radius:0;border-width:0 0 1px 0;padding-left:0}
+    body.style-academic .slide{background:#fbfaf6}body.style-academic h1{font-family:Georgia,'Times New Roman',serif;color:#1f2937}body.style-academic header:after{content:"";width:min(760px,70vw);height:2px;background:#8a6f42;opacity:.45}body.style-academic .point-card{background:#f5efe4;border-color:#d6c6a9}
+    body.style-instructional .slide{background:#f7fcff}body.style-instructional .agenda-item span{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:#0ea5e9;color:#fff}body.style-instructional .thinking-space{background:#f0f9ff;border-style:solid}
+    body.style-minimal .slide{background:#fff}body.style-minimal .slide-inner{padding-left:clamp(96px,12vw,190px);padding-right:clamp(96px,12vw,190px)}body.style-minimal .chapter{color:#111827;opacity:.46}body.style-minimal .quiet-list li:before{width:24px;height:2px;border-radius:0;top:.74em;background:#111827}
+    body.style-contrast .slide{background:#0f172a;color:#fff}body.style-contrast h1,body.style-contrast .lead-text{color:#fff}body.style-contrast .quiet-list li,body.style-contrast .body-paragraph,body.style-contrast footer{color:rgba(255,255,255,.86)}body.style-contrast .point-card{background:#111827;color:#fff;border-color:rgba(56,189,248,.5)}
+    body.style-healing .slide{background:radial-gradient(circle at 12% 18%,rgba(158,208,235,.18),transparent 24%),#fff8ec}body.style-healing h1,body.style-healing .lead-text,body.style-healing .point-card{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-healing .point-card{background:#fffaf0;border:1px dashed #d9c39f;border-radius:14px}
+    body.style-doodle .slide{background:#fff4d8}body.style-doodle h1,body.style-doodle .body-paragraph,body.style-doodle .point-card,body.style-doodle .lead-text{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-doodle .point-card,body.style-doodle .media-box img{border:2px solid #3c2c2c;border-radius:8px;transform:rotate(-.25deg)}body.style-doodle .quiet-list li:before{border-radius:2px;transform:rotate(12deg)}
+    body.style-swiss .slide-inner{background-image:linear-gradient(rgba(37,99,235,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.075) 1px,transparent 1px);background-size:46px 46px}body.style-swiss h1{font-family:'Arial Narrow',Arial,sans-serif;text-transform:uppercase;letter-spacing:-.015em}body.style-swiss .point-card{border:0;border-left:7px solid #2563eb;border-radius:0;background:rgba(255,255,255,.86)}
+    body.style-editorial .slide{background:#fffdf8}body.style-editorial .slide-inner{padding-left:clamp(92px,11vw,170px)}body.style-editorial h1,body.style-editorial .lead-text{font-family:Georgia,'Times New Roman',serif}body.style-editorial .lead-text{border-left:4px solid #b45309;padding-left:24px}body.style-editorial .point-card{background:#faf2e4;border-color:#e8d2b2}
+    body.style-vivid .slide{background:linear-gradient(135deg,#fff7ed 0%,#f8fbff 62%,#eff6ff 100%)}body.style-vivid .chapter{background:#f97316;color:#fff;width:max-content;padding:5px 12px;border-radius:999px}body.style-vivid .point-card{background:#fff7ed;border-color:#fed7aa}
+    body.style-academic .media-box img,body.style-editorial .media-box img{border:1px solid rgba(31,41,55,.16)}body.style-vivid .media-box img,body.style-teaching .media-box img{border:1px solid rgba(37,99,235,.18)}
+  </style>`;
+}
+
+function buildBrowserFallbackHtmlBase(slides, style, mode = "paged") {
   const bodyClass = `${mode === "scroll" ? "scroll-mode " : ""}style-${style}`;
   const slideHtml = slides.map((slide, index) => {
     const blocks = clientTextBlocks(slide.body, 18);
@@ -1454,6 +1484,12 @@ function buildBrowserFallbackHtml(slides, style, mode = "paged") {
     return `<section class="slide ${layout} ${hasImages ? "has-media" : "text-only"} ${items.length >= 10 ? "density-many" : items.length >= 6 ? "density-medium" : "density-light"} ${index === 0 ? "active" : ""}" data-slide-page="${slide.page}"><div class="slide-inner"><header>${slide.title ? `<h1 class="editable-text">${escapeHtml(slide.title)}</h1>` : ""}</header><main>${contentHtml}${hasImages ? `<div class="media-grid">${imageHtml}</div>` : ""}</main><footer>${index + 1} / ${slides.length}</footer></div></section>`;
   }).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PPT HTML Studio</title><style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#f6f8fb;color:#17213f;font-family:Inter,Arial,sans-serif}body{overflow:hidden}body.scroll-mode{overflow:auto}.slide{width:100vw;height:100vh;display:none;background:#fff;overflow:hidden}.slide.active{display:block}body.scroll-mode .slide{display:block;min-height:100vh;height:auto}.slide-inner{width:min(1440px,100vw);height:100%;margin:0 auto;padding:clamp(42px,6vh,76px) clamp(72px,8vw,132px) 64px;display:grid;grid-template-rows:auto 1fr auto;gap:clamp(28px,5vh,58px)}header{display:grid;gap:14px;max-width:1120px}.chapter{color:#2563eb;font-size:clamp(17px,1.45vw,24px);font-weight:800;letter-spacing:.08em;text-transform:uppercase}h1{margin:0;font-size:clamp(40px,4vw,64px);line-height:1.05;max-width:1080px;overflow-wrap:break-word;word-break:normal;hyphens:none}.cover header{align-self:center;text-align:center;max-width:1100px;margin:0 auto}.cover h1{font-size:clamp(48px,5.1vw,78px)}.cover-subtitle{margin:18px auto 0;max-width:860px;color:#64748b;font-size:clamp(24px,2vw,34px);line-height:1.35;font-weight:500}main{min-height:0;display:grid;gap:clamp(28px,4vh,48px);align-items:center}.image-split main{grid-template-columns:minmax(0,.82fr) minmax(360px,.9fr)}.lead-text{margin:0;max-width:980px;font-size:clamp(30px,2.45vw,44px);line-height:1.18;font-weight:760;color:#17213f}.lesson-block,.statement-block,.workshop-prompt{max-width:1040px;display:grid;gap:26px}.body-paragraph{margin:0;max-width:1120px;font-size:clamp(27px,2vw,36px);line-height:1.28;color:#17213f;font-weight:540}.density-many .body-paragraph{font-size:clamp(23px,1.55vw,30px);line-height:1.24}.quiet-list,.numbered-list{margin:0;padding:0;list-style:none;display:grid;gap:16px;max-width:940px}.quiet-list.multi-column{grid-template-columns:repeat(2,minmax(0,1fr));max-width:1120px;column-gap:34px}.quiet-list li{position:relative;padding-left:28px;font-size:clamp(24px,1.85vw,32px);line-height:1.34;color:#334155}.quiet-list li:before{content:"";position:absolute;left:0;top:.58em;width:8px;height:8px;border-radius:50%;background:#2563eb}.density-many .quiet-list li{font-size:clamp(21px,1.45vw,27px);line-height:1.22}.numbered-list li{display:grid;grid-template-columns:42px 1fr;gap:18px;font-size:clamp(23px,1.7vw,30px);line-height:1.3;color:#334155}.numbered-list li span{color:#2563eb;font-weight:800}.agenda-list{width:min(980px,80vw);display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:18px 48px}.agenda-item{display:grid;grid-template-columns:46px 1fr;gap:16px;align-items:center;min-height:54px;border-bottom:1px solid #dbe5f2}.agenda-item span{color:#2563eb;font-size:18px;font-weight:800}.agenda-item p{margin:0;font-size:clamp(24px,1.85vw,32px);line-height:1.15;font-weight:650;color:#17213f}.concept-row{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:18px;max-width:980px}.point-card{border-radius:8px;background:#fff;border:1px solid #d7e3f4;padding:22px 24px;font-size:clamp(22px,1.65vw,30px);line-height:1.25;font-weight:650;box-shadow:none}.thinking-space{width:min(860px,68vw);min-height:180px;border:1px dashed #b7c7dc;border-radius:8px;color:#94a3b8;display:grid;place-items:center;font-size:24px;font-weight:600}.media-grid{display:grid;gap:18px;align-content:center}.media-box{margin:0;display:grid;place-items:center}.media-box img{width:100%;max-height:54vh;object-fit:contain;border-radius:8px;box-shadow:none}footer{justify-self:end;font-size:20px;color:#64748b}.nav{position:fixed;z-index:20;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:10px}.nav button{border:1px solid #d8e2f0;border-radius:8px;padding:8px 13px;background:#fff;color:#1e3a8a;font-size:15px;font-weight:800}.nav button:last-child{background:#2563eb;color:#fff;border-color:#2563eb}body.scroll-mode .nav{display:none}body.style-doodle .slide,body.style-healing .slide{background:#fff6df}body.style-doodle h1,body.style-doodle .body-paragraph,body.style-doodle .point-card,body.style-healing h1{font-family:'Segoe Print','Comic Sans MS',cursive}body.style-doodle .point-card,body.style-doodle .media-box img{border:2px solid #3c2c2c;transform:rotate(-.25deg)}body.style-swiss .slide-inner{background-image:linear-gradient(rgba(37,99,235,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.055) 1px,transparent 1px);background-size:48px 48px}body.style-swiss .point-card{border:0;border-left:6px solid #2563eb;border-radius:0}body.style-academic h1,body.style-editorial h1{font-family:Georgia,'Times New Roman',serif}body.style-minimal .point-card{background:transparent;border-color:#d1d5db}body.style-contrast .slide{background:#0f172a;color:#fff}body.style-contrast .quiet-list li,body.style-contrast .body-paragraph{color:rgba(255,255,255,.86)}body.style-vivid .chapter{background:#f97316;color:#fff;width:fit-content;padding:5px 12px;border-radius:999px}@media(max-width:900px){.slide-inner{padding:34px 28px 50px}.image-split main{grid-template-columns:1fr}.agenda-list,.concept-row,.quiet-list.multi-column{grid-template-columns:1fr;width:100%}h1{font-size:44px}.point-card,.quiet-list li,.agenda-item p{font-size:26px}}</style></head><body class="${bodyClass}">${slideHtml}<div class="nav"><button onclick="prevSlide()">Prev</button><button onclick="nextSlide()">Next</button></div>${clientEditorRuntime()}</body></html>`;
+}
+
+function buildBrowserFallbackHtml(slides, style, mode = "paged") {
+  const html = buildBrowserFallbackHtmlBase(slides, style, mode);
+  if (html.includes("ppt-local-style-variants")) return html;
+  return html.replace("</head>", `${clientLocalStyleVariantCss()}</head>`);
 }
 
 async function generateAiDirectlyInBrowser(slides, stats, previousError) {
@@ -2465,6 +2501,10 @@ function bindEvents() {
   });
   el("languageSelect").addEventListener("change", (event) => {
     applyLanguage(event.target.value);
+  });
+  el("toggleStyles")?.addEventListener("click", () => {
+    state.stylesExpanded = !state.stylesExpanded;
+    renderStyles();
   });
   dropZone.addEventListener("click", (event) => {
     if (event.target.tagName !== "INPUT") fileInput.click();
