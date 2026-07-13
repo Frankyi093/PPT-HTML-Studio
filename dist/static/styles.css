@@ -99,21 +99,15 @@ html[data-theme="dark"] {
 
 html[data-theme="dark"] body {
   color: #eef4ff;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(59, 111, 245, .12), transparent 30%),
-    linear-gradient(135deg, #071126 0%, #0a1428 100%);
+  background: #071126;
 }
 
 html[data-theme="dark"] body::before {
-  opacity: .28;
-  filter: blur(42px) saturate(1.02);
+  display: none;
 }
 
 html[data-theme="dark"] body::after {
-  background:
-    linear-gradient(rgba(159,190,255,.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(159,190,255,.035) 1px, transparent 1px);
-  opacity: .18;
+  display: none;
 }
 
 button,
@@ -1728,8 +1722,16 @@ tr:last-child td {
     font-size: 20px;
   }
 
-  .top-actions .ghost {
+  .top-actions #helpButton {
     display: none;
+  }
+
+  .top-actions #settingsButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 8px 12px;
   }
 
   .main-panel {
