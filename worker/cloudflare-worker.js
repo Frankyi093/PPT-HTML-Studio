@@ -959,7 +959,53 @@ function localStyleVariantCss() {
   </style>`;
 }
 
-function buildHtml(slides, style, mode = "paged") {
+function sanitizeHex(value, fallback) {
+  const normalized = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : fallback;
+}
+
+function sanitizeFont(value) {
+  return String(value || "Inter, Arial, sans-serif").replace(/[<>{};]/g, "").slice(0, 120);
+}
+
+function normalizeCustomStyle(style) {
+  if (!style || typeof style !== "object") return null;
+  const id = String(style.id || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 48);
+  if (!id || !id.startsWith("custom-")) return null;
+  const colors = style.colors || {};
+  const typography = style.typography || {};
+  return {
+    id,
+    name: cleanText(style.name || "Custom Style").slice(0, 60),
+    colors: {
+      background: sanitizeHex(colors.background, "#f8fbff"),
+      text: sanitizeHex(colors.text, "#10203f"),
+      primary: sanitizeHex(colors.primary, "#2563eb"),
+      accent: sanitizeHex(colors.accent, "#38bdf8"),
+      panel: sanitizeHex(colors.panel, "#ffffff"),
+    },
+    typography: {
+      titleFont: sanitizeFont(typography.titleFont),
+      bodyFont: sanitizeFont(typography.bodyFont),
+    },
+    layout: ["balanced", "centered", "two-column", "image-focus", "minimal"].includes(style.layout) ? style.layout : "balanced",
+    promptAddon: cleanText(style.promptAddon || "").slice(0, 1600),
+    localRules: cleanText(style.localRules || "").slice(0, 1200),
+  };
+}
+
+function customStyleCss(customStyle) {
+  if (!customStyle) return "";
+  const cls = `style-${customStyle.id}`;
+  const c = customStyle.colors;
+  const t = customStyle.typography;
+  const centered = customStyle.layout === "centered" ? `body.${cls} header{text-align:center;margin-inline:auto}body.${cls} h1{text-align:center;margin-inline:auto}` : "";
+  const minimal = customStyle.layout === "minimal" ? `body.${cls} .point-card{background:transparent;border-width:0 0 1px 0;border-radius:0}` : "";
+  const imageFocus = customStyle.layout === "image-focus" ? `body.${cls} .media-grid{width:min(44vw,660px)}body.${cls} .image-focus .media-grid{width:min(58vw,820px)}` : "";
+  return `<style id="ppt-custom-style">${`body.${cls} .slide{background:${c.background};color:${c.text};font-family:${t.bodyFont}}body.${cls} h1{font-family:${t.titleFont};color:${c.text}}body.${cls} .lead-text,body.${cls} .body-paragraph,body.${cls} .quiet-list li,body.${cls} .agenda-item p{font-family:${t.bodyFont};color:${c.text}}body.${cls} .chapter,body.${cls} .agenda-item span{color:${c.primary}}body.${cls} .quiet-list li:before,body.${cls} .quiet-list li::before{background:${c.accent}}body.${cls} .point-card{background:${c.panel};border-color:${c.accent};color:${c.text}}body.${cls} .media-grid img{border:1px solid ${c.accent};border-radius:8px}${centered}${minimal}${imageFocus}`}</style>`;
+}
+
+function buildHtml(slides, style, mode = "paged", customStyle = null) {
   const bodyClass = `${mode === "scroll" ? "scroll-mode " : ""}style-${style}`;
   const slideHtml = slides.map((slide, index) => renderSlide(slide, index, slides.length, style)).join("\n");
   return `<!doctype html>
@@ -1053,6 +1099,7 @@ function buildHtml(slides, style, mode = "paged") {
     }
   </style>
   ${localStyleVariantCss()}
+  ${customStyleCss(customStyle)}
 </head>
 <body class="${bodyClass}">
   ${slideHtml}
@@ -1068,7 +1115,10 @@ function mergedIntegrationConfig(override = {}) {
   return merged;
 }
 
-function stylePrompt(style) {
+function stylePrompt(style, customStyle = null) {
+  if (customStyle) {
+    return `Custom style "${customStyle.name}": background ${customStyle.colors.background}, text ${customStyle.colors.text}, primary ${customStyle.colors.primary}, accent ${customStyle.colors.accent}, title font ${customStyle.typography.titleFont}, body font ${customStyle.typography.bodyFont}, layout preference ${customStyle.layout}. ${customStyle.promptAddon || customStyle.localRules || "Use this custom style consistently while preserving readability and images."}`;
+  }
   const directions = {
     teaching: "Teaching Blue: calm education technology, navy text, blue accents, lecture-friendly hierarchy, concise academic wording.",
     softlesson: "Soft Lesson: warm white background, gentle blue accents, quiet workshop feeling, large readable text and spacious examples.",
@@ -1086,7 +1136,7 @@ function stylePrompt(style) {
   return directions[style] || directions.teaching;
 }
 
-function deckPrompt(slides, style) {
+function deckPrompt(slides, style, customStyle = null) {
   const compactSlides = slides.map((slide) => ({
     page: slide.page,
     title: slide.title,
@@ -1097,7 +1147,8 @@ function deckPrompt(slides, style) {
   return `Generate a complete standalone editable HTML slide deck in English from this PPT JSON.
 
 Style direction:
-${stylePrompt(style)}
+${stylePrompt(style, customStyle)}
+${customStyle ? `Custom style local rule summary: ${customStyle.localRules || "Use the saved custom style parameters."}` : ""}
 
 Non-negotiable output rules:
 - Return ONLY complete HTML code. No markdown explanation.
@@ -1126,7 +1177,7 @@ Non-negotiable output rules:
 - Use CSS that keeps all sections visible and self-contained; no content should be clipped or hidden by default.
 
 PPT JSON:
-${JSON.stringify({ style, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
+${JSON.stringify({ style, customStyle, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
 }
 
 function integrationHeaders(config) {
@@ -1172,9 +1223,9 @@ function extractTextFromApiData(data) {
     || "";
 }
 
-async function callAiApi(slides, config, style) {
+async function callAiApi(slides, config, style, customStyle = null) {
   const endpoint = normalizeChatEndpoint(config.endpoint);
-  const prompt = deckPrompt(slides, style);
+  const prompt = deckPrompt(slides, style, customStyle);
   const response = await fetch(endpoint, {
     method: "POST",
     headers: integrationHeaders(config),
@@ -1194,9 +1245,9 @@ async function callAiApi(slides, config, style) {
   return extractHtml(extractTextFromApiData(data));
 }
 
-async function callWorkflowApi(slides, config, style) {
+async function callWorkflowApi(slides, config, style, customStyle = null) {
   const endpoint = String(config.endpoint || "").trim();
-  const prompt = deckPrompt(slides, style);
+  const prompt = deckPrompt(slides, style, customStyle);
   const isDify = config.workflowPayload === "dify" || /\/v1\/workflows\/run|\/workflows\/run/i.test(endpoint);
   const body = isDify
     ? {
@@ -1224,13 +1275,13 @@ async function callWorkflowApi(slides, config, style) {
   return extractHtml(extractTextFromApiData(data));
 }
 
-async function maybeGenerateAiHtml(slides, config, style) {
+async function maybeGenerateAiHtml(slides, config, style, customStyle = null) {
   if (!config || config.mode === LOCAL_MODE) return null;
   if (!config.apiKey) throw new Error("API key is required for AI generation.");
   if (!config.endpoint) throw new Error("API endpoint is required for AI generation.");
   let html = null;
-  if (config.mode === "ai_api") html = await callAiApi(slides, config, style);
-  else if (config.mode === "workflow_api") html = await callWorkflowApi(slides, config, style);
+  if (config.mode === "ai_api") html = await callAiApi(slides, config, style, customStyle);
+  else if (config.mode === "workflow_api") html = await callWorkflowApi(slides, config, style, customStyle);
   else throw new Error(`Unsupported API mode: ${config.mode}`);
   if (!html) throw new Error("The API responded, but no complete HTML document was found. Ask the model/workflow to return only standalone HTML.");
   return html;
@@ -1325,12 +1376,13 @@ async function createJob(payload) {
   const slides = await extractPptx(fileBytes);
   const extractionStats = slides.extractionStats || { embeddedImages: 0, skippedImages: 0, embeddedImageBytes: 0 };
   const style = payload.style || "teaching";
+  const customStyle = normalizeCustomStyle(payload.customStyle);
   const requestConfig = mergedIntegrationConfig(payload.integration);
   let aiStatus = { mode: requestConfig.mode || "local", used: false };
   let pagedHtml = "";
   if (requestConfig.mode && requestConfig.mode !== LOCAL_MODE) {
     try {
-      pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style);
+      pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style, customStyle);
       aiStatus = { mode: requestConfig.mode, provider: requestConfig.endpoint, used: true, resultType: "html" };
     } catch (error) {
       const message = String(error.message || error);
@@ -1346,8 +1398,8 @@ async function createJob(payload) {
     pagedHtml = injectEditorRuntime(pagedHtml);
     scrollHtml = makeScrollHtml(pagedHtml);
   } else {
-    pagedHtml = buildHtml(slides, style, "paged");
-    scrollHtml = buildHtml(slides, style, "scroll");
+    pagedHtml = buildHtml(slides, style, "paged", customStyle);
+    scrollHtml = buildHtml(slides, style, "scroll", customStyle);
   }
   const id = `CF-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const job = {
@@ -1399,12 +1451,13 @@ async function createJobFromSlides(payload) {
     skippedBlankSlides: Number(payload.stats?.skippedBlankSlides || 0),
   };
   const style = payload.style || "teaching";
+  const customStyle = normalizeCustomStyle(payload.customStyle);
   const requestConfig = mergedIntegrationConfig(payload.integration);
   let aiStatus = { mode: requestConfig.mode || "local", used: false, browserExtracted: true };
   let pagedHtml = "";
   if (requestConfig.mode && requestConfig.mode !== LOCAL_MODE) {
     try {
-      pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style);
+      pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style, customStyle);
       aiStatus = { mode: requestConfig.mode, provider: requestConfig.endpoint, used: true, resultType: "html", browserExtracted: true };
     } catch (error) {
       const message = String(error.message || error);
@@ -1420,8 +1473,8 @@ async function createJobFromSlides(payload) {
     pagedHtml = injectEditorRuntime(pagedHtml);
     scrollHtml = makeScrollHtml(pagedHtml);
   } else {
-    pagedHtml = buildHtml(slides, style, "paged");
-    scrollHtml = buildHtml(slides, style, "scroll");
+    pagedHtml = buildHtml(slides, style, "paged", customStyle);
+    scrollHtml = buildHtml(slides, style, "scroll", customStyle);
   }
   const id = `CF-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const job = {
