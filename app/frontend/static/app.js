@@ -125,7 +125,7 @@ const i18n = {
     stopEditing: "Stop Editing",
     saveEdits: "Save Edits",
     openScrollHtml: "Open Scroll HTML",
-    quickFixTitle: "Quick fixes",
+    quickFixTitle: "One-click result repair",
     quickFixNone: "No layout issues detected.",
     quickFixDetected: "{count} issue groups detected.",
     quickFixApplied: "Quick fix applied. Save edits or download ZIP to keep it.",
@@ -330,7 +330,7 @@ const i18n = {
     stopEditing: "\u505c\u6b62\u7f16\u8f91",
     saveEdits: "\u4fdd\u5b58\u4fee\u6539",
     openScrollHtml: "\u6253\u5f00\u6ed1\u52a8\u7248 HTML",
-    quickFixTitle: "\u4e00\u952e\u4fee\u590d",
+    quickFixTitle: "\u4e00\u952e\u4fee\u590d\u751f\u6210\u7ed3\u679c",
     quickFixNone: "\u672a\u68c0\u6d4b\u5230\u660e\u663e\u6392\u7248\u95ee\u9898\u3002",
     quickFixDetected: "\u68c0\u6d4b\u5230 {count} \u7c7b\u95ee\u9898\u3002",
     quickFixApplied: "\u5df2\u5e94\u7528\u4e00\u952e\u4fee\u590d\u3002\u70b9\u51fb\u4fdd\u5b58\u4fee\u6539\u6216\u4e0b\u8f7d ZIP \u53ef\u4fdd\u7559\u7ed3\u679c\u3002",
@@ -2631,10 +2631,13 @@ function detectQuickFixIssues() {
     });
   });
   const count = Object.values(issues).filter(Boolean).length;
-  panel.classList.toggle("hidden", count === 0);
+  panel.classList.remove("hidden");
   setText("quickFixSummary", count ? "quickFixDetected" : "quickFixNone", { count });
   Object.entries(QUICK_FIX_BUTTONS).forEach(([key, id]) => {
-    el(id)?.classList.toggle("hidden", !issues[key]);
+    const button = el(id);
+    if (!button) return;
+    button.classList.remove("hidden");
+    button.classList.toggle("suggested", Boolean(issues[key]));
   });
   return issues;
 }
