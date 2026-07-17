@@ -1573,6 +1573,78 @@ html[data-theme="dark"] .custom-style-preview {
   padding-top: 12px;
 }
 
+.quick-fix-panel {
+  margin-top: 10px;
+  border: 1px solid rgba(255,255,255,.56);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,.58);
+  backdrop-filter: blur(18px) saturate(1.16);
+  -webkit-backdrop-filter: blur(18px) saturate(1.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(18,39,83,.06);
+}
+
+.quick-fix-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.quick-fix-head strong {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.quick-fix-head span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.quick-fix-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.quick-fix-actions button {
+  min-height: 36px;
+  border: 1px solid rgba(91,126,255,.26);
+  border-radius: 11px;
+  background: rgba(255,255,255,.62);
+  color: var(--blue);
+  font-weight: 760;
+  font-size: 12px;
+  padding: 8px 10px;
+  box-shadow: var(--glass-edge);
+}
+
+.quick-fix-actions button:hover {
+  border-color: rgba(95,212,255,.58);
+  background: rgba(255,255,255,.82);
+  box-shadow: 0 12px 24px rgba(59,111,245,.13), var(--glass-edge);
+}
+
+html[data-theme="dark"] .quick-fix-panel {
+  background: #152448;
+  border-color: rgba(159,190,255,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 14px 28px rgba(0,0,0,.22);
+}
+
+html[data-theme="dark"] .quick-fix-actions button {
+  background: #0e1a36;
+  color: #9fc2ff;
+  border-color: rgba(159,190,255,.18);
+}
+
+html[data-theme="dark"] .quick-fix-actions button:hover {
+  background: #16264c;
+  border-color: rgba(127,176,255,.42);
+}
+
 .share-panel {
   margin-top: 12px;
   border: 1px solid rgba(255,255,255,.58);
@@ -2013,6 +2085,29 @@ tr:last-child td {
     min-height: 36px;
     padding: 7px 8px;
     font-size: 13px;
+  }
+
+  .quick-fix-panel {
+    padding: 10px;
+  }
+
+  .quick-fix-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .quick-fix-head span {
+    text-align: left;
+  }
+
+  .quick-fix-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-fix-actions button {
+    min-width: 0;
+    padding: 8px 7px;
+    font-size: 12px;
   }
 
   .job-cards {
