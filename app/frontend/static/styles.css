@@ -1628,6 +1628,15 @@ html[data-theme="dark"] .custom-style-preview {
   box-shadow: 0 12px 24px rgba(59,111,245,.13), var(--glass-edge);
 }
 
+.quick-fix-actions button.suggested {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.18), transparent),
+    linear-gradient(135deg, var(--blue), #0d7df2 58%, var(--cyan));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(59,111,245,.22), inset 0 1px 0 rgba(255,255,255,.26);
+}
+
 html[data-theme="dark"] .quick-fix-panel {
   background: #152448;
   border-color: rgba(159,190,255,.16);
@@ -1643,6 +1652,12 @@ html[data-theme="dark"] .quick-fix-actions button {
 html[data-theme="dark"] .quick-fix-actions button:hover {
   background: #16264c;
   border-color: rgba(127,176,255,.42);
+}
+
+html[data-theme="dark"] .quick-fix-actions button.suggested {
+  background: #2f62e8;
+  border-color: rgba(159,190,255,.24);
+  color: #fff;
 }
 
 .share-panel {
