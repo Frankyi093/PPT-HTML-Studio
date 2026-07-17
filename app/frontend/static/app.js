@@ -25,6 +25,13 @@ const THEME_STORAGE_KEY = "ppt-html-studio-theme";
 const PREVIEW_DESKTOP_WIDTH = 1280;
 const PREVIEW_DESKTOP_HEIGHT = 720;
 const CUSTOM_STYLE_STORAGE_KEY = "ppt-html-studio-custom-styles-v1";
+const QUICK_FIX_BUTTONS = {
+  overflow: "fixOverflow",
+  images: "fixImages",
+  contrast: "fixContrast",
+  missing: "fixMissingImages",
+  crowded: "fixCrowded",
+};
 const i18n = {
   en: {
     help: "Help",
@@ -118,6 +125,15 @@ const i18n = {
     stopEditing: "Stop Editing",
     saveEdits: "Save Edits",
     openScrollHtml: "Open Scroll HTML",
+    quickFixTitle: "Quick fixes",
+    quickFixNone: "No layout issues detected.",
+    quickFixDetected: "{count} issue groups detected.",
+    quickFixApplied: "Quick fix applied. Save edits or download ZIP to keep it.",
+    fixOverflow: "Fix overflow",
+    fixImages: "Re-layout images",
+    fixContrast: "Improve contrast",
+    fixMissingImages: "Restore missing images",
+    fixCrowded: "Split crowded slide",
     shareReadiness: "Share readiness",
     notChecked: "Not checked",
     downloadZipPackage: "Download ZIP package",
@@ -314,6 +330,15 @@ const i18n = {
     stopEditing: "\u505c\u6b62\u7f16\u8f91",
     saveEdits: "\u4fdd\u5b58\u4fee\u6539",
     openScrollHtml: "\u6253\u5f00\u6ed1\u52a8\u7248 HTML",
+    quickFixTitle: "\u4e00\u952e\u4fee\u590d",
+    quickFixNone: "\u672a\u68c0\u6d4b\u5230\u660e\u663e\u6392\u7248\u95ee\u9898\u3002",
+    quickFixDetected: "\u68c0\u6d4b\u5230 {count} \u7c7b\u95ee\u9898\u3002",
+    quickFixApplied: "\u5df2\u5e94\u7528\u4e00\u952e\u4fee\u590d\u3002\u70b9\u51fb\u4fdd\u5b58\u4fee\u6539\u6216\u4e0b\u8f7d ZIP \u53ef\u4fdd\u7559\u7ed3\u679c\u3002",
+    fixOverflow: "\u4fee\u590d\u6ea2\u51fa",
+    fixImages: "\u91cd\u65b0\u6392\u7248\u56fe\u7247",
+    fixContrast: "\u63d0\u5347\u5bf9\u6bd4\u5ea6",
+    fixMissingImages: "\u6062\u590d\u7f3a\u5931\u56fe\u7247",
+    fixCrowded: "\u62c6\u5206\u62e5\u6324\u9875",
     shareReadiness: "\u5206\u4eab\u68c0\u67e5",
     notChecked: "\u672a\u68c0\u67e5",
     downloadZipPackage: "\u4e0b\u8f7d ZIP \u5305",
@@ -791,6 +816,12 @@ function translateStaticUi() {
     ["fitButton", "fit"],
     ["saveEditedHtml", "saveEdits"],
     ["openScrollHtml", "openScrollHtml"],
+    ["quickFixTitle", "quickFixTitle"],
+    ["fixOverflow", "fixOverflow"],
+    ["fixImages", "fixImages"],
+    ["fixContrast", "fixContrast"],
+    ["fixMissingImages", "fixMissingImages"],
+    ["fixCrowded", "fixCrowded"],
     ["downloadShareZip", "downloadZipPackage"],
     ["openSingleFile", "openSingleFile"],
     ["openScrollSingleFile", "openScrollSingleFile"],
@@ -2391,6 +2422,7 @@ function selectJob(jobId) {
   el("jobSelect").value = job.id;
   el("previewFrame").src = job.previewUrl;
   el("previewEmpty").classList.add("hidden");
+  el("quickFixPanel")?.classList.add("hidden");
   renderShare(job.share || null);
   const aiMessage = formatAiStatus(job);
   if (aiMessage) setStatus(aiMessage, job.aiStatus?.fallback ? "error" : "ok");
@@ -2470,6 +2502,344 @@ function ensurePreviewEditorApi() {
     return `<!doctype html>\n${clone.outerHTML}`;
   };
   return win;
+}
+
+function quickFixSlides(doc) {
+  if (!doc) return [];
+  const slides = [...doc.querySelectorAll(".slide, section[data-slide-page], [data-slide-page], .ai-slide")];
+  return slides.filter((slide, index, all) => {
+    if (slide.closest(".editor-toolbar,.ppt-runtime-nav,.nav,.runtime-controls")) return false;
+    return all.findIndex((item) => item === slide || item.contains(slide)) === index;
+  });
+}
+
+function visibleRect(node) {
+  const rect = node?.getBoundingClientRect?.();
+  if (!rect || rect.width <= 1 || rect.height <= 1) return null;
+  return rect;
+}
+
+function quickFixActiveSlides(doc) {
+  const slides = quickFixSlides(doc);
+  const visible = slides.filter((slide) => visibleRect(slide));
+  return visible.length ? visible : slides.slice(0, 1);
+}
+
+function quickFixTextNodes(slide) {
+  if (!slide) return [];
+  const selector = "h1,h2,h3,h4,p,li,td,th,.editable-text,.free-textbox,.free-text-box,.point-card,.body-card,.card,.agenda-item,.lead-text,.body-paragraph";
+  return [...slide.querySelectorAll(selector)].filter((node) => {
+    const text = node.textContent.trim();
+    if (!text || node.closest("script,style,.ppt-runtime-nav,.nav,.editor-toolbar")) return false;
+    return visibleRect(node);
+  });
+}
+
+function rectsOverlap(a, b, padding = 6) {
+  if (!a || !b) return false;
+  return a.left < b.right - padding && a.right > b.left + padding && a.top < b.bottom - padding && a.bottom > b.top + padding;
+}
+
+function nodeOverflowsSlide(node, slide) {
+  const nodeRect = visibleRect(node);
+  const slideRect = visibleRect(slide);
+  if (!nodeRect || !slideRect) return false;
+  const internalOverflow = node.scrollWidth > node.clientWidth + 3 || node.scrollHeight > node.clientHeight + 3;
+  const outside = nodeRect.left < slideRect.left - 3 || nodeRect.top < slideRect.top - 3 || nodeRect.right > slideRect.right + 3 || nodeRect.bottom > slideRect.bottom + 3;
+  const text = node.textContent.trim();
+  const style = slide.ownerDocument.defaultView.getComputedStyle(node);
+  const fontSize = Number.parseFloat(style.fontSize || "16") || 16;
+  const verticalCrush = text.length > 6 && nodeRect.width < Math.max(42, fontSize * 2.2) && nodeRect.height > fontSize * 4;
+  return internalOverflow || outside || verticalCrush;
+}
+
+function normalizeCssColor(value, doc) {
+  if (!value || value === "transparent" || value === "rgba(0, 0, 0, 0)") return null;
+  const scratch = doc.createElement("span");
+  scratch.style.color = value;
+  doc.body.appendChild(scratch);
+  const color = doc.defaultView.getComputedStyle(scratch).color;
+  scratch.remove();
+  const match = color.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/i);
+  if (!match) return null;
+  const alpha = match[4] === undefined ? 1 : Number.parseFloat(match[4]);
+  if (alpha <= 0.05) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function relativeLuminance(rgb) {
+  const values = rgb.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2];
+}
+
+function contrastRatio(a, b) {
+  const l1 = relativeLuminance(a);
+  const l2 = relativeLuminance(b);
+  const light = Math.max(l1, l2);
+  const dark = Math.min(l1, l2);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function effectiveBackgroundColor(node) {
+  const doc = node.ownerDocument;
+  const view = doc.defaultView;
+  let current = node;
+  while (current && current.nodeType === 1) {
+    const rgb = normalizeCssColor(view.getComputedStyle(current).backgroundColor, doc);
+    if (rgb) return rgb;
+    current = current.parentElement;
+  }
+  return normalizeCssColor(view.getComputedStyle(doc.body).backgroundColor, doc) || [255, 255, 255];
+}
+
+function detectQuickFixIssues() {
+  const doc = previewDocument();
+  const panel = el("quickFixPanel");
+  if (!state.activeJob || !doc || !panel) {
+    panel?.classList.add("hidden");
+    return null;
+  }
+  const issues = { overflow: false, images: false, contrast: false, missing: false, crowded: false };
+  const slides = quickFixActiveSlides(doc);
+  slides.forEach((slide) => {
+    const slideRect = visibleRect(slide);
+    const textNodes = quickFixTextNodes(slide);
+    const images = [...slide.querySelectorAll("img")].filter((img) => visibleRect(img));
+    const textLength = textNodes.reduce((sum, node) => sum + node.textContent.trim().length, 0);
+    issues.overflow = issues.overflow || textNodes.some((node) => nodeOverflowsSlide(node, slide));
+    issues.crowded = issues.crowded || textNodes.length > 10 || textLength > 760;
+    images.forEach((img, index) => {
+      const rect = visibleRect(img);
+      if (!img.complete || img.naturalWidth === 0 || !img.getAttribute("src")) issues.missing = true;
+      if (slideRect && rect && (rect.width > slideRect.width * 0.62 || rect.height > slideRect.height * 0.62)) issues.images = true;
+      images.slice(index + 1).forEach((other) => {
+        if (rectsOverlap(rect, visibleRect(other), 8)) issues.images = true;
+      });
+      textNodes.forEach((node) => {
+        if (rectsOverlap(rect, visibleRect(node), 10)) issues.images = true;
+      });
+    });
+    if (slide.querySelector(".ppt-missing-image,.image-placeholder,[data-image-slot]:empty")) issues.missing = true;
+    textNodes.forEach((node) => {
+      const style = doc.defaultView.getComputedStyle(node);
+      const fg = normalizeCssColor(style.color, doc);
+      const bg = effectiveBackgroundColor(node);
+      if (fg && bg && contrastRatio(fg, bg) < 3.8) issues.contrast = true;
+    });
+  });
+  const count = Object.values(issues).filter(Boolean).length;
+  panel.classList.toggle("hidden", count === 0);
+  setText("quickFixSummary", count ? "quickFixDetected" : "quickFixNone", { count });
+  Object.entries(QUICK_FIX_BUTTONS).forEach(([key, id]) => {
+    el(id)?.classList.toggle("hidden", !issues[key]);
+  });
+  return issues;
+}
+
+function ensureQuickFixRuntimeStyle(doc) {
+  if (doc.getElementById("ppt-quick-fix-style")) return;
+  const style = doc.createElement("style");
+  style.id = "ppt-quick-fix-style";
+  style.textContent = `
+.ppt-qf-fixed-text{white-space:normal!important;word-break:normal!important;overflow-wrap:break-word!important;text-wrap:pretty;writing-mode:horizontal-tb!important;text-orientation:mixed!important;max-width:100%!important;box-sizing:border-box!important}
+.ppt-qf-compact-slide{overflow:hidden!important}
+.ppt-qf-image-box{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;transform:none!important;float:none!important;z-index:1!important;box-sizing:border-box!important}
+.ppt-qf-image{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important}
+.ppt-qf-missing{display:grid!important;place-items:center!important;min-height:110px!important;border:1px dashed rgba(92,116,160,.45)!important;border-radius:12px!important;background:rgba(240,244,252,.72)!important;color:#60708f!important;font:600 16px/1.3 system-ui,sans-serif!important}
+`;
+  doc.head.appendChild(style);
+}
+
+function fixOverflowInPreview(doc) {
+  ensureQuickFixRuntimeStyle(doc);
+  let changed = 0;
+  quickFixActiveSlides(doc).forEach((slide) => {
+    const slideRect = visibleRect(slide);
+    quickFixTextNodes(slide).forEach((node) => {
+      const rect = visibleRect(node);
+      if (!rect || !nodeOverflowsSlide(node, slide)) return;
+      node.classList.add("ppt-qf-fixed-text");
+      const style = doc.defaultView.getComputedStyle(node);
+      const fontSize = Number.parseFloat(style.fontSize || "24") || 24;
+      const nextSize = Math.max(18, Math.min(fontSize, fontSize * 0.88));
+      node.style.fontSize = `${nextSize}px`;
+      node.style.lineHeight = fontSize > 38 ? "1.06" : "1.14";
+      node.style.letterSpacing = "0";
+      node.style.overflow = "visible";
+      node.style.minWidth = slideRect ? `${Math.min(Math.max(260, slideRect.width * 0.28), slideRect.width * 0.82)}px` : "260px";
+      if (rect.right > (slideRect?.right || rect.right) || rect.left < (slideRect?.left || rect.left)) {
+        node.style.maxWidth = slideRect ? `${Math.max(280, slideRect.width * 0.82)}px` : "100%";
+      }
+      changed += 1;
+    });
+    if (changed) {
+      slide.classList.add("ppt-qf-compact-slide");
+      slide.style.gap = slide.style.gap || "clamp(12px, 2vw, 28px)";
+    }
+  });
+  return changed;
+}
+
+function relayoutImagesInPreview(doc) {
+  ensureQuickFixRuntimeStyle(doc);
+  let changed = 0;
+  quickFixActiveSlides(doc).forEach((slide) => {
+    const slideRect = visibleRect(slide);
+    const images = [...slide.querySelectorAll("img")].filter((img) => visibleRect(img));
+    if (!images.length) return;
+    images.forEach((img, index) => {
+      const box = img.closest(".media-box,.editable-image-box,figure,.image-area,.image-wrap,.visual,.media") || img.parentElement;
+      if (box && box !== slide) {
+        box.classList.add("ppt-qf-image-box");
+        box.style.width = `${Math.max(190, Math.min(slideRect ? slideRect.width * (images.length > 1 ? 0.34 : 0.42) : 420, 520))}px`;
+        box.style.height = `${Math.max(130, Math.min(slideRect ? slideRect.height * (images.length > 1 ? 0.28 : 0.42) : 300, 340))}px`;
+        box.style.margin = images.length > 1 ? "8px" : "12px auto";
+      }
+      img.classList.add("ppt-qf-image");
+      img.style.objectFit = "contain";
+      if (!img.parentElement?.classList.contains("ppt-qf-image-row") && images.length > 1 && index === 0) {
+        const row = doc.createElement("div");
+        row.className = "ppt-qf-image-row";
+        row.style.cssText = "display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;max-width:92%;margin:12px auto 0;";
+        const firstBox = images[0].closest(".media-box,.editable-image-box,figure,.image-area,.image-wrap,.visual,.media") || images[0];
+        firstBox.parentElement?.insertBefore(row, firstBox);
+        images.forEach((item) => {
+          const itemBox = item.closest(".media-box,.editable-image-box,figure,.image-area,.image-wrap,.visual,.media") || item;
+          row.appendChild(itemBox);
+        });
+      }
+      changed += 1;
+    });
+  });
+  return changed;
+}
+
+function improveContrastInPreview(doc) {
+  ensureQuickFixRuntimeStyle(doc);
+  let changed = 0;
+  quickFixActiveSlides(doc).forEach((slide) => {
+    quickFixTextNodes(slide).forEach((node) => {
+      const style = doc.defaultView.getComputedStyle(node);
+      const fg = normalizeCssColor(style.color, doc);
+      const bg = effectiveBackgroundColor(node);
+      if (!fg || !bg || contrastRatio(fg, bg) >= 4.5) return;
+      node.style.color = relativeLuminance(bg) > 0.48 ? "#102044" : "#f8fbff";
+      node.style.textShadow = "none";
+      changed += 1;
+    });
+  });
+  return changed;
+}
+
+function restoreMissingImagesInPreview(doc) {
+  ensureQuickFixRuntimeStyle(doc);
+  const availableImages = [...doc.querySelectorAll("img")]
+    .filter((img) => img.complete && img.naturalWidth > 0 && /^data:image\//i.test(img.currentSrc || img.src))
+    .map((img) => img.currentSrc || img.src);
+  let cursor = 0;
+  let changed = 0;
+  [...doc.querySelectorAll("img")].forEach((img) => {
+    if (img.complete && img.naturalWidth > 0 && img.getAttribute("src")) return;
+    const replacement = availableImages[cursor];
+    if (replacement) {
+      img.src = replacement;
+      cursor = (cursor + 1) % availableImages.length;
+      img.classList.add("ppt-qf-image");
+    } else {
+      const placeholder = doc.createElement("div");
+      placeholder.className = "ppt-qf-missing";
+      placeholder.textContent = "Image unavailable";
+      img.replaceWith(placeholder);
+    }
+    changed += 1;
+  });
+  [...doc.querySelectorAll(".ppt-missing-image,.image-placeholder,[data-image-slot]:empty")].forEach((node) => {
+    const replacement = availableImages[cursor];
+    if (replacement) {
+      const img = doc.createElement("img");
+      img.src = replacement;
+      img.alt = "Restored image";
+      img.className = "ppt-qf-image";
+      node.replaceWith(img);
+      cursor = (cursor + 1) % availableImages.length;
+    } else {
+      node.classList.add("ppt-qf-missing");
+      node.textContent = node.textContent.trim() || "Image unavailable";
+    }
+    changed += 1;
+  });
+  return changed;
+}
+
+function splitCrowdedSlidesInPreview(doc) {
+  ensureQuickFixRuntimeStyle(doc);
+  let created = 0;
+  quickFixActiveSlides(doc).forEach((slide) => {
+    const items = [...slide.querySelectorAll("p,li,.editable-text,.body-paragraph,.point-card,.body-card,.card,.agenda-item")]
+      .filter((node) => node.textContent.trim() && !node.closest("h1,h2,h3,h4,.ppt-runtime-nav,.nav,.editor-toolbar") && visibleRect(node));
+    const totalText = items.reduce((sum, node) => sum + node.textContent.trim().length, 0);
+    if (items.length < 8 && totalText < 680) return;
+    const splitAt = Math.max(3, Math.ceil(items.length / 2));
+    const clone = slide.cloneNode(true);
+    clone.classList.remove("active", "is-active", "current", "present");
+    const originalItems = [...slide.querySelectorAll("p,li,.editable-text,.body-paragraph,.point-card,.body-card,.card,.agenda-item")]
+      .filter((node) => node.textContent.trim() && !node.closest("h1,h2,h3,h4,.ppt-runtime-nav,.nav,.editor-toolbar"));
+    const cloneItems = [...clone.querySelectorAll("p,li,.editable-text,.body-paragraph,.point-card,.body-card,.card,.agenda-item")]
+      .filter((node) => node.textContent.trim() && !node.closest("h1,h2,h3,h4,.ppt-runtime-nav,.nav,.editor-toolbar"));
+    originalItems.forEach((node, index) => {
+      if (index >= splitAt) node.remove();
+    });
+    cloneItems.forEach((node, index) => {
+      if (index < splitAt) node.remove();
+    });
+    const title = clone.querySelector("h1,h2,.title");
+    if (title && !/\bcontinued\b/i.test(title.textContent)) title.textContent = `${title.textContent.trim()} · continued`;
+    slide.after(clone);
+    created += 1;
+  });
+  return created;
+}
+
+async function persistQuickFixPreview({ reload = false } = {}) {
+  if (!state.activeJob) return;
+  const win = previewWindow();
+  ensurePreviewEditorApi();
+  if (!win || typeof win.exportEditedHtml !== "function") return;
+  const pagedHtml = await win.exportEditedHtml("paged");
+  const scrollHtml = await win.exportEditedHtml("scroll");
+  const job = updateLocalJobHtml(state.activeJob, pagedHtml, scrollHtml);
+  renderJobs();
+  renderJobSelect();
+  el("jobSelect").value = job.id;
+  if (reload) {
+    el("previewFrame").src = job.previewUrl;
+  }
+}
+
+async function applyQuickFix(kind) {
+  const doc = previewDocument();
+  if (!state.activeJob || !doc) {
+    setStatus(t("generateOrSelect"), "error");
+    return;
+  }
+  ensurePreviewEditorApi();
+  let changed = 0;
+  if (kind === "overflow") changed = fixOverflowInPreview(doc);
+  if (kind === "images") changed = relayoutImagesInPreview(doc);
+  if (kind === "contrast") changed = improveContrastInPreview(doc);
+  if (kind === "missing") changed = restoreMissingImagesInPreview(doc);
+  if (kind === "crowded") changed = splitCrowdedSlidesInPreview(doc);
+  if (changed) {
+    await persistQuickFixPreview({ reload: kind === "crowded" });
+    setStatus(t("quickFixApplied"), "ok");
+    setTimeout(detectQuickFixIssues, kind === "crowded" ? 650 : 80);
+  } else {
+    detectQuickFixIssues();
+    setStatus(t("quickFixNone"), "ok");
+  }
 }
 
 function hasEditablePreview() {
@@ -3156,6 +3526,7 @@ function bindEvents() {
   el("previewFrame").addEventListener("load", () => {
     updatePreviewEditButton(false);
     syncPreviewScale();
+    setTimeout(detectQuickFixIssues, 120);
   });
   window.addEventListener("resize", syncPreviewScale);
   window.addEventListener("orientationchange", syncPreviewScale);
@@ -3173,6 +3544,9 @@ function bindEvents() {
   });
   el("openScrollHtml").addEventListener("click", () => {
     if (state.activeJob) window.open(state.activeJob.scrollUrl || state.activeJob.previewUrl, "_blank");
+  });
+  Object.entries(QUICK_FIX_BUTTONS).forEach(([kind, id]) => {
+    el(id)?.addEventListener("click", () => applyQuickFix(kind));
   });
   el("shareJob").addEventListener("click", () => analyzeShare());
   el("downloadJob").addEventListener("click", () => downloadJobZip(state.activeJob));
