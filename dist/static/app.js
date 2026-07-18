@@ -31,6 +31,7 @@ const QUICK_FIX_BUTTONS = {
   contrast: "fixContrast",
   missing: "fixMissingImages",
   crowded: "fixCrowded",
+  ai: "fixAi",
 };
 const i18n = {
   en: {
@@ -134,6 +135,10 @@ const i18n = {
     fixContrast: "Improve contrast",
     fixMissingImages: "Restore missing images",
     fixCrowded: "Split crowded slide",
+    fixAi: "AI repair layout",
+    quickFixAiRunning: "AI is repairing the current layout...",
+    quickFixAiNoConfig: "Choose an AI service and save an API key before using AI repair.",
+    quickFixAiApplied: "AI layout repair applied. Save edits or download ZIP to keep it.",
     shareReadiness: "Share readiness",
     notChecked: "Not checked",
     downloadZipPackage: "Download ZIP package",
@@ -339,6 +344,10 @@ const i18n = {
     fixContrast: "\u63d0\u5347\u5bf9\u6bd4\u5ea6",
     fixMissingImages: "\u6062\u590d\u7f3a\u5931\u56fe\u7247",
     fixCrowded: "\u62c6\u5206\u62e5\u6324\u9875",
+    fixAi: "AI \u4fee\u590d\u7248\u5f0f",
+    quickFixAiRunning: "AI \u6b63\u5728\u4fee\u590d\u5f53\u524d\u7248\u5f0f...",
+    quickFixAiNoConfig: "\u8bf7\u5148\u9009\u62e9 AI \u670d\u52a1\u5e76\u4fdd\u5b58 API \u5bc6\u94a5\uff0c\u518d\u4f7f\u7528 AI \u4fee\u590d\u3002",
+    quickFixAiApplied: "AI \u7248\u5f0f\u4fee\u590d\u5df2\u5e94\u7528\u3002\u70b9\u51fb\u4fdd\u5b58\u4fee\u6539\u6216\u4e0b\u8f7d ZIP \u53ef\u4fdd\u7559\u7ed3\u679c\u3002",
     shareReadiness: "\u5206\u4eab\u68c0\u67e5",
     notChecked: "\u672a\u68c0\u67e5",
     downloadZipPackage: "\u4e0b\u8f7d ZIP \u5305",
@@ -822,6 +831,7 @@ function translateStaticUi() {
     ["fixContrast", "fixContrast"],
     ["fixMissingImages", "fixMissingImages"],
     ["fixCrowded", "fixCrowded"],
+    ["fixAi", "fixAi"],
     ["downloadShareZip", "downloadZipPackage"],
     ["openSingleFile", "openSingleFile"],
     ["openScrollSingleFile", "openScrollSingleFile"],
@@ -2777,6 +2787,94 @@ function restoreMissingImagesInPreview(doc) {
   return changed;
 }
 
+function activeSlideSnapshotForAi(doc) {
+  const slide = quickFixActiveSlides(doc)[0];
+  if (!slide) return "";
+  const clone = slide.cloneNode(true);
+  clone.querySelectorAll("script,style,.editor-toolbar,.ppt-runtime-nav,.nav,.image-drag-handle,.image-resize-handle").forEach((node) => node.remove());
+  clone.querySelectorAll("img").forEach((img, index) => {
+    const src = img.getAttribute("src") || "";
+    if (/^data:image\//i.test(src)) img.setAttribute("src", `[embedded-original-image-${index + 1}]`);
+  });
+  return clone.outerHTML.replace(/\s{2,}/g, " ").slice(0, 42000);
+}
+
+function cssPatchFromAiText(text) {
+  const raw = String(text || "").trim();
+  const jsonText = raw.match(/```json\s*([\s\S]*?)```/i)?.[1]?.trim() || raw;
+  try {
+    const parsed = JSON.parse(jsonText);
+    if (parsed?.css) return String(parsed.css);
+  } catch {
+    // The model may return fenced CSS or plain CSS.
+  }
+  const fencedCss = raw.match(/```css\s*([\s\S]*?)```/i)?.[1]?.trim();
+  const css = fencedCss || raw.replace(/```/g, "").trim();
+  return css.replace(/<\/?style[^>]*>/gi, "").replace(/<script[\s\S]*?<\/script>/gi, "").trim();
+}
+
+function aiQuickFixPrompt(slideHtml, issues) {
+  const issueList = Object.entries(issues || {})
+    .filter(([, value]) => value)
+    .map(([key]) => key)
+    .join(", ") || "general polish";
+  return `Return JSON only: {"css":"..."}.
+You are repairing the currently visible HTML slide in PPT HTML Studio.
+Detected issue groups: ${issueList}.
+Goal: make this slide clean, readable, non-overflowing, balanced, and visually polished without changing generated content.
+Rules:
+- Return only a CSS patch in JSON. No markdown.
+- Do not rewrite HTML, do not create image URLs, do not hide original content, and do not use scrollable text boxes.
+- Preserve original images and image containers. Reposition and resize them with CSS only.
+- Keep all text horizontal. Never use vertical writing, one-letter columns, word-break: break-all, overflow-wrap:anywhere, or hidden overflow that cuts text.
+- Use safe margins, strong contrast, and balanced image/text spacing.
+- Scope selectors to the provided slide whenever possible using its classes or data-slide-page.
+- If text is too dense, use columns, smaller gaps, and slightly smaller font, but keep body text readable.
+Current slide HTML:
+${slideHtml}`;
+}
+
+async function aiRepairLayoutInPreview(doc, issues) {
+  const config = integrationForGeneration();
+  if (config.mode !== "ai_api" || !config.apiKey) {
+    throw new Error(t("quickFixAiNoConfig"));
+  }
+  const slideHtml = activeSlideSnapshotForAi(doc);
+  if (!slideHtml) return 0;
+  setStatus(t("quickFixAiRunning"));
+  const controller = new AbortController();
+  const timeoutMs = Math.max(90, Number(config.timeoutSec || 240)) * 1000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const response = await fetch(normalizeChatEndpoint(config.endpoint), {
+    method: "POST",
+    headers: apiHeaders(config),
+    signal: controller.signal,
+    body: JSON.stringify({
+      model: config.model || "gpt-4.1-mini",
+      messages: [
+        { role: "system", content: "You repair HTML slide layouts by returning a small CSS patch as strict JSON only." },
+        { role: "user", content: aiQuickFixPrompt(slideHtml, issues) },
+      ],
+      temperature: 0.1,
+      max_tokens: 5000,
+    }),
+  }).finally(() => clearTimeout(timeoutId));
+  const text = await response.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { text }; }
+  if (!response.ok) throw new Error(data.message || data.error?.message || `AI repair HTTP ${response.status}`);
+  const css = cssPatchFromAiText(extractAiText(data) || data.css || data.result || data.output || text);
+  if (!css || css.length < 12) throw new Error("AI did not return a usable CSS repair patch.");
+  let style = doc.getElementById("ppt-ai-quick-fix-style");
+  if (!style) {
+    style = doc.createElement("style");
+    style.id = "ppt-ai-quick-fix-style";
+    doc.head.appendChild(style);
+  }
+  style.textContent = `${style.textContent || ""}\n/* AI quick layout repair */\n${css}\n`;
+  return 1;
+}
+
 function splitCrowdedSlidesInPreview(doc) {
   ensureQuickFixRuntimeStyle(doc);
   let created = 0;
@@ -2829,15 +2927,17 @@ async function applyQuickFix(kind) {
     return;
   }
   ensurePreviewEditorApi();
+  const issues = detectQuickFixIssues() || {};
   let changed = 0;
   if (kind === "overflow") changed = fixOverflowInPreview(doc);
   if (kind === "images") changed = relayoutImagesInPreview(doc);
   if (kind === "contrast") changed = improveContrastInPreview(doc);
   if (kind === "missing") changed = restoreMissingImagesInPreview(doc);
   if (kind === "crowded") changed = splitCrowdedSlidesInPreview(doc);
+  if (kind === "ai") changed = await aiRepairLayoutInPreview(doc, issues);
   if (changed) {
     await persistQuickFixPreview({ reload: kind === "crowded" });
-    setStatus(t("quickFixApplied"), "ok");
+    setStatus(kind === "ai" ? t("quickFixAiApplied") : t("quickFixApplied"), "ok");
     setTimeout(detectQuickFixIssues, kind === "crowded" ? 650 : 80);
   } else {
     detectQuickFixIssues();
@@ -3549,7 +3649,13 @@ function bindEvents() {
     if (state.activeJob) window.open(state.activeJob.scrollUrl || state.activeJob.previewUrl, "_blank");
   });
   Object.entries(QUICK_FIX_BUTTONS).forEach(([kind, id]) => {
-    el(id)?.addEventListener("click", () => applyQuickFix(kind));
+    el(id)?.addEventListener("click", async () => {
+      try {
+        await applyQuickFix(kind);
+      } catch (error) {
+        setStatus(error.message || "Quick fix failed.", "error");
+      }
+    });
   });
   el("shareJob").addEventListener("click", () => analyzeShare());
   el("downloadJob").addEventListener("click", () => downloadJobZip(state.activeJob));
