@@ -2545,6 +2545,19 @@ function quickFixTextNodes(slide) {
   });
 }
 
+function quickFixImageEntries(slide) {
+  if (!slide) return [];
+  const imageBoxSelector = ".media-box,.editable-image-box,figure,.image-area,.image-wrap,.visual,.media,.image-card,.photo-card";
+  return [...slide.querySelectorAll("img")]
+    .map((img) => {
+      const imageRect = visibleRect(img);
+      const box = img.closest(imageBoxSelector) || img.parentElement || img;
+      const rect = visibleRect(box) || imageRect;
+      return { img, box, rect, imageRect };
+    })
+    .filter((entry) => entry.rect || entry.imageRect);
+}
+
 function rectsOverlap(a, b, padding = 6) {
   if (!a || !b) return false;
   return a.left < b.right - padding && a.right > b.left + padding && a.top < b.bottom - padding && a.bottom > b.top + padding;
@@ -2617,19 +2630,38 @@ function detectQuickFixIssues() {
   slides.forEach((slide) => {
     const slideRect = visibleRect(slide);
     const textNodes = quickFixTextNodes(slide);
-    const images = [...slide.querySelectorAll("img")].filter((img) => visibleRect(img));
+    const imageEntries = quickFixImageEntries(slide);
+    const navRects = [...doc.querySelectorAll(".ppt-runtime-nav,.nav,.runtime-controls")]
+      .map((node) => visibleRect(node))
+      .filter(Boolean);
     const textLength = textNodes.reduce((sum, node) => sum + node.textContent.trim().length, 0);
     issues.overflow = issues.overflow || textNodes.some((node) => nodeOverflowsSlide(node, slide));
     issues.crowded = issues.crowded || textNodes.length > 10 || textLength > 760;
-    images.forEach((img, index) => {
-      const rect = visibleRect(img);
+    const slideArea = slideRect ? slideRect.width * slideRect.height : 0;
+    const imageArea = imageEntries.reduce((sum, entry) => {
+      const rect = entry.rect || entry.imageRect;
+      return sum + (rect ? rect.width * rect.height : 0);
+    }, 0);
+    if (slideRect && imageEntries.length > 1 && imageArea > slideArea * 0.36) issues.images = true;
+    imageEntries.forEach(({ img, rect, imageRect }, index) => {
       if (!img.complete || img.naturalWidth === 0 || !img.getAttribute("src")) issues.missing = true;
-      if (slideRect && rect && (rect.width > slideRect.width * 0.62 || rect.height > slideRect.height * 0.62)) issues.images = true;
-      images.slice(index + 1).forEach((other) => {
-        if (rectsOverlap(rect, visibleRect(other), 8)) issues.images = true;
+      const checkRect = rect || imageRect;
+      if (slideRect && checkRect) {
+        const maxWidth = imageEntries.length > 1 ? 0.48 : (textLength > 120 ? 0.54 : 0.62);
+        const maxHeight = imageEntries.length > 1 ? 0.38 : (textLength > 120 ? 0.54 : 0.62);
+        if (checkRect.width > slideRect.width * maxWidth || checkRect.height > slideRect.height * maxHeight) issues.images = true;
+        if (textLength > 80 && checkRect.width * checkRect.height > slideArea * (imageEntries.length > 1 ? 0.18 : 0.34)) issues.images = true;
+        if (checkRect.left < slideRect.left - 4 || checkRect.right > slideRect.right + 4 || checkRect.top < slideRect.top - 4 || checkRect.bottom > slideRect.bottom + 4) issues.images = true;
+        if (checkRect.bottom > slideRect.bottom - Math.max(38, slideRect.height * 0.055)) issues.images = true;
+      }
+      imageEntries.slice(index + 1).forEach((other) => {
+        if (rectsOverlap(checkRect, other.rect || other.imageRect, 8)) issues.images = true;
       });
       textNodes.forEach((node) => {
-        if (rectsOverlap(rect, visibleRect(node), 10)) issues.images = true;
+        if (rectsOverlap(checkRect, visibleRect(node), 10)) issues.images = true;
+      });
+      navRects.forEach((navRect) => {
+        if (rectsOverlap(checkRect, navRect, 2)) issues.images = true;
       });
     });
     if (slide.querySelector(".ppt-missing-image,.image-placeholder,[data-image-slot]:empty")) issues.missing = true;
@@ -2701,26 +2733,31 @@ function relayoutImagesInPreview(doc) {
   let changed = 0;
   quickFixActiveSlides(doc).forEach((slide) => {
     const slideRect = visibleRect(slide);
-    const images = [...slide.querySelectorAll("img")].filter((img) => visibleRect(img));
-    if (!images.length) return;
-    images.forEach((img, index) => {
-      const box = img.closest(".media-box,.editable-image-box,figure,.image-area,.image-wrap,.visual,.media") || img.parentElement;
+    const imageEntries = quickFixImageEntries(slide);
+    const images = imageEntries.map((entry) => entry.img);
+    if (!imageEntries.length) return;
+    const hasText = quickFixTextNodes(slide).length > 0;
+    imageEntries.forEach(({ img, box }, index) => {
       if (box && box !== slide) {
         box.classList.add("ppt-qf-image-box");
-        box.style.width = `${Math.max(190, Math.min(slideRect ? slideRect.width * (images.length > 1 ? 0.34 : 0.42) : 420, 520))}px`;
-        box.style.height = `${Math.max(130, Math.min(slideRect ? slideRect.height * (images.length > 1 ? 0.28 : 0.42) : 300, 340))}px`;
-        box.style.margin = images.length > 1 ? "8px" : "12px auto";
+        const widthRatio = images.length > 1 ? (hasText ? 0.28 : 0.32) : (hasText ? 0.38 : 0.46);
+        const heightRatio = images.length > 1 ? (hasText ? 0.22 : 0.27) : (hasText ? 0.36 : 0.46);
+        box.style.width = `${Math.max(160, Math.min(slideRect ? slideRect.width * widthRatio : 360, images.length > 1 ? 390 : 500))}px`;
+        box.style.height = `${Math.max(110, Math.min(slideRect ? slideRect.height * heightRatio : 260, images.length > 1 ? 260 : 330))}px`;
+        box.style.maxWidth = images.length > 1 ? "38vw" : "48vw";
+        box.style.maxHeight = images.length > 1 ? "28vh" : "42vh";
+        box.style.margin = images.length > 1 ? "6px" : "12px auto";
       }
       img.classList.add("ppt-qf-image");
       img.style.objectFit = "contain";
       if (!img.parentElement?.classList.contains("ppt-qf-image-row") && images.length > 1 && index === 0) {
         const row = doc.createElement("div");
         row.className = "ppt-qf-image-row";
-        row.style.cssText = "display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;max-width:92%;margin:12px auto 0;";
-        const firstBox = images[0].closest(".media-box,.editable-image-box,figure,.image-area,.image-wrap,.visual,.media") || images[0];
+        row.style.cssText = "display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;max-width:84%;margin:10px auto 0;";
+        const firstBox = imageEntries[0].box || images[0];
         firstBox.parentElement?.insertBefore(row, firstBox);
-        images.forEach((item) => {
-          const itemBox = item.closest(".media-box,.editable-image-box,figure,.image-area,.image-wrap,.visual,.media") || item;
+        imageEntries.forEach((entry) => {
+          const itemBox = entry.box || entry.img;
           row.appendChild(itemBox);
         });
       }
