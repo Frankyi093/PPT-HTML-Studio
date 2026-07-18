@@ -1527,8 +1527,10 @@ html[data-theme="dark"] .custom-style-preview {
 
 .preview-frame {
   margin-top: 13px;
-  flex: 1;
-  min-height: 420px;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
   border: 1px solid rgba(255,255,255,.58);
   border-radius: 18px;
   background:
@@ -1542,10 +1544,15 @@ html[data-theme="dark"] .custom-style-preview {
 }
 
 .preview-frame iframe {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1280px;
+  height: 720px;
   border: 0;
   background: #fff;
+  transform: translate(-50%, -50%) scale(var(--preview-scale, 1));
+  transform-origin: center center;
 }
 
 .preview-empty {
@@ -2104,7 +2111,6 @@ tr:last-child td {
     flex: none;
     min-height: 0;
     aspect-ratio: 16 / 9;
-    max-height: 56vh;
     margin-top: 10px;
     border-radius: 14px;
   }
@@ -2112,8 +2118,8 @@ tr:last-child td {
   .preview-frame iframe {
     width: 1280px;
     height: 720px;
-    transform: scale(var(--preview-scale, 1));
-    transform-origin: 0 0;
+    transform: translate(-50%, -50%) scale(var(--preview-scale, 1));
+    transform-origin: center center;
   }
 
   .preview-footer {
@@ -2187,7 +2193,6 @@ tr:last-child td {
 
   .preview-frame {
     aspect-ratio: 16 / 9;
-    max-height: 48vh;
   }
 
   .rule-grid {
