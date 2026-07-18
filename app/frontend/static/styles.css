@@ -1605,7 +1605,7 @@ html[data-theme="dark"] .custom-style-preview {
 
 .quick-fix-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 10px;
 }
@@ -1637,6 +1637,23 @@ html[data-theme="dark"] .custom-style-preview {
   box-shadow: 0 14px 28px rgba(59,111,245,.22), inset 0 1px 0 rgba(255,255,255,.26);
 }
 
+.quick-fix-actions #fixAi {
+  border-color: rgba(95,212,255,.38);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.78), rgba(255,255,255,.54)),
+    radial-gradient(circle at 88% 0%, rgba(95,212,255,.28), transparent 46%);
+  color: #1747b8;
+}
+
+.quick-fix-actions #fixAi.suggested,
+.quick-fix-actions #fixAi:hover {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.18), transparent),
+    linear-gradient(135deg, #274df1, #0d7df2 58%, var(--cyan));
+  color: #fff;
+  border-color: transparent;
+}
+
 html[data-theme="dark"] .quick-fix-panel {
   background: #152448;
   border-color: rgba(159,190,255,.16);
@@ -1657,6 +1674,17 @@ html[data-theme="dark"] .quick-fix-actions button:hover {
 html[data-theme="dark"] .quick-fix-actions button.suggested {
   background: #2f62e8;
   border-color: rgba(159,190,255,.24);
+  color: #fff;
+}
+
+html[data-theme="dark"] .quick-fix-actions #fixAi {
+  background: #132454;
+  border-color: rgba(105,230,255,.26);
+  color: #b9d3ff;
+}
+
+html[data-theme="dark"] .quick-fix-actions #fixAi:hover {
+  background: #2f62e8;
   color: #fff;
 }
 
