@@ -983,6 +983,7 @@ Rules:
 - Generate exactly ${slides.length} slide sections in the same order.
 - Every section must include data-slide-page="original page number".
 - Every slide must use the same 16:9 canvas size. Use section dimensions such as width:100vw; height:100vh; box-sizing:border-box, with consistent safe margins.
+- The slide canvas must remain 16:9 on every device. Do not use responsive/mobile media queries to change slide layout. If the screen is small, scale the whole 16:9 stage; never reflow it into a phone-shaped page.
 - Use one global CSS design system: CSS variables for background/text/primary/accent/panel, one title font, one body font, one spacing scale, one media treatment. Apply it consistently to every slide.
 - Slide titles must be visually dominant and complete phrases. Cover/title slides must center the title group both horizontally and vertically. Normal content slide titles should sit in a stable title band with enough top margin, not glued to the edge.
 - Use a clean, elegant, modern education/workshop layout: generous whitespace, simple alignment, readable hierarchy, and no crowded corners. Each page should have one clear visual focus.
@@ -1007,6 +1008,7 @@ Rules:
 - Image areas must be proportional to the amount of text. When text is present, image groups should usually occupy 26-40% of the slide width and max 38-44vh total height; multiple images should be smaller, aligned as a balanced row/column, and must never overlap text, footer, or navigation.
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically. Include window.toggleEdit(force), window.exportEditedHtml(mode).
 - Include a final CSS safety layer inside the HTML that prevents overflow: sections overflow:hidden; text boxes max-width:90%; media max-height constraints; no absolute positioning for main text unless required.
+- Do not write @media rules that turn split layouts into a single column on small screens. Keep the same 16:9 composition and let the platform scale the stage.
 - Before returning, silently audit the HTML: exact slide count, all titles are complete phrases, all body text is horizontal, all images use data-image-slot placeholders, no scrollable text boxes, no low contrast, no content outside the 16:9 canvas.
 ${custom ? `Custom style local rule summary: ${custom.localRules || "Use the saved custom style parameters."}` : ""}
 PPT JSON:
@@ -1043,12 +1045,36 @@ function clientImageBlock(slide) {
   return `<div class="ppt-original-images" data-original-images="${slide.page}" data-count="${slide.images.length}">${slide.images.map((image, index) => `<figure class="media-box original-ppt-image"><img src="${image.src}" alt="Original PPT slide ${slide.page} image ${index + 1}"></figure>`).join("")}</div>`;
 }
 
+function markClientCoverSlide(html) {
+  let marked = false;
+  return String(html || "").replace(/<section\b([^>]*)>/i, (match, attrs) => {
+    if (marked) return match;
+    marked = true;
+    if (/class\s*=\s*["']/i.test(attrs)) {
+      return `<section${attrs.replace(/class\s*=\s*["']([^"']*)["']/i, (all, cls) => `class="${cls} ppt-cover-slide"`)}>`;
+    }
+    return `<section class="ppt-cover-slide"${attrs}>`;
+  });
+}
+
 function clientInjectedDeckSafetyStyle() {
   return `<style id="ppt-layout-safety-style">
+    html, body { width: 100% !important; min-height: 100% !important; margin: 0 !important; }
+    body:not(.scroll-mode) { overflow: hidden !important; display: grid !important; place-items: center !important; background: #eef3fb; }
+    body:not(.scroll-mode) :where(section[data-slide-page],.slide,.ai-slide,[data-slide-page]) { width: min(100vw, calc(100vh * 16 / 9)) !important; height: min(100vh, calc(100vw * 9 / 16)) !important; max-width: 100vw !important; max-height: 100vh !important; aspect-ratio: 16 / 9 !important; margin: auto !important; box-sizing: border-box !important; overflow: hidden !important; position: relative !important; }
+    body.scroll-mode :where(section[data-slide-page],.slide,.ai-slide,[data-slide-page]) { width: min(100vw, 1440px) !important; aspect-ratio: 16 / 9 !important; min-height: auto !important; height: auto !important; margin: 22px auto !important; overflow: hidden !important; }
     body:not(.scroll-mode) section[data-slide-page]:first-of-type, body:not(.scroll-mode) .slide:first-of-type, body:not(.scroll-mode) .ai-slide:first-of-type { overflow: hidden !important; }
+    body:not(.scroll-mode) :where(.slide-inner,.slide-content,.content,.inner,.deck-slide-inner) { max-width: 100% !important; max-height: 100% !important; box-sizing: border-box !important; overflow: hidden !important; }
     section[data-slide-page] :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .ai-slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item) { writing-mode: horizontal-tb !important; text-orientation: mixed !important; white-space: normal !important; word-break: normal !important; overflow-wrap: normal !important; hyphens: none !important; letter-spacing: normal; }
     section[data-slide-page] :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .ai-slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p) { min-width: min(320px, 82vw) !important; max-width: min(1040px, 88vw) !important; }
     section[data-slide-page] :where(h1,h2,h3,h4), .slide :where(h1,h2,h3,h4), .ai-slide :where(h1,h2,h3,h4) { min-width: min(520px, 86vw) !important; max-width: min(1120px, 90vw) !important; }
+    body:not(.scroll-mode) .ppt-cover-slide.ppt-active-slide { display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; text-align: center !important; }
+    body:not(.scroll-mode) .ppt-cover-slide > :where(.slide-inner,.slide-content,.content,.inner,.deck-slide-inner,main,div:first-child) { height: 100% !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; text-align: center !important; padding-top: clamp(44px, 7%, 92px) !important; padding-bottom: clamp(44px, 7%, 92px) !important; }
+    body:not(.scroll-mode) .ppt-cover-slide h1 { text-align: center !important; margin: 0 auto !important; max-width: min(1120px, 88%) !important; transform: none !important; }
+    body:not(.scroll-mode) .image-split main, body:not(.scroll-mode) .has-media main { grid-template-columns: minmax(0, .9fr) minmax(280px, .74fr) !important; }
+    body:not(.scroll-mode) .image-focus main { grid-template-columns: minmax(0, .78fr) minmax(320px, .82fr) !important; }
+    body:not(.scroll-mode) :where(.concept-row,.card-grid,.stats-grid) { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important; }
+    body:not(.scroll-mode) :where(.agenda-list,.quiet-list.multi-column) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
     body:not(.scroll-mode) .cover .slide-inner { display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; gap: clamp(16px, 3vh, 34px) !important; padding-top: clamp(56px, 8vh, 92px) !important; padding-bottom: clamp(56px, 8vh, 92px) !important; }
     body:not(.scroll-mode) .cover main { display: block !important; min-height: auto !important; }
     body:not(.scroll-mode) .cover footer { position: absolute !important; right: clamp(34px, 5vw, 80px) !important; bottom: 28px !important; }
@@ -1060,6 +1086,7 @@ function clientInjectedDeckSafetyStyle() {
     .ppt-original-images[data-count="2"], .ppt-original-images[data-count="3"], .ppt-original-images[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: min(52vw, 780px) !important; max-height: 44vh !important; }
     .ppt-original-images figure, figure.original-ppt-image { margin: 0 !important; width: 100% !important; min-width: 0 !important; display: grid !important; place-items: center !important; overflow: hidden !important; }
     .ppt-original-images img, .original-ppt-image img, img[alt^="Original PPT slide"] { display: block !important; width: 100% !important; height: auto !important; max-width: 100% !important; max-height: 44vh !important; object-fit: contain !important; border-radius: 8px !important; }
+    :where(section[data-slide-page],.slide,.ai-slide,[data-slide-page]) img { max-width: 100% !important; max-height: 46vh !important; object-fit: contain !important; }
   </style>`;
 }
 
@@ -1133,6 +1160,7 @@ function injectClientOriginalImages(html, slides) {
     rebuilt += output.slice(cursor);
     output = rebuilt;
   }
+  output = markClientCoverSlide(output);
   if (!output.includes("ppt-layout-safety-style")) output = output.replace(/<\/head>/i, `${style}</head>`);
   return output;
 }
