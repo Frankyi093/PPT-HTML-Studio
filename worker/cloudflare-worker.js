@@ -514,18 +514,18 @@ function editorRuntime() {
       .editor-toolbar button, .editor-toolbar select, .editor-toolbar input[type="number"] { height: 30px; border: 1px solid #c7d2fe; border-radius: 8px; background: #fff; color: #1e3a8a; font: 700 12px/1 Arial, sans-serif; padding: 0 8px; }
       .editor-toolbar input[type="color"] { width: 32px; height: 30px; padding: 0; border: 1px solid #c7d2fe; border-radius: 8px; background: #fff; }
       body.editing .editable-text, body.editing [contenteditable="true"] { outline: 2px dashed #60a5fa; outline-offset: 3px; cursor: text; }
-      body.editing .media-box, body.editing .editable-image-box { outline: 2px dashed #f59e0b; outline-offset: 4px; overflow: visible; min-width: 80px; min-height: 60px; cursor: default; }
+      body.editing .media-box, body.editing .editable-image-box { outline: 2px dashed #f59e0b; outline-offset: 4px; overflow: visible; min-width: 80px; min-height: 60px; cursor: default; touch-action: none; }
       body.editing .media-box.selected-image, body.editing .editable-image-box.selected-image { outline-color: #2563eb; z-index: 50; }
-      body.editing .media-box img, body.editing .editable-image-box img { width: 100%; height: 100%; object-fit: contain; pointer-events: auto; display: block; }
+      body.editing .media-box img, body.editing .editable-image-box img { width: 100%; height: 100%; object-fit: contain; pointer-events: auto; display: block; user-select: none; -webkit-user-drag: none; }
       .image-drag-handle, .image-resize-handle { display: none; position: absolute; z-index: 60; box-sizing: border-box; }
       body.editing .selected-image > .image-drag-handle, body.editing .selected-image > .image-resize-handle { display: block; }
-      .image-drag-handle { left: 50%; top: -18px; transform: translateX(-50%); width: 42px; height: 14px; border-radius: 999px; border: 1px solid #93c5fd; background: #2563eb; cursor: grab; box-shadow: 0 6px 16px rgba(37,99,235,.24); }
-      .image-drag-handle:active { cursor: grabbing; }
-      .image-resize-handle { width: 13px; height: 13px; border: 2px solid #fff; border-radius: 4px; background: #f59e0b; box-shadow: 0 0 0 1px rgba(15,23,42,.24); }
-      .image-resize-handle.nw { left: -8px; top: -8px; cursor: nwse-resize; }
-      .image-resize-handle.ne { right: -8px; top: -8px; cursor: nesw-resize; }
-      .image-resize-handle.sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
-      .image-resize-handle.se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+      .image-drag-handle { left: 18%; right: 18%; top: 18%; bottom: 18%; border: 1px dashed rgba(37,99,235,.55); border-radius: 14px; background: rgba(37,99,235,.07); cursor: move; }
+      .image-drag-handle::after { content: "Move"; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); padding: 5px 10px; border-radius: 999px; background: rgba(37,99,235,.88); color: #fff; font: 800 12px/1 Arial, sans-serif; opacity: .9; }
+      .image-resize-handle { width: 18px; height: 18px; border: 2px solid #fff; border-radius: 6px; background: #f59e0b; box-shadow: 0 0 0 1px rgba(15,23,42,.28), 0 6px 16px rgba(15,23,42,.16); }
+      .image-resize-handle.nw { left: -10px; top: -10px; cursor: nwse-resize; }
+      .image-resize-handle.ne { right: -10px; top: -10px; cursor: nesw-resize; }
+      .image-resize-handle.sw { left: -10px; bottom: -10px; cursor: nesw-resize; }
+      .image-resize-handle.se { right: -10px; bottom: -10px; cursor: nwse-resize; }
       .ppt-runtime-nav { position: fixed; z-index: 9990; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; pointer-events: auto; }
       .ppt-runtime-nav button, button[onclick*="nextSlide"], button[onclick*="prevSlide"] { min-width: 46px !important; height: 32px !important; padding: 0 12px !important; border-radius: 8px !important; border: 1px solid rgba(37,99,235,.22) !important; background: rgba(255,255,255,.9) !important; color: #1e3a8a !important; font: 800 14px/1 Arial, sans-serif !important; box-shadow: 0 8px 22px rgba(15,23,42,.12) !important; }
       .ppt-runtime-nav button:last-child { background: #2563eb !important; color: #fff !important; }
@@ -685,13 +685,13 @@ function editorRuntime() {
         if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
         const drag = document.createElement('span');
         drag.className = 'image-drag-handle';
-        drag.title = 'Drag image';
+        drag.title = 'Hold and drag the image center to move';
         drag.addEventListener('pointerdown', (event) => startMove(el, event));
         el.appendChild(drag);
         ['nw','ne','sw','se'].forEach((corner) => {
           const handle = document.createElement('span');
           handle.className = 'image-resize-handle ' + corner;
-          handle.title = 'Resize image';
+          handle.title = 'Hold and drag corner to resize';
           handle.addEventListener('pointerdown', (event) => startResize(el, corner, event));
           el.appendChild(handle);
         });
