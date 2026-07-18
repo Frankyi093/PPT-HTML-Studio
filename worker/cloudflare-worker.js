@@ -1120,20 +1120,41 @@ function stylePrompt(style, customStyle = null) {
     return `Custom style "${customStyle.name}": background ${customStyle.colors.background}, text ${customStyle.colors.text}, primary ${customStyle.colors.primary}, accent ${customStyle.colors.accent}, title font ${customStyle.typography.titleFont}, body font ${customStyle.typography.bodyFont}, layout preference ${customStyle.layout}. ${customStyle.promptAddon || customStyle.localRules || "Use this custom style consistently while preserving readability and images."}`;
   }
   const directions = {
-    teaching: "Teaching Blue: calm education technology, navy text, blue accents, lecture-friendly hierarchy, concise academic wording.",
-    softlesson: "Soft Lesson: warm white background, gentle blue accents, quiet workshop feeling, large readable text and spacious examples.",
-    clean: "Clean: minimalist black and blue, strong typographic hierarchy, almost no decoration, generous margins.",
-    academic: "Academic: scholarly, serif title accents allowed, formal structure, no playful decoration, focus on clarity.",
-    instructional: "Instructional: classroom-ready, clear steps, practice prompts, visual anchors, leave space for teacher explanation.",
-    minimal: "Minimal: few elements, high whitespace, one idea per page, simple lines and no card grids unless essential.",
-    contrast: "High Contrast: dark/light contrast, bold but not crowded, accessible colors, no low-contrast text.",
-    healing: "Healing Hand-drawn: soft hand-drawn workshop feeling, gentle paper-like warmth, light sketch accents only, no clutter.",
-    doodle: "Doodle Sketch: playful but clean marker style, sparse doodle accents, hand-sketched dividers, readable classroom layout.",
-    swiss: "Swiss Grid: strict grid, left-aligned precision, strong scale contrast, blue accent rules, no decorative cards.",
-    editorial: "Editorial: magazine-like education feature, elegant title scale, thoughtful pull quotes, airy composition.",
-    vivid: "Vivid: bright education product energy, controlled accent blocks, crisp modern UI feeling, no heavy gradients.",
+    teaching: "Teaching Blue: modern education-tech interface, deep navy text, clear blue accent rules, calm lecture hierarchy, structured but not box-heavy.",
+    softlesson: "Soft Lesson: warm white classroom canvas, gentle sky-blue accents, rounded light panels, soft hierarchy, calm workshop rhythm.",
+    clean: "Clean: minimalist black/navy typography, precise alignment, very few components, no decoration except one thin accent line.",
+    academic: "Academic: scholarly lecture style, serif title accent, muted ivory/white background, formal spacing, text treated as paragraphs or clean bullets.",
+    instructional: "Instructional: classroom-ready teaching layout, step blocks only when content is actually procedural, practice pages leave thinking space.",
+    minimal: "Minimal: one strong idea, huge whitespace, no card grids unless the slide is explicitly a comparison or list of parallel items.",
+    contrast: "High Contrast: accessible dark/light blocks, bold hierarchy, large readable text, never low-contrast text over similar backgrounds.",
+    healing: "Healing Hand-drawn: warm paper, soft pastel accents, gentle hand-drawn dividers, rounded shapes, readable handwritten-title mood.",
+    doodle: "Doodle Sketch: playful marker/doodle style, sketchy borders, small hand-drawn arrows/stars, more energetic than Healing but still clean.",
+    swiss: "Swiss Grid: strict asymmetric grid, left-aligned precision, strong scale contrast, blue grid/rule accents, no rounded cards.",
+    editorial: "Editorial: magazine-like education feature, elegant serif display title, pull quotes, wide margins, editorial image/text rhythm.",
+    vivid: "Vivid: bright modern edtech product energy, vivid accent blocks, crisp UI-like sections, controlled color pops without heavy gradients.",
   };
   return directions[style] || directions.teaching;
+}
+
+function styleImplementationGuide(style, customStyle = null) {
+  if (customStyle) {
+    return `Custom style implementation: use title font ${customStyle.typography.titleFont}, body font ${customStyle.typography.bodyFont}, background ${customStyle.colors.background}, text ${customStyle.colors.text}, primary ${customStyle.colors.primary}, accent ${customStyle.colors.accent}. Reuse this palette and typography on every page. For title pages, follow the saved title-page rules; for content pages, preserve the saved content-page rhythm.`;
+  }
+  const guides = {
+    teaching: "Implementation: light background, navy headings, blue accent line under titles, 1-2 column lecture layouts, restrained panels, clear footer page number.",
+    softlesson: "Implementation: warm white/very pale blue canvas, rounded light panels, soft blue dividers, relaxed spacing, no hard black blocks.",
+    clean: "Implementation: white canvas, sharp typography, one accent line or dot per page, no decorative cards, no gradients, aligned content blocks.",
+    academic: "Implementation: serif display headings, formal paragraph/list treatment, muted ivory or white background, thin rules, no playful icons.",
+    instructional: "Implementation: stable title + main teaching block, steps only for procedures, practice pages with one prompt and open thinking space.",
+    minimal: "Implementation: one strong headline plus one concise body group, large whitespace, no more than 2 visual elements per slide.",
+    contrast: "Implementation: high-contrast sections, dark navy or white surfaces, bold headings, accessible color pairs only.",
+    healing: "Implementation: warm paper background, pastel blue/green accents, gentle handwritten title mood, small sketch dividers, soft rounded shapes.",
+    doodle: "Implementation: energetic hand-marker headings, sketchy borders/arrows/stars used sparingly, off-grid accents but aligned readable content.",
+    swiss: "Implementation: strict grid, left-aligned blocks, large sans-serif title, blue rules/grid marks, rectangular modules, no rounded cards.",
+    editorial: "Implementation: magazine editorial rhythm, large serif title, pull quote or deck-style kicker when useful, wide margins, elegant image crop zones.",
+    vivid: "Implementation: bright blue/orange/cyan accents, modern product UI blocks, crisp rectangular highlights, energetic but uncluttered layout.",
+  };
+  return guides[style] || guides.teaching;
 }
 
 function deckPrompt(slides, style, customStyle = null) {
@@ -1148,7 +1169,13 @@ function deckPrompt(slides, style, customStyle = null) {
 
 Style direction:
 ${stylePrompt(style, customStyle)}
+Style implementation guide:
+${styleImplementationGuide(style, customStyle)}
 ${customStyle ? `Custom style local rule summary: ${customStyle.localRules || "Use the saved custom style parameters."}` : ""}
+
+Quality target:
+- The result must look at least as stable and readable as a careful deterministic local-rule layout, while expressing the selected style consistently.
+- Treat the selected style as a visual contract, not a vague mood. Use one coherent palette, typography system, spacing rhythm, media treatment, and component language across the whole deck.
 
 Non-negotiable output rules:
 - Return ONLY complete HTML code. No markdown explanation.
@@ -1156,9 +1183,17 @@ Non-negotiable output rules:
 - Generate exactly ${slides.length} slide sections, one for every input slide, in the same order.
 - Every slide section must include data-slide-page="original page number".
 - Every slide must use the same 16:9 canvas size. Use section dimensions such as width:100vw; height:100vh; box-sizing:border-box, with consistent safe margins.
-- Slide titles must be visually dominant, horizontally centered, and placed in a balanced central title area. The first/cover slide must center the title group both horizontally and vertically, not near the top edge.
-- Use a clean, elegant, modern education/workshop layout: generous whitespace, simple alignment, readable hierarchy, and no crowded corners.
+- Use one global CSS design system: CSS variables for background/text/primary/accent/panel, one title font, one body font, one spacing scale, one media treatment. Apply it consistently to every slide.
+- Slide titles must be visually dominant and complete phrases. Cover/title slides must center the title group both horizontally and vertically. Normal content slide titles should sit in a stable title band with enough top margin, not glued to the edge.
+- Use a clean, elegant, modern education/workshop layout: generous whitespace, simple alignment, readable hierarchy, and no crowded corners. Each page should have one clear visual focus.
 - Preserve the original PPT's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
+- Choose slide layouts conservatively:
+  * cover/title slide: centered title group, optional subtitle/author.
+  * agenda/outline slide: numbered or tiled list only when the title is Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
+  * text-only slide: use centered content width or balanced two-column layout; fill the canvas gracefully, not just the left side.
+  * image slide: use a stable text/media split or balanced image row; images never dominate unless the original slide is image-dominant.
+  * comparison/list slide: use 2-4 light cards only when items are parallel; do not make every sentence a card.
+  * exercise/answer slide: leave open space for class discussion; do not fill the page with explanations.
 - Only make agenda/outline numbered pages when the original slide title explicitly says Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
 - Never create placeholder pages titled "Slide 1", "Slide 2", etc.
 - Never use a single isolated word, a single letter, XML markup, or a broken word fragment as a slide title. If the extracted title looks broken, use the nearest complete phrase from the slide content.
@@ -1168,13 +1203,16 @@ Non-negotiable output rules:
 - One core idea per slide. Keep pages clean, ordered, airy, modern education/workshop style.
 - Avoid stacked gradients, heavy shadows, complex textures, excessive decoration, nested cards, and packed grids.
 - Body text must be greater than 30pt. Slide titles must be greater than 45pt and should usually be 52-72pt.
+- For dense text, preserve complete sentences and reduce layout complexity: use two columns, shorter line length, and 30-34pt body text. Do not split a sentence into separate one-word bullets.
 - Text and background colors must have strong visible contrast. Never use white/light text on cream, pale, or white backgrounds; never use dark text on dark backgrounds.
 - No text may overflow the viewport or its box. Do not use scrollable text boxes.
 - If a slide has images, reserve clear visual areas for the original PPT images using only empty placeholders. Use <figure data-image-slot="page-number"></figure> for one image, or <figure data-image-slot="page-number-a"></figure>, <figure data-image-slot="page-number-b"></figure> for multiple images. Never create fake image paths, empty <img src=""> tags, or visible labels such as "page-8a".
-- Image areas must be proportional to the amount of text. Images should usually occupy 28-42% of the slide width, max 44vh tall when text is present, and must never overlap text or navigation.
+- Image areas must be proportional to the amount of text. When text is present, image groups should usually occupy 26-40% of the slide width and max 38-44vh total height; multiple images should be smaller, aligned as a balanced row/column, and must never overlap text, footer, or navigation.
 - Do not create oversized navigation controls. The platform will inject small working Prev/Next controls automatically.
 - Include window.toggleEdit(force) and window.exportEditedHtml(mode) so the platform editor can work.
 - Use CSS that keeps all sections visible and self-contained; no content should be clipped or hidden by default.
+- Include a final CSS safety layer inside the HTML that prevents overflow: sections overflow:hidden; text boxes max-width:90%; media max-height constraints; no absolute positioning for main text unless required.
+- Before returning, silently audit the HTML: exact slide count, all titles are complete phrases, all body text is horizontal, all images use data-image-slot placeholders, no scrollable text boxes, no low contrast, no content outside the 16:9 canvas.
 
 PPT JSON:
 ${JSON.stringify({ style, customStyle, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
@@ -1233,10 +1271,10 @@ async function callAiApi(slides, config, style, customStyle = null) {
     body: JSON.stringify({
       model: config.model || "gpt-4.1-mini",
       messages: [
-        { role: "system", content: "You are an expert HTML presentation designer. Return only valid standalone HTML." },
+        { role: "system", content: "You are a senior HTML presentation designer and layout QA reviewer. Build a complete editable 16:9 deck with stable CSS, consistent style, original-image placeholders, no overflow, no broken titles, and no template chatter. Return only valid standalone HTML." },
         { role: "user", content: prompt },
       ],
-      temperature: 0.2,
+      temperature: 0.12,
       max_tokens: Number(config.maxTokens || 20000),
     }),
   });
