@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PPT HTML Studio</title>
+  <script src="/static/app-settings.js"></script>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -11,12 +12,10 @@
     <header class="topbar">
       <a class="brand brand-link" href="/">PPT HTML Studio</a>
       <nav class="top-actions" aria-label="Utility">
-        <a class="ghost nav-link" href="/ai-generate.html">AI Create</a>
-        <a class="ghost nav-link" href="/chat-create.html">Chat Creation</a>
-        <a class="ghost nav-link" href="/ai-settings.html">AI Settings</a>
-        <button class="ghost" id="helpButton" type="button">Help</button>
-        <button class="ghost" id="settingsButton" type="button">Settings</button>
-        <span class="avatar" aria-label="User">U</span>
+        <a class="ghost nav-link" href="/" data-i18n="backHome">返回主页</a>
+        <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+        <button class="ghost compat-hidden" id="helpButton" type="button">Help</button>
+        <button class="ghost compat-hidden" id="settingsButton" type="button">Settings</button>
       </nav>
     </header>
 
@@ -78,7 +77,7 @@
                 <span class="shared-ai-kicker">Optimization method</span>
                 <h2>Local rules or AI optimization</h2>
               </div>
-              <a class="style-toggle" href="/ai-settings.html">AI Settings</a>
+              <a class="style-toggle" href="/settings.html">Settings</a>
             </div>
             <div class="shared-ai-grid">
               <label>
@@ -278,6 +277,7 @@
           <select id="themeSelect">
             <option value="light">Light mode</option>
             <option value="dark">Dark mode</option>
+            <option value="beige">Beige mode</option>
           </select>
         </label>
         <p id="settingsHint">This only changes the platform interface. Generated PPT/HTML content stays unchanged.</p>
@@ -358,3 +358,5 @@
   <script src="/static/app.js"></script>
 </body>
 </html>
+
+
