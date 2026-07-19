@@ -525,11 +525,14 @@ function editorRuntime() {
       .ppt-original-images figure, figure.original-ppt-image { margin: 0 !important; width: 100% !important; min-width: 0 !important; display: grid !important; place-items: center !important; overflow: hidden !important; }
       .ppt-original-images img, .original-ppt-image img, img[alt^="Original PPT slide"] { display: block !important; width: 100% !important; height: auto !important; max-width: 100% !important; max-height: 44vh !important; object-fit: contain !important; border-radius: 8px !important; }
       :where(section[data-slide-page], .slide, .ai-slide, [data-slide-page]) img { max-width: 100% !important; max-height: 46vh !important; object-fit: contain !important; }
-      .editor-toolbar { position: fixed; z-index: 9999; top: 14px; right: 14px; display: none; align-items: center; gap: 6px; padding: 8px; border: 1px solid rgba(37,99,235,.22); border-radius: 12px; background: rgba(255,255,255,.96); box-shadow: 0 12px 32px rgba(15,23,42,.14); font-family: Arial, sans-serif; }
+      .editor-toolbar { position: fixed; z-index: 9999; left: 50%; top: 12px; transform: translateX(-50%); display: none; align-items: center; justify-content: center; gap: 8px; width: min(980px, calc(100vw - 32px)); min-height: 50px; padding: 8px 12px; border: 1px solid rgba(134,153,116,.2); border-radius: 18px; background: rgba(245,241,232,.94); box-shadow: 0 14px 36px rgba(93,107,77,.14); font-family: Arial, sans-serif; backdrop-filter: blur(14px); }
       body.editing .editor-toolbar { display: flex; }
-      .editor-toolbar button, .editor-toolbar select, .editor-toolbar input[type="number"] { height: 30px; border: 1px solid #c7d2fe; border-radius: 8px; background: #fff; color: #1e3a8a; font: 700 12px/1 Arial, sans-serif; padding: 0 8px; }
+      .editor-toolbar:before { content: "Edit"; display: inline-grid; place-items: center; height: 34px; padding: 0 14px; border-radius: 999px; background: #5d6b4d; color: #fff; font: 800 13px/1 Arial, sans-serif; }
+      .editor-toolbar button, .editor-toolbar select, .editor-toolbar input[type="number"] { height: 34px; border: 1px solid rgba(134,153,116,.26); border-radius: 12px; background: rgba(255,253,248,.92); color: #314025; font: 800 12px/1 Arial, sans-serif; padding: 0 10px; }
       .editor-toolbar input[type="color"] { width: 32px; height: 30px; padding: 0; border: 1px solid #c7d2fe; border-radius: 8px; background: #fff; }
       body.editing .editable-text, body.editing [contenteditable="true"] { outline: 2px dashed #60a5fa; outline-offset: 3px; cursor: text; }
+      body.editing [data-ppt-id] { position: relative; }
+      body.editing .ppt-selected-element { outline: 2px solid #5d6b4d !important; outline-offset: 5px !important; box-shadow: 0 0 0 5px rgba(212,228,193,.46) !important; }
       body.editing .media-box, body.editing .editable-image-box { outline: 2px dashed #f59e0b; outline-offset: 4px; overflow: visible; min-width: 80px; min-height: 60px; cursor: default; touch-action: none; }
       body.editing .media-box.selected-image, body.editing .editable-image-box.selected-image { outline-color: #2563eb; z-index: 50; }
       body.editing .media-box img, body.editing .editable-image-box img { width: 100%; height: 100%; object-fit: contain; pointer-events: auto; display: block; user-select: none; -webkit-user-drag: none; }
@@ -547,12 +550,77 @@ function editorRuntime() {
       .ppt-runtime-nav button:last-child { background: #2563eb !important; color: #fff !important; }
       body.scroll-mode .ppt-runtime-nav { display: none; }
       .free-textbox { position: absolute; left: 12%; top: 30%; min-width: 180px; min-height: 54px; padding: 12px 16px; border: 2px dashed #60a5fa; border-radius: 12px; background: rgba(255,255,255,.92); color: #172554; font: 700 30px/1.2 Arial, sans-serif; z-index: 12; resize: both; overflow: auto; }
+      .ppt-ve-sidebar, .ppt-ve-inspector, .ppt-ve-ruler-top, .ppt-ve-ruler-left { display: none; }
+      body.editing .ppt-ve-sidebar { position: fixed; z-index: 9998; left: 12px; top: 78px; bottom: 16px; width: 154px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 22px; background: rgba(245,241,232,.92); box-shadow: 0 16px 40px rgba(93,107,77,.14); overflow: auto; }
+      .ppt-ve-thumb { display: grid; gap: 6px; border: 1px solid rgba(134,153,116,.24); border-radius: 14px; padding: 8px; background: rgba(255,253,248,.9); color: #5d6b4d; text-align: left; cursor: pointer; }
+      .ppt-ve-thumb.active { background: #d4e4c1; color: #314025; box-shadow: inset 0 0 0 2px rgba(93,107,77,.2); }
+      .ppt-ve-thumb strong { font: 900 12px/1 Arial, sans-serif; }
+      .ppt-ve-thumb span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font: 700 11px/1.25 Arial, sans-serif; opacity: .82; }
+      body.editing .ppt-ve-inspector { position: fixed; z-index: 9998; right: 12px; top: 78px; display: grid; gap: 10px; width: 242px; padding: 14px; border-radius: 22px; background: rgba(245,241,232,.94); box-shadow: 0 16px 40px rgba(93,107,77,.14); color: #314025; font-family: Arial, sans-serif; }
+      .ppt-ve-inspector h3 { margin: 0; font: 900 15px/1.2 Arial, sans-serif; }
+      .ppt-ve-inspector small { color: #718062; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ppt-ve-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .ppt-ve-inspector label { display: grid; gap: 4px; color: #718062; font: 800 11px/1 Arial, sans-serif; }
+      .ppt-ve-inspector input, .ppt-ve-inspector select { width: 100%; height: 30px; border: 1px solid rgba(134,153,116,.26); border-radius: 9px; background: rgba(255,253,248,.92); color: #314025; padding: 0 8px; font: 800 12px/1 Arial, sans-serif; }
+      .ppt-ve-layer-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; }
+      .ppt-ve-layer-row button { min-height: 30px; border: 1px solid rgba(134,153,116,.26); border-radius: 9px; background: #fffdf8; color: #314025; font: 900 11px/1 Arial, sans-serif; }
+      body.editing .ppt-ve-ruler-top { position: fixed; z-index: 9997; left: 184px; right: 270px; top: 78px; height: 26px; display: block; border-radius: 8px; background: repeating-linear-gradient(90deg, rgba(134,153,116,.35) 0 1px, transparent 1px 20px), rgba(255,253,248,.82); box-shadow: inset 0 0 0 1px rgba(134,153,116,.18); }
+      body.editing .ppt-ve-ruler-left { position: fixed; z-index: 9997; left: 184px; top: 110px; bottom: 20px; width: 26px; display: block; border-radius: 8px; background: repeating-linear-gradient(180deg, rgba(134,153,116,.35) 0 1px, transparent 1px 20px), rgba(255,253,248,.82); box-shadow: inset 0 0 0 1px rgba(134,153,116,.18); }
+      @media (max-width: 920px) { body.editing .ppt-ve-sidebar, body.editing .ppt-ve-inspector, body.editing .ppt-ve-ruler-top, body.editing .ppt-ve-ruler-left { display: none; } .editor-toolbar { top: 8px; width: calc(100vw - 16px); flex-wrap: wrap; } }
     </style>
     <script>(() => {
       let currentSlide = 0;
       const slideSelector = '.slide, section, .ai-slide, [data-slide-page]';
       let slides = [];
       let selectedElement = null;
+      let historyStack = [];
+      let redoStack = [];
+      let pptIdCounter = 1;
+      let historyLock = false;
+      const editableSelector = 'h1,h2,h3,h4,p,li,td,th,.editable-text,.point-card,.lead-text,.body-paragraph,.agenda-item,.free-textbox,.media-box,.editable-image-box,figure,img';
+      function assignStableIds(root = document) {
+        const own = root.matches?.(editableSelector) ? [root] : [];
+        [...own, ...root.querySelectorAll(editableSelector)].forEach((node) => {
+          if (node.closest('.editor-toolbar,.ppt-ve-sidebar,.ppt-ve-inspector,.ppt-runtime-nav')) return;
+          if (!node.dataset.pptId) {
+            const kind = node.matches('img,.media-box,.editable-image-box,figure') ? 'image' : 'text';
+            node.dataset.pptId = kind + '-' + String(pptIdCounter++).padStart(3, '0');
+            node.dataset.kind = kind;
+          }
+        });
+      }
+      function slideSnapshot() {
+        return slides.map((slide) => slide.outerHTML);
+      }
+      function restoreSnapshot(snapshot) {
+        if (!Array.isArray(snapshot) || historyLock) return;
+        historyLock = true;
+        slides.forEach((slide, index) => {
+          if (snapshot[index]) slide.outerHTML = snapshot[index];
+        });
+        historyLock = false;
+        selectedElement = null;
+        refreshSlides();
+        ensureEditorChrome();
+        showSlide(currentSlide);
+        if (document.body.classList.contains('editing')) prepareImages();
+      }
+      function pushHistory() {
+        if (historyLock) return;
+        historyStack.push(slideSnapshot());
+        if (historyStack.length > 60) historyStack.shift();
+        redoStack = [];
+      }
+      function undo() {
+        if (!historyStack.length) return;
+        redoStack.push(slideSnapshot());
+        restoreSnapshot(historyStack.pop());
+      }
+      function redo() {
+        if (!redoStack.length) return;
+        historyStack.push(slideSnapshot());
+        restoreSnapshot(redoStack.pop());
+      }
       function refreshSlides() {
         slides = Array.from(document.querySelectorAll(slideSelector)).filter((node) => !node.closest('.editor-toolbar,.ppt-runtime-nav'));
         slides.forEach((slide, index) => {
@@ -560,6 +628,7 @@ function editorRuntime() {
           if (!slide.classList.contains('slide')) slide.classList.add('slide');
           if (!slide.dataset.slidePage) slide.dataset.slidePage = String(index + 1);
           if (!slide.style.position) slide.style.position = 'relative';
+          assignStableIds(slide);
         });
         currentSlide = Math.max(0, Math.min(currentSlide, Math.max(0, slides.length - 1)));
       }
@@ -575,6 +644,8 @@ function editorRuntime() {
             slide.style.display = active ? (slide.dataset.originalDisplay || 'block') : 'none';
           }
         });
+        renderThumbnails();
+        updateInspector();
       }
       function nextSlide() { showSlide(currentSlide + 1); }
       function prevSlide() { showSlide(currentSlide - 1); }
@@ -591,32 +662,144 @@ function editorRuntime() {
         if (document.querySelector('.editor-toolbar')) return;
         const toolbar = document.createElement('div');
         toolbar.className = 'editor-toolbar';
-        toolbar.innerHTML = '<select data-font><option value="Arial, sans-serif">Arial</option><option value="Inter, Arial, sans-serif">Inter</option><option value="Georgia, serif">Georgia</option><option value="Times New Roman, serif">Times</option><option value="Verdana, sans-serif">Verdana</option><option value="Microsoft YaHei, sans-serif">Microsoft YaHei</option></select><input data-size type="number" min="12" max="120" value="30" title="Font size"><input data-color type="color" value="#172554" title="Color"><button data-bold>B</button><button data-italic>I</button><button data-underline>U</button><button data-add-text>Text</button><button data-add-image>Image</button><button data-delete>Delete</button><input data-image-file type="file" accept="image/*" style="display:none">';
+        toolbar.innerHTML = '<button data-undo title="Undo">Undo</button><button data-redo title="Redo">Redo</button><select data-font><option value="Arial, sans-serif">Arial</option><option value="Inter, Arial, sans-serif">Inter</option><option value="Georgia, serif">Georgia</option><option value="Times New Roman, serif">Times</option><option value="Verdana, sans-serif">Verdana</option><option value="Microsoft YaHei, sans-serif">Microsoft YaHei</option><option value="Segoe Print, Comic Sans MS, cursive">Hand</option></select><input data-size type="number" min="8" max="160" value="30" title="Font size"><input data-color type="color" value="#172554" title="Color"><button data-left>Left</button><button data-center>Center</button><button data-right>Right</button><button data-bold>B</button><button data-italic>I</button><button data-underline>U</button><button data-add-text>Text</button><button data-add-image>Image</button><button data-front>Front</button><button data-back>Back</button><button data-delete>Delete</button><input data-image-file type="file" accept="image/*" style="display:none">';
         document.body.appendChild(toolbar);
-        toolbar.querySelector('[data-font]').addEventListener('change', (e) => applyStyle('fontFamily', e.target.value));
-        toolbar.querySelector('[data-size]').addEventListener('change', (e) => applyStyle('fontSize', e.target.value + 'px'));
+        toolbar.querySelector('[data-undo]').addEventListener('click', undo);
+        toolbar.querySelector('[data-redo]').addEventListener('click', redo);
+        toolbar.querySelector('[data-font]').addEventListener('change', (e) => { pushHistory(); applyStyle('fontFamily', e.target.value); });
+        toolbar.querySelector('[data-size]').addEventListener('change', (e) => { pushHistory(); applyStyle('fontSize', e.target.value + 'px'); });
         toolbar.querySelector('[data-color]').addEventListener('input', (e) => applyStyle('color', e.target.value));
-        toolbar.querySelector('[data-bold]').addEventListener('click', () => document.execCommand('bold'));
-        toolbar.querySelector('[data-italic]').addEventListener('click', () => document.execCommand('italic'));
-        toolbar.querySelector('[data-underline]').addEventListener('click', () => document.execCommand('underline'));
+        toolbar.querySelector('[data-left]').addEventListener('click', () => { pushHistory(); applyStyle('textAlign', 'left'); });
+        toolbar.querySelector('[data-center]').addEventListener('click', () => { pushHistory(); applyStyle('textAlign', 'center'); });
+        toolbar.querySelector('[data-right]').addEventListener('click', () => { pushHistory(); applyStyle('textAlign', 'right'); });
+        toolbar.querySelector('[data-bold]').addEventListener('click', () => { pushHistory(); document.execCommand('bold'); });
+        toolbar.querySelector('[data-italic]').addEventListener('click', () => { pushHistory(); document.execCommand('italic'); });
+        toolbar.querySelector('[data-underline]').addEventListener('click', () => { pushHistory(); document.execCommand('underline'); });
         toolbar.querySelector('[data-add-text]').addEventListener('click', addTextBox);
         toolbar.querySelector('[data-add-image]').addEventListener('click', () => toolbar.querySelector('[data-image-file]').click());
         toolbar.querySelector('[data-image-file]').addEventListener('change', addImageFromInput);
+        toolbar.querySelector('[data-front]').addEventListener('click', () => layerSelected(1));
+        toolbar.querySelector('[data-back]').addEventListener('click', () => layerSelected(-1));
         toolbar.querySelector('[data-delete]').addEventListener('click', deleteSelected);
+      }
+      function ensureEditorChrome() {
+        ensureToolbar();
+        if (!document.querySelector('.ppt-ve-sidebar')) {
+          const sidebar = document.createElement('div');
+          sidebar.className = 'ppt-ve-sidebar';
+          document.body.appendChild(sidebar);
+        }
+        if (!document.querySelector('.ppt-ve-inspector')) {
+          const inspector = document.createElement('div');
+          inspector.className = 'ppt-ve-inspector';
+          inspector.innerHTML = '<h3>Element Inspector</h3><small data-ve-id>No element selected</small><div class="ppt-ve-grid"><label>X<input data-ve-x type="number"></label><label>Y<input data-ve-y type="number"></label><label>W<input data-ve-w type="number"></label><label>H<input data-ve-h type="number"></label><label>Size<input data-ve-size type="number" min="8" max="160"></label><label>Z<input data-ve-z type="number"></label></div><label>Font<select data-ve-font><option value="Arial, sans-serif">Arial</option><option value="Inter, Arial, sans-serif">Inter</option><option value="Georgia, serif">Georgia</option><option value="Times New Roman, serif">Times</option><option value="Verdana, sans-serif">Verdana</option><option value="Microsoft YaHei, sans-serif">Microsoft YaHei</option><option value="Segoe Print, Comic Sans MS, cursive">Hand</option></select></label><div class="ppt-ve-grid"><label>Text<input data-ve-color type="color"></label><label>Fill<input data-ve-bg type="color"></label></div><div class="ppt-ve-layer-row"><button data-ve-front>Up</button><button data-ve-back>Down</button><button data-ve-dup>Copy</button><button data-ve-del>Del</button></div>';
+          document.body.appendChild(inspector);
+          inspector.querySelector('[data-ve-x]').addEventListener('change', (e) => applyGeometry('left', e.target.value + 'px'));
+          inspector.querySelector('[data-ve-y]').addEventListener('change', (e) => applyGeometry('top', e.target.value + 'px'));
+          inspector.querySelector('[data-ve-w]').addEventListener('change', (e) => applyGeometry('width', e.target.value + 'px'));
+          inspector.querySelector('[data-ve-h]').addEventListener('change', (e) => applyGeometry('height', e.target.value + 'px'));
+          inspector.querySelector('[data-ve-z]').addEventListener('change', (e) => applyGeometry('zIndex', e.target.value));
+          inspector.querySelector('[data-ve-size]').addEventListener('change', (e) => { pushHistory(); applyStyle('fontSize', e.target.value + 'px'); });
+          inspector.querySelector('[data-ve-font]').addEventListener('change', (e) => { pushHistory(); applyStyle('fontFamily', e.target.value); });
+          inspector.querySelector('[data-ve-color]').addEventListener('input', (e) => applyStyle('color', e.target.value));
+          inspector.querySelector('[data-ve-bg]').addEventListener('input', (e) => applyStyle('backgroundColor', e.target.value));
+          inspector.querySelector('[data-ve-front]').addEventListener('click', () => layerSelected(1));
+          inspector.querySelector('[data-ve-back]').addEventListener('click', () => layerSelected(-1));
+          inspector.querySelector('[data-ve-dup]').addEventListener('click', duplicateSelected);
+          inspector.querySelector('[data-ve-del]').addEventListener('click', deleteSelected);
+        }
+        if (!document.querySelector('.ppt-ve-ruler-top')) {
+          const top = document.createElement('div');
+          top.className = 'ppt-ve-ruler-top';
+          const left = document.createElement('div');
+          left.className = 'ppt-ve-ruler-left';
+          document.body.appendChild(top);
+          document.body.appendChild(left);
+        }
+        renderThumbnails();
+        updateInspector();
+      }
+      function renderThumbnails() {
+        const sidebar = document.querySelector('.ppt-ve-sidebar');
+        if (!sidebar) return;
+        sidebar.innerHTML = slides.map((slide, index) => '<button type="button" class="ppt-ve-thumb ' + (index === currentSlide ? 'active' : '') + '" data-thumb="' + index + '"><strong>P' + (index + 1) + '</strong><span>' + htmlEscape((slide.innerText || 'Slide').replace(/\\s+/g, ' ').slice(0, 58)) + '</span></button>').join('');
+        sidebar.querySelectorAll('[data-thumb]').forEach((button) => button.addEventListener('click', () => showSlide(Number(button.dataset.thumb || 0))));
       }
       function activeSlide() { return slides[currentSlide] || document.querySelector('.slide.active') || document.body; }
       function selectElement(el) {
-        selectedElement = el && (el.closest('.media-box,.editable-image-box,.free-textbox,.editable-text,[contenteditable="true"]') || el);
+        selectedElement = el && (el.closest('.media-box,.editable-image-box,.free-textbox,.editable-text,.point-card,h1,h2,h3,h4,p,li,td,th,[contenteditable="true"]') || el);
         document.querySelectorAll('.selected-image').forEach((node) => node.classList.remove('selected-image'));
+        document.querySelectorAll('.ppt-selected-element').forEach((node) => node.classList.remove('ppt-selected-element'));
         if (selectedElement?.matches?.('.media-box,.editable-image-box')) selectedElement.classList.add('selected-image');
+        if (selectedElement && !selectedElement.closest('.editor-toolbar,.ppt-ve-inspector,.ppt-ve-sidebar')) selectedElement.classList.add('ppt-selected-element');
         if (selectedElement) {
           const style = getComputedStyle(selectedElement);
           document.querySelector('[data-size]')?.setAttribute('value', String(Math.round(parseFloat(style.fontSize) || 30)));
         }
+        updateInspector();
+      }
+      function toHexColor(value, fallback = '#ffffff') {
+        const ctx = document.createElement('canvas').getContext('2d');
+        if (!ctx) return fallback;
+        ctx.fillStyle = fallback;
+        ctx.fillStyle = value || fallback;
+        return ctx.fillStyle.startsWith('#') ? ctx.fillStyle : fallback;
+      }
+      function updateInspector() {
+        const inspector = document.querySelector('.ppt-ve-inspector');
+        if (!inspector) return;
+        const target = selectedElement && !selectedElement.closest('.editor-toolbar,.ppt-ve-inspector,.ppt-ve-sidebar') ? selectedElement : null;
+        inspector.querySelector('[data-ve-id]').textContent = target ? (target.dataset.pptId || target.tagName.toLowerCase()) : 'No element selected';
+        inspector.querySelectorAll('input,select,button').forEach((node) => node.disabled = !target);
+        if (!target) return;
+        const slideRect = activeSlide().getBoundingClientRect();
+        const rect = target.getBoundingClientRect();
+        const style = getComputedStyle(target);
+        inspector.querySelector('[data-ve-x]').value = String(Math.round(rect.left - slideRect.left));
+        inspector.querySelector('[data-ve-y]').value = String(Math.round(rect.top - slideRect.top));
+        inspector.querySelector('[data-ve-w]').value = String(Math.round(rect.width));
+        inspector.querySelector('[data-ve-h]').value = String(Math.round(rect.height));
+        inspector.querySelector('[data-ve-size]').value = String(Math.round(parseFloat(style.fontSize) || 30));
+        inspector.querySelector('[data-ve-z]').value = style.zIndex === 'auto' ? '' : style.zIndex;
+        inspector.querySelector('[data-ve-color]').value = toHexColor(style.color, '#172554');
+        inspector.querySelector('[data-ve-bg]').value = toHexColor(style.backgroundColor, '#ffffff');
       }
       function applyStyle(prop, value) {
         const target = selectedElement && !selectedElement.matches('.media-box,.editable-image-box,img') ? selectedElement : document.activeElement;
-        if (target && target !== document.body) target.style[prop] = value;
+        if (target && target !== document.body) {
+          target.style[prop] = value;
+          updateInspector();
+        }
+      }
+      function applyGeometry(prop, value) {
+        if (!selectedElement || selectedElement === document.body) return;
+        pushHistory();
+        if (getComputedStyle(selectedElement).position === 'static') selectedElement.style.position = 'absolute';
+        selectedElement.style[prop] = value;
+        if (selectedElement.matches('.media-box,.editable-image-box,figure,img')) keepImageInBounds(selectedElement.closest?.('.media-box,.editable-image-box,figure') || selectedElement);
+        updateInspector();
+      }
+      function layerSelected(delta) {
+        if (!selectedElement) return;
+        pushHistory();
+        const value = parseInt(getComputedStyle(selectedElement).zIndex, 10);
+        selectedElement.style.zIndex = String((Number.isFinite(value) ? value : 1) + delta);
+        updateInspector();
+      }
+      function duplicateSelected() {
+        if (!selectedElement || selectedElement.matches('body,.slide,.slide-inner')) return;
+        pushHistory();
+        const clone = selectedElement.cloneNode(true);
+        clone.dataset.pptId = '';
+        clone.classList.remove('ppt-selected-element','selected-image');
+        clone.querySelectorAll('[data-ppt-id]').forEach((node) => node.removeAttribute('data-ppt-id'));
+        if (getComputedStyle(selectedElement).position === 'static') clone.style.position = 'absolute';
+        clone.style.left = (parseFloat(selectedElement.style.left || '40') + 24) + 'px';
+        clone.style.top = (parseFloat(selectedElement.style.top || '40') + 24) + 'px';
+        activeSlide().appendChild(clone);
+        assignStableIds(clone);
+        prepareImages();
+        selectElement(clone);
       }
       function keepImageInBounds(el) {
         const parentRect = activeSlide().getBoundingClientRect();
@@ -630,6 +813,7 @@ function editorRuntime() {
         event.preventDefault();
         event.stopPropagation();
         selectElement(el);
+        pushHistory();
         const rect = el.getBoundingClientRect();
         const parentRect = activeSlide().getBoundingClientRect();
         const startX = event.clientX;
@@ -661,6 +845,7 @@ function editorRuntime() {
         event.preventDefault();
         event.stopPropagation();
         selectElement(el);
+        pushHistory();
           const rect = el.getBoundingClientRect();
           const parentRect = activeSlide().getBoundingClientRect();
           const startX = event.clientX;
@@ -740,12 +925,13 @@ function editorRuntime() {
       }
       function toggleEdit(force) {
         const editing = typeof force === 'boolean' ? force : !document.body.classList.contains('editing');
-        ensureToolbar();
+        ensureEditorChrome();
         document.body.classList.toggle('editing', editing);
         document.querySelectorAll('h1,.point-card,.chapter,.editable-text,p,li,td,th,.free-textbox').forEach((node) => node.contentEditable = editing ? 'true' : 'false');
         if (editing) prepareImages();
       }
       function addTextBox() {
+        pushHistory();
         const box = document.createElement('div');
         box.className = 'free-textbox editable-text';
         box.textContent = 'New text';
@@ -771,6 +957,7 @@ function editorRuntime() {
           box.querySelector('img').src = reader.result;
           activeSlide().appendChild(box);
           makeDraggable(box);
+          assignStableIds(box);
           selectElement(box);
         };
         reader.readAsDataURL(file);
@@ -778,8 +965,10 @@ function editorRuntime() {
       }
       function deleteSelected() {
         if (selectedElement && !selectedElement.matches('body,.slide,.slide-inner')) {
+          pushHistory();
           selectedElement.remove();
           selectedElement = null;
+          updateInspector();
         }
       }
       function htmlEscape(value) {
@@ -816,7 +1005,7 @@ function editorRuntime() {
       function imageTargets(operation = {}) {
         const target = String(operation.target || '').toLowerCase();
         const slide = activeSlide();
-        const boxes = Array.from((target === 'deck' ? document : slide).querySelectorAll('.media-box,.editable-image-box,figure:has(img),img')).map((node) => node.closest?.('.media-box,.editable-image-box,figure') || node);
+        const boxes = Array.from((target === 'deck' ? document : slide).querySelectorAll('.media-box,.editable-image-box,figure,img')).filter((node) => node.matches('img') || node.querySelector?.('img')).map((node) => node.closest?.('.media-box,.editable-image-box,figure') || node);
         if ((target === 'selected' || target === 'selected_element') && selectedElement) return [selectedElement.closest?.('.media-box,.editable-image-box,figure') || selectedElement].filter(Boolean);
         if (target === 'all_images' || target === 'deck') return Array.from(new Set(boxes));
         const measured = boxes.map((box) => ({ box, area: (box.getBoundingClientRect().width || 0) * (box.getBoundingClientRect().height || 0) })).sort((a, b) => b.area - a.area);
