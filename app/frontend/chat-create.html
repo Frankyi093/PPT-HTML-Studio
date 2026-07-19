@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat Creation - PPT HTML Studio</title>
+  <script src="/static/app-settings.js"></script>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/chat-create.css">
 </head>
@@ -11,10 +12,8 @@
   <header class="topbar">
     <a class="brand brand-link" href="/">PPT HTML Studio</a>
     <nav class="top-actions" aria-label="Utility">
-      <a class="ghost nav-link" href="/converter.html">PPT Converter</a>
-      <a class="ghost nav-link" href="/ai-generate.html">AI Create</a>
-      <a class="ghost nav-link" href="/ai-settings.html">AI Settings</a>
-      <span class="avatar" aria-label="User">C</span>
+      <a class="ghost nav-link" href="/" data-i18n="backHome">返回主页</a>
+      <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
     </nav>
   </header>
 
@@ -22,24 +21,22 @@
     <section class="chat-hero">
       <div>
         <span class="chat-kicker">Explore before creating</span>
-        <h1>对话创作 / Chat Creation</h1>
-        <p>先用对话梳理需求、内容和页面结构，再一键生成可编辑 HTML PPT。</p>
+        <h1 data-i18n="chatTitle">对话创作</h1>
+        <p data-i18n="chatSubtitle">先用对话梳理需求、内容和页面结构，再一键生成可编辑 HTML PPT。</p>
       </div>
       <div class="hero-actions">
-        <button id="historyButton" type="button">History</button>
-        <button id="newChatButton" type="button">New chat</button>
+        <button id="historyButton" type="button" data-i18n="history">历史记录</button>
+        <button id="newChatButton" type="button" data-i18n="newChat">新建对话</button>
       </div>
     </section>
 
     <section class="chat-layout">
       <section class="chat-panel">
-        <div class="ai-config-banner" id="aiConfigBanner">
-          Loading AI settings...
-        </div>
+        <div class="ai-config-banner" id="aiConfigBanner" data-i18n="loadingAi">正在读取 AI 设置...</div>
         <div class="messages" id="messages" aria-live="polite"></div>
         <form class="composer" id="chatForm">
-          <textarea id="chatInput" rows="3" placeholder="描述你想呈现的主题和内容..."></textarea>
-          <button id="sendButton" type="submit">Send</button>
+          <textarea id="chatInput" rows="3" placeholder="描述你想呈现的主题和内容..." data-i18n-placeholder="chatPlaceholder"></textarea>
+          <button id="sendButton" type="submit" data-i18n="send">发送</button>
         </form>
         <div class="history-list hidden" id="historyList"></div>
       </section>
@@ -47,15 +44,15 @@
       <aside class="outline-panel">
         <div class="outline-head">
           <div>
-            <span class="chat-kicker">Live structure</span>
-            <h2>页面大纲</h2>
+            <span class="chat-kicker" data-i18n="liveStructure">实时结构</span>
+            <h2 data-i18n="outline">页面大纲</h2>
           </div>
-          <button id="addSlide" type="button">Add page</button>
+          <button id="addSlide" type="button" data-i18n="addPage">新增页</button>
         </div>
         <div class="outline-meta">
-          <label>Title <input id="deckTitle" type="text" placeholder="Deck title"></label>
-          <label>Audience <input id="deckAudience" type="text" placeholder="Target audience"></label>
-          <label>Style
+          <label><span data-i18n="title">标题</span><input id="deckTitle" type="text" placeholder="Deck title"></label>
+          <label><span data-i18n="audience">受众</span><input id="deckAudience" type="text" placeholder="Target audience"></label>
+          <label><span data-i18n="style">风格</span>
             <select id="deckStyle">
               <option value="teaching">Teaching Blue</option>
               <option value="academic">Academic Style</option>
@@ -70,26 +67,26 @@
           </label>
         </div>
         <div class="outline-cards" id="outlineCards"></div>
-        <button class="confirm-button" id="confirmGenerate" type="button" disabled>Confirm and generate</button>
+        <button class="confirm-button" id="confirmGenerate" type="button" disabled data-i18n="confirmGenerate">确认并生成</button>
       </aside>
     </section>
 
     <section class="chat-workbench">
       <div class="preview-head">
-        <h2>Preview</h2>
+        <h2 data-i18n="preview">预览</h2>
         <div class="preview-controls">
-          <button class="icon-button" id="openPreviewHtml" type="button" disabled>Preview</button>
-          <button class="icon-button" id="editHtml" type="button" disabled>Edit HTML</button>
-          <button class="icon-button" id="saveEditedHtml" type="button" disabled>Save Edits</button>
-          <button class="icon-button" id="openScrollHtml" type="button" disabled>Open Scroll HTML</button>
-          <button class="icon-button primary" id="downloadZip" type="button" disabled>Download ZIP</button>
+          <button class="icon-button" id="openPreviewHtml" type="button" disabled data-i18n="preview">预览</button>
+          <button class="icon-button" id="editHtml" type="button" disabled data-i18n="editHtml">Edit HTML</button>
+          <button class="icon-button" id="saveEditedHtml" type="button" disabled data-i18n="saveEdits">保存修改</button>
+          <button class="icon-button" id="openScrollHtml" type="button" disabled data-i18n="openScroll">打开滑动版 HTML</button>
+          <button class="icon-button primary" id="downloadZip" type="button" disabled data-i18n="downloadZip">下载 ZIP</button>
         </div>
       </div>
       <div class="preview-frame">
         <iframe id="previewFrame" title="Chat-created HTML preview"></iframe>
         <div class="preview-empty" id="previewEmpty">
-          <strong>No generated HTML yet</strong>
-          <span>Confirm the outline, then generate a 16:9 HTML PPT.</span>
+          <strong data-i18n="noHtmlYet">暂无生成的 HTML</strong>
+          <span data-i18n="noHtmlHint">确认大纲后，生成一份 16:9 HTML PPT。</span>
         </div>
       </div>
       <p class="status-line" id="statusLine"></p>
@@ -100,8 +97,8 @@
     <div class="generation-card">
       <button id="closeGenerationOverlay" class="generation-close" type="button" aria-label="Hide generation animation">x</button>
       <div class="generation-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
-      <strong>AI is creating your deck</strong>
-      <p id="generationMessage">Planning and composing clean 16:9 slides...</p>
+      <strong data-i18n="aiCreating">AI 正在创建演示文稿</strong>
+      <p id="generationMessage" data-i18n="aiCreatingHint">正在规划内容、风格和 16:9 页面...</p>
       <div class="generation-progress" aria-hidden="true"><span></span></div>
     </div>
   </div>
@@ -111,3 +108,4 @@
   <script src="/static/chat-create.js"></script>
 </body>
 </html>
+
