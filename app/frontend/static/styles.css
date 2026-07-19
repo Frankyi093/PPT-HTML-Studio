@@ -208,6 +208,13 @@ html[data-theme="dark"] :where(p,small,.style-card-sample,.job-card-title span,.
   border-radius: 999px;
 }
 
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-weight: 760;
+}
+
 .ghost:hover {
   border-color: rgba(95, 212, 255, .54);
   background: rgba(255,255,255,.78);
