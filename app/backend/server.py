@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import base64
 import io
 import json
@@ -62,6 +62,24 @@ DEFAULT_API_GUIDE = """# API Configuration Tutorial
 - API settings are saved on the current deployment storage. On Vercel Serverless, storage is temporary unless you connect persistent storage.
 - For large PPT files or persistent job history, use Vercel Blob/KV/database storage or deploy the Python backend to Render, Railway, Fly, or a cloud server.
 """
+
+def mb_to_bytes(value: str, fallback_mb: float) -> int:
+    try:
+        mb_value = float(value)
+        if mb_value <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        mb_value = fallback_mb
+    return int(mb_value * 1024 * 1024)
+
+
+VERCEL_MAX_PAYLOAD_BYTES = 4 * 1024 * 1024
+VERCEL_SAFE_RAW_UPLOAD_BYTES = int(VERCEL_MAX_PAYLOAD_BYTES * 0.62)
+LOCAL_SAFE_RAW_UPLOAD_BYTES = mb_to_bytes(os.environ.get("PPT_HTML_MAX_UPLOAD_MB", ""), 100)
+LOCAL_MAX_PAYLOAD_BYTES = mb_to_bytes(
+    os.environ.get("PPT_HTML_MAX_PAYLOAD_MB", ""),
+    max(150, (LOCAL_SAFE_RAW_UPLOAD_BYTES / 1024 / 1024) * 1.6),
+)
 
 
 def ensure_data_dirs() -> None:
@@ -335,18 +353,44 @@ def time_string() -> str:
 class PlatformHandler(BaseHTTPRequestHandler):
     server_version = "PPTHTMLStudio/1.0"
 
+    def do_OPTIONS(self) -> None:
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_cors_headers()
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
+
+    def send_cors_headers(self) -> None:
+        self.send_header("Access-Control-Allow-Origin", os.environ.get("CORS_ALLOW_ORIGIN", "*"))
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, api-key")
+        self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
 
         if path == "/api/health":
+            is_vercel = bool(os.environ.get("VERCEL"))
+            max_payload = VERCEL_MAX_PAYLOAD_BYTES if is_vercel else LOCAL_MAX_PAYLOAD_BYTES
+            max_raw_upload = VERCEL_SAFE_RAW_UPLOAD_BYTES if is_vercel else LOCAL_SAFE_RAW_UPLOAD_BYTES
+            external_backend = (os.environ.get("PUBLIC_BACKEND_ORIGIN") or os.environ.get("BACKEND_ORIGIN") or "").rstrip("/")
             self.write_json(
                 {
                     "status": "ok",
                     "appRoot": str(APP_ROOT),
                     "dataRoot": str(DATA_DIR),
-                    "runtime": "vercel" if os.environ.get("VERCEL") else "local",
-                    "maxUploadMb": 4 if os.environ.get("VERCEL") else 100,
+                    "runtime": "vercel" if is_vercel else "local",
+                    "maxUploadMb": round(max_raw_upload / 1024 / 1024, 2),
+                    "maxRawUploadMb": round(max_raw_upload / 1024 / 1024, 2),
+                    "maxRawUploadBytes": max_raw_upload,
+                    "maxPayloadMb": round(max_payload / 1024 / 1024, 2),
+                    "maxPayloadBytes": max_payload,
+                    "externalBackendOrigin": external_backend,
+                    "largeUploadRecommendation": (
+                        "Use Vercel Blob client uploads or deploy the Python backend to Render/Railway/Fly/cloud server for large PPT files."
+                        if is_vercel
+                        else "Local backend can accept large PPT files."
+                    ),
                 }
             )
             return
@@ -394,6 +438,23 @@ class PlatformHandler(BaseHTTPRequestHandler):
 
         if path == "/":
             self.serve_file(FRONTEND_DIR / "index.html")
+            return
+
+        page_aliases = {
+            "/settings": "ai-settings.html",
+            "/settings.html": "ai-settings.html",
+            "/ai-settings": "ai-settings.html",
+            "/ai-settings.html": "ai-settings.html",
+            "/converter": "converter.html",
+            "/ai-generate": "ai-generate.html",
+            "/ai-create": "ai-generate.html",
+            "/ai-create.html": "ai-generate.html",
+            "/quick-create": "ai-generate.html",
+            "/quick-create.html": "ai-generate.html",
+            "/chat-create": "chat-create.html",
+        }
+        if path in page_aliases:
+            self.serve_file(FRONTEND_DIR / page_aliases[path])
             return
 
         frontend_path = (FRONTEND_DIR / path.lstrip("/")).resolve()
@@ -478,16 +539,21 @@ class PlatformHandler(BaseHTTPRequestHandler):
             if content_length <= 0:
                 self.write_json({"error": "empty_body"}, HTTPStatus.BAD_REQUEST)
                 return
-            max_payload = 4 * 1024 * 1024 if os.environ.get("VERCEL") else 150 * 1024 * 1024
+            max_payload = VERCEL_MAX_PAYLOAD_BYTES if os.environ.get("VERCEL") else LOCAL_MAX_PAYLOAD_BYTES
             if content_length > max_payload:
                 message = (
-                    "This Vercel deployment only supports small PPT files because Serverless request bodies are limited. "
-                    "Use a smaller PPT, deploy the Python service to Render/Railway/Fly, or add Vercel Blob direct upload."
+                    "This Vercel deployment only supports small direct PPT uploads because Vercel Function request bodies are limited. "
+                    f"Use a PPT up to about {VERCEL_SAFE_RAW_UPLOAD_BYTES / 1024 / 1024:.1f}MB, run the app locally, deploy the Python service to Render/Railway/Fly, or add Vercel Blob direct upload."
                     if os.environ.get("VERCEL")
                     else "request payload is too large"
                 )
                 self.write_json(
-                    {"error": "payload_too_large", "message": message, "maxPayloadBytes": max_payload},
+                    {
+                        "error": "payload_too_large",
+                        "message": message,
+                        "maxPayloadBytes": max_payload,
+                        "maxRawUploadBytes": VERCEL_SAFE_RAW_UPLOAD_BYTES if os.environ.get("VERCEL") else LOCAL_SAFE_RAW_UPLOAD_BYTES,
+                    },
                     HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                 )
                 return
@@ -615,6 +681,7 @@ class PlatformHandler(BaseHTTPRequestHandler):
                     package.write(item, item.relative_to(output_dir).as_posix())
         data = archive.getvalue()
         self.send_response(HTTPStatus.OK)
+        self.send_cors_headers()
         self.send_header("Content-Type", "application/zip")
         self.send_header("Content-Disposition", f"attachment; filename=\"{job_id}-html-package.zip\"")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -649,6 +716,7 @@ class PlatformHandler(BaseHTTPRequestHandler):
         content_type = content_type or "application/octet-stream"
         data = target.read_bytes()
         self.send_response(HTTPStatus.OK)
+        self.send_cors_headers()
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
@@ -657,6 +725,7 @@ class PlatformHandler(BaseHTTPRequestHandler):
     def write_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
+        self.send_cors_headers()
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
