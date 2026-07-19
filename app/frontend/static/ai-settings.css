@@ -1,0 +1,141 @@
+body {
+  grid-template-columns: 270px minmax(0, 1fr);
+}
+
+.settings-main {
+  width: min(980px, 100%);
+  padding: clamp(32px, 6vw, 72px);
+}
+
+.settings-hero {
+  margin-bottom: 30px;
+}
+
+.settings-hero h1 {
+  margin-bottom: 12px;
+}
+
+.settings-card {
+  padding: 34px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+label.wide {
+  grid-column: 1 / -1;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid #d8d0bd;
+  border-radius: 16px;
+  padding: 0 18px;
+  background: #fffefa;
+  color: var(--ink);
+  font: inherit;
+  font-size: 18px;
+  outline: none;
+}
+
+textarea {
+  min-height: 128px;
+  padding-top: 14px;
+  resize: vertical;
+}
+
+.key-status {
+  margin: 18px 0 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #eef6e8;
+  color: #4a6040;
+  font-weight: 750;
+}
+
+.advanced-settings {
+  margin-top: 18px;
+  border: 1px solid #e1dac8;
+  border-radius: 18px;
+  padding: 16px;
+  background: #fbf7ed;
+}
+
+.advanced-settings summary {
+  cursor: pointer;
+  color: var(--green);
+  font-weight: 900;
+}
+
+.advanced-settings .form-grid {
+  margin-top: 18px;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.secondary-button {
+  min-height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  border: 1px solid #d8d0bd;
+  border-radius: 14px;
+  background: #fffefa;
+  color: var(--green);
+  text-decoration: none;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.status-line {
+  min-height: 28px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.status-line.ok {
+  color: #2f7d44;
+}
+
+.status-line.error {
+  color: #b42318;
+}
+
+@media (max-width: 760px) {
+  .settings-main {
+    padding: 26px 18px 44px;
+  }
+
+  .settings-card {
+    padding: 22px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
