@@ -22,8 +22,8 @@ await copyFile(aiJsPath, aiLiveJsPath);
 await writeFile(
   aiLiveHtmlPath,
   aiHtml
-    .replace('/static/ai-generate.css', '/static/ai-generate-live.css')
-    .replace('/static/ai-generate.js', '/static/ai-generate-live.js'),
+    .replace(/\/static\/ai-generate\.css/g, "/static/ai-generate-live.css")
+    .replace(/\/static\/ai-generate\.js/g, "/static/ai-generate-live.js"),
   "utf8",
 );
 
