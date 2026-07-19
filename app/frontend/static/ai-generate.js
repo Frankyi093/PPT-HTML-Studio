@@ -262,9 +262,159 @@ async function readJsonResponse(response) {
   };
 }
 
+function listToLines(items, prefix = "- ") {
+  return (Array.isArray(items) ? items : [])
+    .filter(Boolean)
+    .map((item) => `${prefix}${String(item).trim()}`)
+    .join("\n");
+}
+
+function paletteToText(palette = {}) {
+  const fields = ["background", "text", "primary", "accent", "panel"];
+  const parts = fields
+    .map((key) => palette?.[key] ? `${key}: ${palette[key]}` : "")
+    .filter(Boolean);
+  return parts.length ? parts.join("; ") : "background: #ffffff; text: #172554; primary: #3b82f6; accent: #5fd4ff; panel: #f8fbff";
+}
+
+function typographyToText(typography = {}) {
+  const title = typography?.title || "large, centered, readable title font";
+  const body = typography?.body || "clean sans-serif body font";
+  return `title: ${title}; body: ${body}`;
+}
+
+function planToEditableText(plan) {
+  if (!plan) return "";
+  const slides = Array.isArray(plan.slides) ? plan.slides : [];
+  return [
+    `Deck title: ${plan.title || ""}`,
+    `Subtitle: ${plan.subtitle || ""}`,
+    `Audience: ${plan.audience || ""}`,
+    `Goal: ${plan.goal || ""}`,
+    `Tone: ${plan.tone || ""}`,
+    `Palette: ${paletteToText(plan.palette)}`,
+    `Typography: ${typographyToText(plan.typography)}`,
+    "",
+    "Layout rules:",
+    listToLines(plan.layoutRules?.length ? plan.layoutRules : [
+      "Keep every slide in a fixed 16:9 canvas.",
+      "Use large readable titles and balanced safe margins.",
+      "Avoid text, images, and controls overflowing the page.",
+    ]),
+    "",
+    "Slides:",
+    slides.map((slide, index) => [
+      `${index + 1}. ${slide.title || `Slide ${index + 1}`}`,
+      `Layout: ${slide.layout || "balanced"}`,
+      `Visual focus: ${slide.visualFocus || ""}`,
+      "Body:",
+      listToLines(slide.body || []),
+      slide.speakerNote ? `Speaker note: ${slide.speakerNote}` : "Speaker note:",
+    ].join("\n")).join("\n\n"),
+  ].join("\n");
+}
+
+function parseKeyValueLine(line, key) {
+  const match = String(line || "").match(new RegExp(`^${key}\\s*:\\s*(.*)$`, "i"));
+  return match ? match[1].trim() : "";
+}
+
+function parseInlinePairs(text) {
+  const result = {};
+  String(text || "").split(";").forEach((part) => {
+    const match = part.match(/^\s*([^:]+)\s*:\s*(.+?)\s*$/);
+    if (match) result[match[1].trim()] = match[2].trim();
+  });
+  return result;
+}
+
+function editableTextToPlan(text, fallbackPlan = null) {
+  const fallback = fallbackPlan || {};
+  const lines = String(text || "").split(/\r?\n/);
+  const plan = {
+    title: fallback.title || "",
+    subtitle: fallback.subtitle || "",
+    audience: fallback.audience || "",
+    goal: fallback.goal || "",
+    tone: fallback.tone || "clear, modern, educational",
+    palette: { ...(fallback.palette || {}) },
+    typography: { ...(fallback.typography || {}) },
+    layoutRules: [],
+    slides: [],
+  };
+  let mode = "";
+  let currentSlide = null;
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const lower = line.toLowerCase();
+    if (lower === "layout rules:") {
+      mode = "rules";
+      continue;
+    }
+    if (lower === "slides:") {
+      mode = "slides";
+      continue;
+    }
+    const deckTitle = parseKeyValueLine(line, "Deck title");
+    if (deckTitle) { plan.title = deckTitle; continue; }
+    const subtitle = parseKeyValueLine(line, "Subtitle");
+    if (subtitle || /^subtitle\s*:/i.test(line)) { plan.subtitle = subtitle; continue; }
+    const audience = parseKeyValueLine(line, "Audience");
+    if (audience) { plan.audience = audience; continue; }
+    const goal = parseKeyValueLine(line, "Goal");
+    if (goal) { plan.goal = goal; continue; }
+    const tone = parseKeyValueLine(line, "Tone");
+    if (tone) { plan.tone = tone; continue; }
+    const palette = parseKeyValueLine(line, "Palette");
+    if (palette) { plan.palette = { ...plan.palette, ...parseInlinePairs(palette) }; continue; }
+    const typography = parseKeyValueLine(line, "Typography");
+    if (typography) { plan.typography = { ...plan.typography, ...parseInlinePairs(typography) }; continue; }
+    const slideMatch = line.match(/^(\d+)[.)]\s+(.+)$/);
+    if (mode === "slides" && slideMatch) {
+      currentSlide = {
+        page: plan.slides.length + 1,
+        title: slideMatch[2].trim(),
+        layout: "balanced",
+        visualFocus: "",
+        body: [],
+        speakerNote: "",
+        images: [],
+      };
+      plan.slides.push(currentSlide);
+      continue;
+    }
+    if (mode === "rules" && /^[-*]\s+/.test(line)) {
+      plan.layoutRules.push(line.replace(/^[-*]\s+/, "").trim());
+      continue;
+    }
+    if (mode === "slides" && currentSlide) {
+      const layout = parseKeyValueLine(line, "Layout");
+      if (layout) { currentSlide.layout = layout; continue; }
+      const visualFocus = parseKeyValueLine(line, "Visual focus");
+      if (visualFocus || /^visual focus\s*:/i.test(line)) { currentSlide.visualFocus = visualFocus; continue; }
+      const speakerNote = parseKeyValueLine(line, "Speaker note");
+      if (speakerNote || /^speaker note\s*:/i.test(line)) { currentSlide.speakerNote = speakerNote; continue; }
+      if (/^body\s*:/i.test(line)) continue;
+      if (/^[-*]\s+/.test(line)) {
+        currentSlide.body.push(line.replace(/^[-*]\s+/, "").trim());
+      }
+    }
+  }
+  if (!plan.layoutRules.length) plan.layoutRules = [...(fallback.layoutRules || [])];
+  if (!plan.slides.length) plan.slides = Array.isArray(fallback.slides) ? fallback.slides : [];
+  plan.slides = plan.slides.map((slide, index) => ({
+    ...slide,
+    page: index + 1,
+    title: slide.title || `Key Idea ${index + 1}`,
+    body: Array.isArray(slide.body) ? slide.body.filter(Boolean) : [],
+  }));
+  return plan;
+}
+
 function renderPlan(plan) {
   state.plan = plan;
-  el("planJson").value = JSON.stringify(plan, null, 2);
+  el("planText").value = planToEditableText(plan);
   el("generateButton").disabled = false;
 }
 
@@ -295,7 +445,7 @@ async function generatePlan(event) {
     const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.message || data.error || "AI planning failed.");
     renderPlan(data.plan);
-    setStatus("Plan ready. You can edit the JSON, then generate HTML.", "ok");
+    setStatus("Plan ready. Edit the readable outline, then generate HTML.", "ok");
   } catch (error) {
     setStatus(error.message || "AI planning failed.", "error");
   } finally {
@@ -335,11 +485,12 @@ function renderJob(job) {
 }
 
 async function generateHtml() {
-  const plan = safeJsonParse(el("planJson").value);
-  if (!plan) {
-    setStatus("The plan JSON is invalid. Fix it before generating HTML.", "error");
+  const plan = editableTextToPlan(el("planText").value, state.plan);
+  if (!plan?.slides?.length) {
+    setStatus("The plan has no usable slides. Generate or edit the outline first.", "error");
     return;
   }
+  state.plan = plan;
   try {
     await saveIntegration();
     setBusy(true, "AI is generating the editable 16:9 HTML deck...");
@@ -449,12 +600,13 @@ function init() {
   el("saveApi").addEventListener("click", () => saveIntegration().catch((error) => setStatus(error.message, "error")));
   el("apiProvider").addEventListener("change", (event) => applyProvider(event.target.value, true));
   el("formatPlan").addEventListener("click", () => {
-    const plan = safeJsonParse(el("planJson").value);
-    if (!plan) {
-      setStatus("Plan JSON is invalid.", "error");
+    if (!state.plan) {
+      setStatus("Generate a plan first.", "error");
       return;
     }
+    const plan = editableTextToPlan(el("planText").value, state.plan);
     renderPlan(plan);
+    setStatus("Readable plan refreshed.", "ok");
   });
   el("editHtml").addEventListener("click", toggleEdit);
   el("saveEditedHtml").addEventListener("click", () => saveEditedHtml().catch((error) => setStatus(error.message, "error")));
