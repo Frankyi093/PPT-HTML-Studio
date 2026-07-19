@@ -78,9 +78,8 @@
           <textarea id="requirements" rows="6" placeholder="Tell AI the goal, structure, scenario, required points, or visual preference."></textarea>
         </label>
 
-        <div class="ai-actions">
+        <div class="ai-actions plan-only-actions">
           <button class="run-button" id="planButton" type="submit">Generate outline and design plan</button>
-          <button class="icon-button" id="generateButton" type="button" disabled>Generate HTML</button>
         </div>
         <p class="status-line" id="statusLine"></p>
       </form>
@@ -162,9 +161,16 @@
             <span class="ai-kicker">Step 2</span>
             <h2>Editable AI plan</h2>
           </div>
-          <button class="ghost nav-link" id="formatPlan" type="button">Format JSON</button>
+          <button class="ghost nav-link" id="formatPlan" type="button">Refresh plan</button>
         </div>
-        <textarea id="planJson" class="plan-json" spellcheck="false" placeholder="The AI outline, palette and layout plan will appear here. You can edit it before generating HTML."></textarea>
+        <textarea id="planText" class="plan-text" spellcheck="true" placeholder="The AI plan will appear here as editable text. You can change titles, layouts, design rules, and slide points before generating HTML."></textarea>
+        <div class="plan-generate-row">
+          <div>
+            <strong>Ready for HTML</strong>
+            <span>Edit the readable plan above, then generate the slide deck.</span>
+          </div>
+          <button class="run-button compact-run" id="generateButton" type="button" disabled>Generate HTML</button>
+        </div>
       </section>
 
       <section class="ai-card preview-panel topic-preview">
