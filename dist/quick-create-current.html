@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Create - PPT HTML Studio</title>
+  <script>
+(function () {
+  const THEME_KEY = "ppt-html-studio-theme";
+  const LANGUAGE_KEY = "ppt-html-studio-language";
+  const themes = new Set(["light", "dark", "beige"]);
+  const languages = new Set(["zh", "en"]);
+
+  const text = {
+    zh: {
+      home: "首页",
+      converter: "PPT 转 HTML",
+      quickCreate: "快速创建",
+      chatCreation: "对话创作",
+      aiSettings: "AI 配置",
+      settings: "设置",
+      backHome: "返回主页",
+      productName: "PPT HTML Studio",
+      workbench: "AI PRESENTATION WORKBENCH",
+      heroTitle: "开始创建演示文稿",
+      heroSubtitle: "导入 PPT、输入主题，或通过对话逐步构建你的演示内容。",
+      enterConverter: "进入转换",
+      startCreate: "开始生成",
+      startChat: "开始对话",
+      converterDesc: "上传现有 PPT，转为可编辑、可分享、可下载的 HTML 演示。",
+      quickCreateDesc: "输入主题和需求，AI 自动规划大纲、风格和页面布局。",
+      chatDesc: "先和 AI 聊清楚需求，逐步确认大纲，再一键生成 PPT。",
+      sharedAi: "统一 AI 配置",
+      sharedAiDesc: "三个功能共用同一份 API 设置，只需要配置一次。",
+      configureAi: "配置 AI",
+      settingsTitle: "设置",
+      settingsSubtitle: "选择界面语言和主题，也可以在同一页配置三个功能共用的 AI。",
+      interfaceSettings: "界面设置",
+      themeMode: "主题模式",
+      language: "界面语言",
+      lightMode: "浅色模式",
+      darkMode: "深色模式",
+      beigeMode: "米色模式",
+      chinese: "中文",
+      english: "English",
+      settingsSaved: "设置已保存。",
+      chatTitle: "对话创作",
+      chatSubtitle: "先用对话梳理需求、内容和页面结构，再一键生成可编辑 HTML PPT。",
+      history: "历史记录",
+      newChat: "新建对话",
+      loadingAi: "正在读取 AI 设置...",
+      chatPlaceholder: "描述你想呈现的主题和内容...",
+      send: "发送",
+      liveStructure: "实时结构",
+      outline: "页面大纲",
+      addPage: "新增页",
+      title: "标题",
+      audience: "受众",
+      style: "风格",
+      confirmGenerate: "确认并生成",
+      preview: "预览",
+      editHtml: "Edit HTML",
+      saveEdits: "保存修改",
+      openScroll: "打开滑动版 HTML",
+      downloadZip: "下载 ZIP",
+      noHtmlYet: "暂无生成的 HTML",
+      noHtmlHint: "确认大纲后，生成一份 16:9 HTML PPT。",
+      aiCreating: "AI 正在创建演示文稿",
+      aiCreatingHint: "正在规划内容、风格和 16:9 页面...",
+      quickCreateTitle: "快速创建",
+      quickCreateHero: "从主题快速生成完整 HTML 演示。",
+      topicRequirements: "主题和需求",
+      editablePlan: "可编辑 AI 方案",
+    },
+    en: {
+      home: "Home",
+      converter: "PPT to HTML",
+      quickCreate: "Quick Create",
+      chatCreation: "Chat Creation",
+      aiSettings: "AI Settings",
+      settings: "Settings",
+      backHome: "Back home",
+      productName: "PPT HTML Studio",
+      workbench: "AI PRESENTATION WORKBENCH",
+      heroTitle: "Start creating presentations",
+      heroSubtitle: "Import a PPT, enter a topic, or build your deck step by step through conversation.",
+      enterConverter: "Enter converter",
+      startCreate: "Start creating",
+      startChat: "Start chat",
+      converterDesc: "Upload an existing PPT and turn it into editable, shareable, downloadable HTML slides.",
+      quickCreateDesc: "Enter a topic and requirements. AI plans the outline, style, and layouts.",
+      chatDesc: "Clarify the brief with AI, confirm the outline, then generate the PPT in one click.",
+      sharedAi: "Shared AI settings",
+      sharedAiDesc: "All three features reuse one API configuration. Set it up once.",
+      configureAi: "Configure AI",
+      settingsTitle: "Settings",
+      settingsSubtitle: "Choose interface language and theme, and configure the shared AI connection.",
+      interfaceSettings: "Interface settings",
+      themeMode: "Theme",
+      language: "Language",
+      lightMode: "Light mode",
+      darkMode: "Dark mode",
+      beigeMode: "Beige mode",
+      chinese: "中文",
+      english: "English",
+      settingsSaved: "Settings saved.",
+      chatTitle: "Chat Creation",
+      chatSubtitle: "Clarify needs, content, and page structure through conversation, then generate editable HTML slides.",
+      history: "History",
+      newChat: "New chat",
+      loadingAi: "Loading AI settings...",
+      chatPlaceholder: "Describe the topic and content you want to present...",
+      send: "Send",
+      liveStructure: "Live structure",
+      outline: "Page outline",
+      addPage: "Add page",
+      title: "Title",
+      audience: "Audience",
+      style: "Style",
+      confirmGenerate: "Confirm and generate",
+      preview: "Preview",
+      editHtml: "Edit HTML",
+      saveEdits: "Save Edits",
+      openScroll: "Open Scroll HTML",
+      downloadZip: "Download ZIP",
+      noHtmlYet: "No generated HTML yet",
+      noHtmlHint: "Confirm the outline, then generate a 16:9 HTML PPT.",
+      aiCreating: "AI is creating your deck",
+      aiCreatingHint: "Planning content, style and 16:9 pages...",
+      quickCreateTitle: "Quick Create",
+      quickCreateHero: "Create a complete HTML slide deck from a topic.",
+      topicRequirements: "Topic and requirements",
+      editablePlan: "Editable AI plan",
+    },
+  };
+
+  function readTheme() {
+    const value = localStorage.getItem(THEME_KEY);
+    return themes.has(value) ? value : "light";
+  }
+
+  function readLanguage() {
+    const value = localStorage.getItem(LANGUAGE_KEY);
+    return languages.has(value) ? value : "zh";
+  }
+
+  function applyTheme(theme) {
+    const next = themes.has(theme) ? theme : "light";
+    document.documentElement.dataset.theme = next;
+    document.documentElement.style.colorScheme = next === "dark" ? "dark" : "light";
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // Ignore storage failures; the theme still applies for this session.
+    }
+    document.querySelectorAll("[data-theme-select]").forEach((node) => {
+      node.value = next;
+    });
+    return next;
+  }
+
+  function translate(language) {
+    const next = languages.has(language) ? language : "zh";
+    const bundle = text[next] || text.zh;
+    document.documentElement.lang = next === "zh" ? "zh-CN" : "en";
+    document.querySelectorAll("[data-i18n]").forEach((node) => {
+      const key = node.dataset.i18n;
+      if (bundle[key]) node.textContent = bundle[key];
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+      const key = node.dataset.i18nPlaceholder;
+      if (bundle[key]) node.setAttribute("placeholder", bundle[key]);
+    });
+    document.querySelectorAll("[data-language-select]").forEach((node) => {
+      node.value = next;
+    });
+    try {
+      localStorage.setItem(LANGUAGE_KEY, next);
+    } catch {
+      // Ignore storage failures; the language still applies for this session.
+    }
+    return next;
+  }
+
+  function init() {
+    const theme = applyTheme(readTheme());
+    const runTranslation = () => {
+      const language = translate(readLanguage());
+      document.dispatchEvent(new CustomEvent("ppt-settings-ready", { detail: { theme, language } }));
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", runTranslation, { once: true });
+    } else {
+      runTranslation();
+    }
+  }
+
+  window.PptAppSettings = {
+    THEME_KEY,
+    LANGUAGE_KEY,
+    themes: Array.from(themes),
+    languages: Array.from(languages),
+    text,
+    readTheme,
+    readLanguage,
+    applyTheme,
+    translate,
+    init,
+  };
+
+  init();
+})();
+
+</script>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/ai-generate-live.css">
+</head>
+<body class="ai-page">
+  <header class="topbar">
+      <a class="brand brand-link" href="/">PPT HTML Studio</a>
+      <nav class="top-actions" aria-label="Utility">
+      <a class="ghost nav-link" href="/" data-i18n="backHome">返回主页</a>
+      <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+      <button class="ghost compat-hidden" id="themeToggle" type="button">Theme</button>
+    </nav>
+  </header>
+
+  <main class="ai-shell">
+    <section class="ai-hero">
+      <div>
+        <span class="ai-kicker">Quick Create</span>
+        <h1 data-i18n="quickCreateHero">从主题快速生成完整 HTML 演示。</h1>
+        <p>Enter a topic and requirements. AI will plan the outline, palette, typography, layouts, and then generate an editable 16:9 HTML presentation.</p>
+      </div>
+      <div class="ai-flow" aria-hidden="true">
+        <span>Topic</span>
+        <i></i>
+        <span>Plan</span>
+        <i></i>
+        <span>HTML</span>
+      </div>
+    </section>
+
+    <section class="ai-grid">
+      <form class="ai-card ai-form" id="topicForm">
+        <div class="ai-card-head">
+          <div>
+            <span class="ai-kicker">Step 1</span>
+            <h2 data-i18n="topicRequirements">主题和需求</h2>
+          </div>
+          <button class="ghost nav-link" type="button" id="loadSample">Load sample</button>
+        </div>
+
+        <label>
+          <span>Topic</span>
+          <input id="topic" type="text" placeholder="Example: Human-computer interaction usability testing workshop" required>
+        </label>
+
+        <div class="field-row">
+          <label>
+            <span>Audience</span>
+            <input id="audience" type="text" placeholder="Students, team, investors...">
+          </label>
+          <label>
+            <span>Slides</span>
+            <input id="slideCount" type="number" min="3" max="30" value="8">
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            <span>Language</span>
+            <select id="outputLanguage">
+              <option value="en">English</option>
+              <option value="zh">Chinese</option>
+            </select>
+          </label>
+          <label>
+            <span>Style</span>
+            <select id="styleSelect"></select>
+          </label>
+        </div>
+
+        <label>
+          <span>Requirements</span>
+          <textarea id="requirements" rows="6" placeholder="Tell AI the goal, structure, scenario, required points, or visual preference."></textarea>
+        </label>
+
+        <div class="ai-actions plan-only-actions">
+          <button class="run-button" id="planButton" type="submit">Generate outline and design plan</button>
+        </div>
+        <p class="status-line" id="statusLine"></p>
+      </form>
+
+      <section class="ai-card shared-ai-mini">
+        <div class="ai-card-head">
+          <div>
+            <span class="ai-kicker">Shared API</span>
+            <h2>AI settings</h2>
+          </div>
+          <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+        </div>
+        <p class="api-note" id="apiNote">Loading shared AI settings...</p>
+      </section>
+
+      <section class="ai-card plan-panel">
+        <div class="ai-card-head">
+          <div>
+            <span class="ai-kicker">Step 2</span>
+            <h2 data-i18n="editablePlan">可编辑 AI 方案</h2>
+          </div>
+          <button class="ghost nav-link" id="formatPlan" type="button">Refresh plan</button>
+        </div>
+        <textarea id="planText" class="plan-text" spellcheck="true" placeholder="The AI plan will appear here as editable text. You can change titles, layouts, design rules, and slide points before generating HTML."></textarea>
+        <div class="plan-generate-row">
+          <div>
+            <strong>Ready for HTML</strong>
+            <span>Edit the readable plan above, then generate the slide deck.</span>
+          </div>
+          <button class="run-button compact-run" id="generateButton" type="button" disabled>Generate HTML</button>
+        </div>
+      </section>
+
+      <div class="preview-chat-layout">
+        <section class="ai-card preview-panel topic-preview">
+          <div class="preview-head">
+            <h2>Preview</h2>
+            <div class="preview-controls">
+              <button class="icon-button" id="openPreviewHtml" type="button" disabled>Preview</button>
+              <button class="icon-button" id="editHtml" type="button" disabled>Edit HTML</button>
+              <button class="icon-button" id="saveEditedHtml" type="button" disabled>Save Edits</button>
+              <button class="icon-button" id="openScrollHtml" type="button" disabled>Open Scroll</button>
+              <button class="icon-button primary" id="downloadZip" type="button" disabled>Download ZIP</button>
+            </div>
+          </div>
+          <div class="preview-frame">
+            <iframe id="previewFrame" title="AI generated HTML preview"></iframe>
+            <div class="preview-empty" id="previewEmpty">
+              <strong>No generated HTML yet</strong>
+              <span>Generate a plan first, then create the HTML deck.</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="ai-card chat-edit-panel" aria-label="Chat Edit">
+          <div class="chat-mode-tabs" role="tablist" aria-label="Chat edit mode">
+            <button class="active" type="button">Chat Edit</button>
+            <button type="button" disabled>Image mode</button>
+          </div>
+          <div class="chat-context-card">
+            <div class="chat-context-head">
+              <div>
+                <span class="ai-kicker">AI patch</span>
+                <h2>Chat Edit</h2>
+              </div>
+              <select id="chatScope" aria-label="Edit scope">
+                <option value="current_slide">Current slide</option>
+                <option value="selected_element">Selected element</option>
+                <option value="deck">Whole PPT</option>
+              </select>
+            </div>
+            <p class="chat-hint">Turn on Edit HTML and click a text or image when you want to edit a selected element. AI returns a patch only.</p>
+          </div>
+          <div class="chat-quick-actions" aria-label="Quick chat edit actions">
+            <button type="button" data-chat-prompt="Modify the current slide title to be shorter, stronger, and centered.">Modify title</button>
+            <button type="button" data-chat-prompt="Adjust the selected image or the largest image so it is smaller, aligned, and does not overlap text.">Adjust images</button>
+            <button type="button" data-chat-prompt="Improve the color scheme with stronger contrast while keeping the current style.">Change colors</button>
+            <button type="button" data-chat-prompt="Split this crowded slide into two clean slides and keep the design consistent.">Split crowded slide</button>
+            <button type="button" data-chat-prompt="Fix overflow on this slide. Keep every text and image inside the 16:9 canvas.">Fix overflow</button>
+            <button type="button" data-chat-prompt="Replace the deck style with a cleaner modern education-tech style while keeping the content.">Replace style</button>
+          </div>
+          <div class="chat-messages" id="chatMessages" aria-live="polite">
+            <div class="chat-empty">No chat messages yet. Describe the edit you want, then apply the patch.</div>
+          </div>
+          <div class="chat-input-card">
+            <textarea id="chatInput" rows="4" placeholder="Example: Make the current page title more centered and reduce the image size by 20%."></textarea>
+            <div class="chat-send-row">
+              <span id="chatStatus">Current slide mode</span>
+              <button class="icon-button primary" id="sendChatEdit" type="button" disabled>Send</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="generation-overlay hidden" id="generationOverlay" role="status" aria-live="polite">
+    <div class="generation-card">
+      <button id="closeGenerationOverlay" type="button" aria-label="Hide generation animation">x</button>
+      <div class="orb-loader"><span></span><span></span><span></span></div>
+      <h2 id="generationTitle">AI is creating your deck</h2>
+      <p id="generationMessage">Planning outline, palette and 16:9 layouts...</p>
+    </div>
+  </div>
+
+  <script src="/static/jszip.min.js"></script>
+  <script src="/static/ai-config.js"></script>
+  <script src="/static/ai-generate-live.js"></script>
+</body>
+</html>
+
+
