@@ -41,6 +41,7 @@ const i18n = {
     appearance: "Appearance",
     lightMode: "Light mode",
     darkMode: "Dark mode",
+    beigeMode: "Beige mode",
     interfaceLanguage: "Interface language",
     languageHint: "This only changes the platform interface. Generated PPT/HTML content stays unchanged.",
     english: "English",
@@ -250,6 +251,7 @@ const i18n = {
     appearance: "\u5916\u89c2",
     lightMode: "\u6d45\u8272\u6a21\u5f0f",
     darkMode: "\u6df1\u8272\u6a21\u5f0f",
+    beigeMode: "\u7c73\u8272\u6a21\u5f0f",
     interfaceLanguage: "\u754c\u9762\u8bed\u8a00",
     languageHint: "\u8fd9\u91cc\u53ea\u5207\u6362\u5e73\u53f0\u754c\u9762\u8bed\u8a00\uff0c\u4e0d\u4f1a\u6539\u53d8\u751f\u6210\u7684 PPT/HTML \u5185\u5bb9\u3002",
     english: "English",
@@ -619,7 +621,7 @@ const state = {
   customStyles: loadCustomStyles(),
   editingCustomStyleId: null,
   language: localStorage.getItem(LANGUAGE_STORAGE_KEY) === "zh" ? "zh" : "en",
-  theme: localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light",
+  theme: ["light", "dark", "beige"].includes(localStorage.getItem(THEME_STORAGE_KEY)) ? localStorage.getItem(THEME_STORAGE_KEY) : "light",
   apiProvider: "local",
   apiBaseUrl: "",
   runtime: "local",
@@ -699,7 +701,7 @@ function applyLanguage(language) {
 }
 
 function applyTheme(theme) {
-  state.theme = theme === "dark" ? "dark" : "light";
+  state.theme = ["light", "dark", "beige"].includes(theme) ? theme : "light";
   try {
     localStorage.setItem(THEME_STORAGE_KEY, state.theme);
   } catch {
@@ -761,6 +763,7 @@ function translateStaticUi() {
     themeSelect: {
       light: t("lightMode"),
       dark: t("darkMode"),
+      beige: t("beigeMode"),
     },
   };
   Object.entries(optionText).forEach(([selectId, labels]) => {
