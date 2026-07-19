@@ -27,6 +27,12 @@ await writeFile(
   "utf8",
 );
 
+await copyFile(path.join(outDir, "index.html"), path.join(outDir, "index-current.html"));
+await copyFile(path.join(outDir, "converter.html"), path.join(outDir, "converter-current.html"));
+await copyFile(path.join(outDir, "chat-create.html"), path.join(outDir, "chat-create-current.html"));
+await copyFile(path.join(outDir, "ai-settings.html"), path.join(outDir, "settings-current.html"));
+await copyFile(aiLiveHtmlPath, path.join(outDir, "quick-create-current.html"));
+
 await writeFile(
   path.join(outDir, "_headers"),
   [
