@@ -171,89 +171,50 @@ function inferApiProvider(integration) {
 }
 
 function savedKeyForProvider() {
+  const shared = window.PptAiConfig?.loadAiConfig?.();
+  if (shared?.apiKey) return shared.apiKey;
   const secret = readLocalApiSecret();
-  return secret[state.provider] || secret[el("apiEndpoint").value.trim()] || "";
+  return secret[state.provider] || secret[state.integration.endpoint || ""] || "";
 }
 
 function collectIntegration() {
-  const provider = el("apiProvider").value;
-  const preset = apiProviders[provider] || apiProviders.openai;
-  return {
-    mode: preset.mode,
-    endpoint: el("apiEndpoint").value.trim(),
-    model: el("apiModel").value.trim(),
-    apiKey: el("apiKey").value.trim() || savedKeyForProvider(),
-    apiKeyHeader: el("apiKeyHeader").value,
-    apiKeyPrefix: el("apiKeyPrefix").value,
-    customHeaders: el("customHeaders").value,
-    workflowPayload: el("workflowPayload").value,
-    timeoutSec: Math.max(300, Number(el("apiTimeout").value || 300)),
-    fallbackToLocal: false,
-  };
+  const shared = window.PptAiConfig?.loadAiConfig?.();
+  if (shared) return { ...shared, fallbackToLocal: false, timeoutSec: Math.max(300, Number(shared.timeoutSec || 300)) };
+  return { ...state.integration, apiKey: savedKeyForProvider(), fallbackToLocal: false };
 }
 
 function applyProvider(provider, overwrite = true) {
-  const preset = apiProviders[provider] || apiProviders.openai;
+  const preset = window.PptAiConfig?.PROVIDERS?.[provider] || apiProviders[provider] || apiProviders.openai;
   state.provider = provider;
-  el("apiProvider").value = provider;
-  if (overwrite) {
-    el("apiEndpoint").value = preset.endpoint || "";
-    el("apiModel").value = preset.model || "";
-    el("apiKeyHeader").value = preset.apiKeyHeader || "Authorization";
-    el("apiKeyPrefix").value = preset.apiKeyPrefix ?? "Bearer ";
-    el("customHeaders").value = preset.customHeaders || "";
-    el("workflowPayload").value = preset.workflowPayload || "flat";
-    el("apiTimeout").value = preset.timeoutSec || 300;
-  }
-  const isWorkflow = preset.mode === "workflow_api";
-  el("apiModel").closest("label").style.display = isWorkflow ? "none" : "";
-  const saved = savedKeyForProvider();
-  el("apiNote").textContent = saved || state.integration.hasApiKey
-    ? `Saved key: ${maskedKey(saved) || state.integration.apiKeyMasked}. Leave the key field blank to keep it.`
-    : "Paste the API key once, then click Save. The key is reused on this browser.";
+  const note = el("apiNote");
+  if (!note) return;
+  const config = window.PptAiConfig?.loadAiConfig?.() || state.integration;
+  note.textContent = window.PptAiConfig?.hasValidAiConfig?.(config)
+    ? `AI configured: ${window.PptAiConfig.getAiConfigSummary(config)}`
+    : "AI not configured. Open AI Settings and save a provider, model, and key first.";
+  note.className = `api-note ${window.PptAiConfig?.hasValidAiConfig?.(config) ? "ok" : "error"}`;
 }
 
 async function loadIntegration() {
-  try {
-    const response = await fetch("/api/integration", { cache: "no-store" });
-    const data = await response.json();
-    state.integration = { ...state.integration, ...(data.integration || {}) };
-    const provider = inferApiProvider(state.integration);
-    applyProvider(provider, false);
-    el("apiEndpoint").value = state.integration.endpoint || apiProviders[provider]?.endpoint || "";
-    el("apiModel").value = state.integration.model || apiProviders[provider]?.model || "";
-    el("apiKeyHeader").value = state.integration.apiKeyHeader || "Authorization";
-    el("apiKeyPrefix").value = state.integration.apiKeyPrefix ?? "Bearer ";
-    el("customHeaders").value = state.integration.customHeaders || "";
-    el("workflowPayload").value = state.integration.workflowPayload || apiProviders[provider]?.workflowPayload || "flat";
-    el("apiTimeout").value = Math.max(300, Number(state.integration.timeoutSec || 300));
-    applyProvider(provider, false);
-  } catch (error) {
-    setStatus(`Could not load API settings: ${error.message}`, "error");
-  }
+  const config = await window.PptAiConfig.loadRemoteAiConfig();
+  state.integration = { ...state.integration, ...config };
+  state.provider = window.PptAiConfig.providerFromConfig(config);
+  applyProvider(state.provider, false);
 }
 
 async function saveIntegration() {
   const integration = collectIntegration();
-  const typedKey = el("apiKey").value.trim();
-  if (typedKey) {
-    const secret = readLocalApiSecret();
-    secret[state.provider] = typedKey;
-    if (integration.endpoint) secret[integration.endpoint] = typedKey;
-    writeLocalApiSecret(secret);
+  if (!window.PptAiConfig.hasValidAiConfig(integration)) {
+    applyProvider(state.provider, false);
+    throw new Error("Please configure AI in AI Settings first.");
   }
-  if (!integration.apiKey) integration.apiKey = savedKeyForProvider();
-  const response = await fetch("/api/integration", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ integration }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || data.error || "Could not save API settings.");
-  state.integration = { ...state.integration, ...(data.integration || {}) };
-  el("apiKey").value = "";
-  applyProvider(state.provider, false);
-  setStatus("API settings saved.", "ok");
+  try {
+    await window.PptAiConfig.syncAiConfig(integration);
+  } catch {
+    // Requests include the shared config, so generation can continue if backend sync is unavailable.
+  }
+  state.integration = { ...state.integration, ...integration };
+  applyProvider(window.PptAiConfig.providerFromConfig(integration), false);
   return integration;
 }
 
@@ -1012,8 +973,8 @@ function init() {
   loadIntegration();
   el("topicForm").addEventListener("submit", generatePlan);
   el("generateButton").addEventListener("click", generateHtml);
-  el("saveApi").addEventListener("click", () => saveIntegration().catch((error) => setStatus(error.message, "error")));
-  el("apiProvider").addEventListener("change", (event) => applyProvider(event.target.value, true));
+  el("saveApi")?.addEventListener("click", () => saveIntegration().catch((error) => setStatus(error.message, "error")));
+  el("apiProvider")?.addEventListener("change", (event) => applyProvider(event.target.value, true));
   el("formatPlan").addEventListener("click", () => {
     if (!state.plan) {
       setStatus("Generate a plan first.", "error");
