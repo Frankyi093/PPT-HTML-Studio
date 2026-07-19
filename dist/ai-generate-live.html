@@ -173,24 +173,65 @@
         </div>
       </section>
 
-      <section class="ai-card preview-panel topic-preview">
-        <div class="preview-head">
-          <h2>Preview</h2>
-          <div class="preview-controls">
-            <button class="icon-button" id="editHtml" type="button" disabled>Edit HTML</button>
-            <button class="icon-button" id="saveEditedHtml" type="button" disabled>Save Edits</button>
-            <button class="icon-button" id="openScrollHtml" type="button" disabled>Open Scroll</button>
-            <button class="icon-button primary" id="downloadZip" type="button" disabled>Download ZIP</button>
+      <div class="preview-chat-layout">
+        <section class="ai-card preview-panel topic-preview">
+          <div class="preview-head">
+            <h2>Preview</h2>
+            <div class="preview-controls">
+              <button class="icon-button" id="editHtml" type="button" disabled>Edit HTML</button>
+              <button class="icon-button" id="saveEditedHtml" type="button" disabled>Save Edits</button>
+              <button class="icon-button" id="openScrollHtml" type="button" disabled>Open Scroll</button>
+              <button class="icon-button primary" id="downloadZip" type="button" disabled>Download ZIP</button>
+            </div>
           </div>
-        </div>
-        <div class="preview-frame">
-          <iframe id="previewFrame" title="AI generated HTML preview"></iframe>
-          <div class="preview-empty" id="previewEmpty">
-            <strong>No generated HTML yet</strong>
-            <span>Generate a plan first, then create the HTML deck.</span>
+          <div class="preview-frame">
+            <iframe id="previewFrame" title="AI generated HTML preview"></iframe>
+            <div class="preview-empty" id="previewEmpty">
+              <strong>No generated HTML yet</strong>
+              <span>Generate a plan first, then create the HTML deck.</span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <aside class="ai-card chat-edit-panel" aria-label="Chat Edit">
+          <div class="chat-mode-tabs" role="tablist" aria-label="Chat edit mode">
+            <button class="active" type="button">Chat Edit</button>
+            <button type="button" disabled>Image mode</button>
+          </div>
+          <div class="chat-context-card">
+            <div class="chat-context-head">
+              <div>
+                <span class="ai-kicker">AI patch</span>
+                <h2>Chat Edit</h2>
+              </div>
+              <select id="chatScope" aria-label="Edit scope">
+                <option value="current_slide">Current slide</option>
+                <option value="selected_element">Selected element</option>
+                <option value="deck">Whole PPT</option>
+              </select>
+            </div>
+            <p class="chat-hint">Turn on Edit HTML and click a text or image when you want to edit a selected element. AI returns a patch only.</p>
+          </div>
+          <div class="chat-quick-actions" aria-label="Quick chat edit actions">
+            <button type="button" data-chat-prompt="Modify the current slide title to be shorter, stronger, and centered.">Modify title</button>
+            <button type="button" data-chat-prompt="Adjust the selected image or the largest image so it is smaller, aligned, and does not overlap text.">Adjust images</button>
+            <button type="button" data-chat-prompt="Improve the color scheme with stronger contrast while keeping the current style.">Change colors</button>
+            <button type="button" data-chat-prompt="Split this crowded slide into two clean slides and keep the design consistent.">Split crowded slide</button>
+            <button type="button" data-chat-prompt="Fix overflow on this slide. Keep every text and image inside the 16:9 canvas.">Fix overflow</button>
+            <button type="button" data-chat-prompt="Replace the deck style with a cleaner modern education-tech style while keeping the content.">Replace style</button>
+          </div>
+          <div class="chat-messages" id="chatMessages" aria-live="polite">
+            <div class="chat-empty">No chat messages yet. Describe the edit you want, then apply the patch.</div>
+          </div>
+          <div class="chat-input-card">
+            <textarea id="chatInput" rows="4" placeholder="Example: Make the current page title more centered and reduce the image size by 20%."></textarea>
+            <div class="chat-send-row">
+              <span id="chatStatus">Current slide mode</span>
+              <button class="icon-button primary" id="sendChatEdit" type="button" disabled>Send</button>
+            </div>
+          </div>
+        </aside>
+      </div>
     </section>
   </main>
 
