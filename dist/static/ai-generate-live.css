@@ -248,12 +248,195 @@ html[data-theme="dark"] .plan-generate-row {
   padding: 0 24px;
 }
 
-.topic-preview {
+.preview-chat-layout {
   grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.topic-preview {
+  min-height: 0;
 }
 
 .topic-preview .preview-frame {
   height: min(72vh, 760px);
+}
+
+.chat-edit-panel {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(240px, 1fr) auto;
+  gap: 16px;
+  min-height: min(72vh, 760px);
+}
+
+.chat-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(91, 126, 255, .16);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .52);
+}
+
+html[data-theme="dark"] .chat-mode-tabs {
+  background: #0b1733;
+  border-color: rgba(159, 190, 255, .16);
+}
+
+.chat-mode-tabs button,
+.chat-quick-actions button {
+  border: 0;
+  border-radius: 15px;
+  color: var(--navy);
+  background: transparent;
+  font-weight: 840;
+  cursor: pointer;
+}
+
+.chat-mode-tabs button {
+  min-height: 42px;
+}
+
+.chat-mode-tabs button.active {
+  background: rgba(129, 210, 177, .38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.62);
+}
+
+.chat-mode-tabs button:disabled {
+  opacity: .56;
+  cursor: not-allowed;
+}
+
+.chat-context-card,
+.chat-input-card {
+  border: 1px solid rgba(91, 126, 255, .16);
+  border-radius: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, .58);
+}
+
+html[data-theme="dark"] .chat-context-card,
+html[data-theme="dark"] .chat-input-card {
+  background: #0b1733;
+  border-color: rgba(159, 190, 255, .16);
+}
+
+.chat-context-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, 154px);
+  gap: 12px;
+  align-items: center;
+}
+
+.chat-context-head h2 {
+  font-size: 22px;
+}
+
+.chat-context-head select {
+  margin: 0;
+  border-radius: 14px;
+  padding: 11px 12px;
+}
+
+.chat-hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.chat-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.chat-quick-actions button {
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid rgba(91, 126, 255, .18);
+  background: rgba(255, 255, 255, .58);
+  color: var(--blue);
+  text-align: center;
+}
+
+html[data-theme="dark"] .chat-quick-actions button {
+  background: #13234a;
+  border-color: rgba(159, 190, 255, .16);
+}
+
+.chat-quick-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(59, 111, 245, .12);
+}
+
+.chat-messages {
+  min-height: 240px;
+  overflow: auto;
+  padding: 4px 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-empty {
+  margin: auto;
+  max-width: 260px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.55;
+}
+
+.chat-message {
+  max-width: 92%;
+  padding: 12px 14px;
+  border-radius: 16px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .68);
+  border: 1px solid rgba(91, 126, 255, .14);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+html[data-theme="dark"] .chat-message {
+  background: #13234a;
+  border-color: rgba(159, 190, 255, .16);
+}
+
+.chat-message.user {
+  align-self: flex-end;
+  color: #fff;
+  background: #3b6ff5;
+}
+
+.chat-message.assistant {
+  align-self: flex-start;
+}
+
+.chat-input-card textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.chat-send-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.chat-send-row span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.chat-send-row .icon-button {
+  min-width: 92px;
 }
 
 .generation-overlay {
@@ -364,5 +547,19 @@ html[data-theme="dark"] .generation-card {
 
   .topic-preview .preview-frame {
     height: 58vh;
+  }
+
+  .preview-chat-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-edit-panel {
+    min-height: auto;
+  }
+
+  .chat-context-head,
+  .chat-quick-actions,
+  .chat-send-row {
+    grid-template-columns: 1fr;
   }
 }
