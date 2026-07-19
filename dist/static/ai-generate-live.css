@@ -200,6 +200,28 @@ html[data-theme="dark"] .ai-card textarea {
   line-height: 1.45;
 }
 
+.shared-ai-mini .api-note {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid rgba(91, 126, 255, .18);
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.shared-ai-mini .api-note.ok {
+  color: #166534;
+  background: rgba(220, 252, 231, .72);
+}
+
+.shared-ai-mini .api-note.error {
+  color: #b91c1c;
+  background: rgba(254, 226, 226, .72);
+}
+
 .plan-panel {
   min-height: 440px;
 }
