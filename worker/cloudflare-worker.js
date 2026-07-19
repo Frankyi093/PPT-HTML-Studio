@@ -2305,7 +2305,7 @@ export default {
         const response = routeOutput(url.pathname);
         if (response) return response;
       }
-      if (url.pathname === "/ai-generate.html" || url.pathname === "/ai-create.html") {
+      if (url.pathname === "/ai-generate.html" || url.pathname === "/ai-generate" || url.pathname === "/ai-create.html" || url.pathname === "/ai-create") {
         return freshAsset(env, request, "/ai-generate-live.html");
       }
       if (url.pathname === "/static/ai-generate.js") {
