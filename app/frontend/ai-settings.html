@@ -1,36 +1,65 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Settings - PPT HTML Studio</title>
+  <title>Settings - PPT HTML Studio</title>
+  <script src="/static/app-settings.js"></script>
   <link rel="stylesheet" href="/static/home.css">
   <link rel="stylesheet" href="/static/ai-settings.css">
 </head>
-<body>
+<body class="settings-page">
   <aside class="home-sidebar" aria-label="Main navigation">
     <a class="home-brand" href="/">
       <span class="brand-mark"></span>
-      <strong>PPT HTML Studio</strong>
+      <strong data-i18n="productName">PPT HTML Studio</strong>
     </a>
     <nav>
-      <a href="/">Home</a>
-      <a href="/converter.html">PPT to HTML</a>
-      <a href="/ai-generate.html">AI Create</a>
-      <a href="/chat-create.html">Chat Creation</a>
-      <a class="active" href="/ai-settings.html">AI Settings</a>
-      <a href="/converter.html#settings">Settings</a>
+      <a href="/" data-i18n="home">首页</a>
+      <a href="/converter.html" data-i18n="converter">PPT 转 HTML</a>
+      <a href="/ai-generate.html" data-i18n="quickCreate">快速创建</a>
+      <a href="/chat-create.html" data-i18n="chatCreation">对话创作</a>
+      <a class="active" href="/settings.html" data-i18n="settings">设置</a>
     </nav>
   </aside>
 
   <main class="settings-main">
     <section class="settings-hero">
-      <span class="eyebrow">Shared AI connection</span>
-      <h1>AI 配置</h1>
-      <p>只需要配置一次，PPT 转 HTML、AI Create 和对话创作会共用这份 API 设置。</p>
+      <span class="eyebrow" data-i18n="settings">设置</span>
+      <h1 data-i18n="settingsTitle">设置</h1>
+      <p data-i18n="settingsSubtitle">选择界面语言和主题，也可以在同一页配置三个功能共用的 AI。</p>
+    </section>
+
+    <section class="settings-card interface-card">
+      <div class="settings-section-head">
+        <span class="eyebrow compact" data-i18n="interfaceSettings">界面设置</span>
+        <p>Theme and language only change the platform interface. Generated PPT content stays unchanged.</p>
+      </div>
+      <div class="form-grid">
+        <label>
+          <span data-i18n="themeMode">主题模式</span>
+          <select id="globalThemeSelect" data-theme-select>
+            <option value="light" data-i18n="lightMode">浅色模式</option>
+            <option value="dark" data-i18n="darkMode">深色模式</option>
+            <option value="beige" data-i18n="beigeMode">米色模式</option>
+          </select>
+        </label>
+        <label>
+          <span data-i18n="language">界面语言</span>
+          <select id="globalLanguageSelect" data-language-select>
+            <option value="zh" data-i18n="chinese">中文</option>
+            <option value="en" data-i18n="english">English</option>
+          </select>
+        </label>
+      </div>
+      <p class="status-line ok" id="interfaceStatus"></p>
     </section>
 
     <form class="settings-card" id="aiSettingsForm">
+      <div class="settings-section-head">
+        <span class="eyebrow compact" data-i18n="sharedAi">统一 AI 配置</span>
+        <p data-i18n="sharedAiDesc">三个功能共用同一份 API 设置，只需要配置一次。</p>
+      </div>
       <div class="form-grid">
         <label>
           <span>Provider</span>
@@ -95,9 +124,9 @@
       </details>
 
       <div class="settings-actions">
-        <button class="primary-action" type="submit">Save</button>
+        <button class="primary-action" type="submit">Save AI</button>
         <button class="secondary-button" id="testApi" type="button">Test API</button>
-        <a class="secondary-button" href="/">Back home</a>
+        <a class="secondary-button" href="/" data-i18n="backHome">返回主页</a>
       </div>
       <p class="status-line" id="settingsStatus"></p>
     </form>
@@ -107,3 +136,4 @@
   <script src="/static/ai-settings.js"></script>
 </body>
 </html>
+
