@@ -101,7 +101,7 @@ const state = {
   objectUrls: [],
   busy: false,
   editing: false,
-  theme: localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light",
+  theme: ["light", "dark", "beige"].includes(localStorage.getItem(THEME_STORAGE_KEY)) ? localStorage.getItem(THEME_STORAGE_KEY) : "light",
   chat: {
     messages: [],
     busy: false,
@@ -947,10 +947,11 @@ async function sendChatEdit() {
 }
 
 function applyTheme(theme) {
-  state.theme = theme === "dark" ? "dark" : "light";
+  state.theme = ["light", "dark", "beige"].includes(theme) ? theme : "light";
   document.documentElement.dataset.theme = state.theme;
   localStorage.setItem(THEME_STORAGE_KEY, state.theme);
-  el("themeToggle").textContent = state.theme === "dark" ? "Light mode" : "Dark mode";
+  const toggle = el("themeToggle");
+  if (toggle) toggle.textContent = state.theme === "dark" ? "Light mode" : "Dark mode";
 }
 
 function initStyles() {
@@ -1009,7 +1010,7 @@ function init() {
       el("chatInput").focus();
     });
   });
-  el("themeToggle").addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark"));
+  el("themeToggle")?.addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark"));
   el("loadSample").addEventListener("click", loadSample);
   el("closeGenerationOverlay").addEventListener("click", () => el("generationOverlay").classList.add("hidden"));
   updateChatSendState();
