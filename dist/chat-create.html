@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Creation - PPT HTML Studio</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/chat-create.css">
+</head>
+<body class="chat-create-page">
+  <header class="topbar">
+    <a class="brand brand-link" href="/">PPT HTML Studio</a>
+    <nav class="top-actions" aria-label="Utility">
+      <a class="ghost nav-link" href="/converter.html">PPT Converter</a>
+      <a class="ghost nav-link" href="/ai-generate.html">AI Create</a>
+      <a class="ghost nav-link" href="/ai-settings.html">AI Settings</a>
+      <span class="avatar" aria-label="User">C</span>
+    </nav>
+  </header>
+
+  <main class="chat-shell">
+    <section class="chat-hero">
+      <div>
+        <span class="chat-kicker">Explore before creating</span>
+        <h1>对话创作 / Chat Creation</h1>
+        <p>先用对话梳理需求、内容和页面结构，再一键生成可编辑 HTML PPT。</p>
+      </div>
+      <div class="hero-actions">
+        <button id="historyButton" type="button">History</button>
+        <button id="newChatButton" type="button">New chat</button>
+      </div>
+    </section>
+
+    <section class="chat-layout">
+      <section class="chat-panel">
+        <div class="ai-config-banner" id="aiConfigBanner">
+          Loading AI settings...
+        </div>
+        <div class="messages" id="messages" aria-live="polite"></div>
+        <form class="composer" id="chatForm">
+          <textarea id="chatInput" rows="3" placeholder="描述你想呈现的主题和内容..."></textarea>
+          <button id="sendButton" type="submit">Send</button>
+        </form>
+        <div class="history-list hidden" id="historyList"></div>
+      </section>
+
+      <aside class="outline-panel">
+        <div class="outline-head">
+          <div>
+            <span class="chat-kicker">Live structure</span>
+            <h2>页面大纲</h2>
+          </div>
+          <button id="addSlide" type="button">Add page</button>
+        </div>
+        <div class="outline-meta">
+          <label>Title <input id="deckTitle" type="text" placeholder="Deck title"></label>
+          <label>Audience <input id="deckAudience" type="text" placeholder="Target audience"></label>
+          <label>Style
+            <select id="deckStyle">
+              <option value="teaching">Teaching Blue</option>
+              <option value="academic">Academic Style</option>
+              <option value="swiss">Swiss Grid</option>
+              <option value="softlesson">Soft Lesson</option>
+              <option value="clean">Clean</option>
+              <option value="healing">Healing Hand-drawn</option>
+              <option value="doodle">Doodle Sketch</option>
+              <option value="editorial">Editorial</option>
+              <option value="vivid">Vivid</option>
+            </select>
+          </label>
+        </div>
+        <div class="outline-cards" id="outlineCards"></div>
+        <button class="confirm-button" id="confirmGenerate" type="button" disabled>Confirm and generate</button>
+      </aside>
+    </section>
+
+    <section class="chat-workbench">
+      <div class="preview-head">
+        <h2>Preview</h2>
+        <div class="preview-controls">
+          <button class="icon-button" id="openPreviewHtml" type="button" disabled>Preview</button>
+          <button class="icon-button" id="editHtml" type="button" disabled>Edit HTML</button>
+          <button class="icon-button" id="saveEditedHtml" type="button" disabled>Save Edits</button>
+          <button class="icon-button" id="openScrollHtml" type="button" disabled>Open Scroll HTML</button>
+          <button class="icon-button primary" id="downloadZip" type="button" disabled>Download ZIP</button>
+        </div>
+      </div>
+      <div class="preview-frame">
+        <iframe id="previewFrame" title="Chat-created HTML preview"></iframe>
+        <div class="preview-empty" id="previewEmpty">
+          <strong>No generated HTML yet</strong>
+          <span>Confirm the outline, then generate a 16:9 HTML PPT.</span>
+        </div>
+      </div>
+      <p class="status-line" id="statusLine"></p>
+    </section>
+  </main>
+
+  <div class="generation-overlay hidden" id="generationOverlay" role="status" aria-live="polite">
+    <div class="generation-card">
+      <button id="closeGenerationOverlay" class="generation-close" type="button" aria-label="Hide generation animation">x</button>
+      <div class="generation-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+      <strong>AI is creating your deck</strong>
+      <p id="generationMessage">Planning and composing clean 16:9 slides...</p>
+      <div class="generation-progress" aria-hidden="true"><span></span></div>
+    </div>
+  </div>
+
+  <script src="/static/jszip.min.js"></script>
+  <script src="/static/ai-config.js"></script>
+  <script src="/static/chat-create.js"></script>
+</body>
+</html>
