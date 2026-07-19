@@ -1,3 +1,4 @@
+const AI_GENERATE_UI_REVISION = "edit-workbench-20260719";
 const API_SECRET_STORAGE_KEY = "ppt-html-studio-api-secret-v2";
 const THEME_STORAGE_KEY = "ppt-html-studio-theme";
 const PREVIEW_DESKTOP_WIDTH = 1280;
