@@ -28,6 +28,42 @@ html[data-theme="dark"] .ai-card {
   border-color: rgba(159, 190, 255, .16);
 }
 
+html[data-theme="beige"] .topbar,
+html[data-theme="beige"] .ai-hero,
+html[data-theme="beige"] .ai-card {
+  background: rgba(255, 253, 247, .88);
+  border-color: rgba(120, 105, 80, .20);
+  box-shadow: 0 24px 58px rgba(78, 66, 45, .10);
+}
+
+html[data-theme="beige"] .ai-kicker,
+html[data-theme="beige"] .nav-link,
+html[data-theme="beige"] .ghost {
+  color: #40563a;
+}
+
+html[data-theme="beige"] .run-button,
+html[data-theme="beige"] .icon-button.primary {
+  background: #40563a;
+  color: #fff;
+}
+
+html[data-theme="beige"] .ai-card input,
+html[data-theme="beige"] .ai-card select,
+html[data-theme="beige"] .ai-card textarea {
+  background: #fffdf7;
+  border-color: #ded4bf;
+  color: #31402e;
+}
+
+html[data-theme="beige"] .preview-frame,
+html[data-theme="beige"] .chat-context-card,
+html[data-theme="beige"] .chat-input-card,
+html[data-theme="beige"] .chat-mode-tabs {
+  background: #fffdf7;
+  border-color: #ded4bf;
+}
+
 .ai-kicker {
   display: inline-flex;
   align-items: center;
