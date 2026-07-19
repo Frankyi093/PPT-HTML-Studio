@@ -60,7 +60,7 @@ function refreshAiStatus() {
     node.textContent = `AI configured: ${window.PptAiConfig.getAiConfigSummary()}`;
     node.className = "ai-config-banner";
   } else {
-    node.innerHTML = 'AI not configured. <a href="/ai-settings.html">Open AI Settings</a> first.';
+    node.innerHTML = 'AI not configured. <a href="/settings.html">Open AI Settings</a> first.';
     node.className = "ai-config-banner error";
   }
   el("sendButton").disabled = state.busy || !hasAi();
@@ -503,3 +503,4 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
