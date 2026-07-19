@@ -3,27 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Create - PPT HTML Studio</title>
+  <title>Quick Create - PPT HTML Studio</title>
+  <script src="/static/app-settings.js"></script>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/ai-generate.css">
 </head>
 <body class="ai-page">
   <header class="topbar">
-    <a class="brand brand-link" href="/">PPT HTML Studio</a>
-    <nav class="top-actions" aria-label="Utility">
-      <a class="ghost nav-link" href="/converter.html">PPT Converter</a>
-      <a class="ghost nav-link" href="/chat-create.html">Chat Creation</a>
-      <a class="ghost nav-link" href="/ai-settings.html">AI Settings</a>
-      <button class="ghost" id="themeToggle" type="button">Dark mode</button>
-      <span class="avatar" aria-label="User">AI</span>
+      <a class="brand brand-link" href="/">PPT HTML Studio</a>
+      <nav class="top-actions" aria-label="Utility">
+      <a class="ghost nav-link" href="/" data-i18n="backHome">返回主页</a>
+      <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+      <button class="ghost compat-hidden" id="themeToggle" type="button">Theme</button>
     </nav>
   </header>
 
   <main class="ai-shell">
     <section class="ai-hero">
       <div>
-        <span class="ai-kicker">AI intelligent generation</span>
-        <h1>Create a complete HTML slide deck from a topic.</h1>
+        <span class="ai-kicker">Quick Create</span>
+        <h1 data-i18n="quickCreateHero">从主题快速生成完整 HTML 演示。</h1>
         <p>Enter a topic and requirements. AI will plan the outline, palette, typography, layouts, and then generate an editable 16:9 HTML presentation.</p>
       </div>
       <div class="ai-flow" aria-hidden="true">
@@ -40,7 +39,7 @@
         <div class="ai-card-head">
           <div>
             <span class="ai-kicker">Step 1</span>
-            <h2>Topic and requirements</h2>
+            <h2 data-i18n="topicRequirements">主题和需求</h2>
           </div>
           <button class="ghost nav-link" type="button" id="loadSample">Load sample</button>
         </div>
@@ -92,7 +91,7 @@
             <span class="ai-kicker">Shared API</span>
             <h2>AI settings</h2>
           </div>
-          <a class="ghost nav-link" href="/ai-settings.html">Configure</a>
+          <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
         </div>
         <p class="api-note" id="apiNote">Loading shared AI settings...</p>
       </section>
@@ -101,7 +100,7 @@
         <div class="ai-card-head">
           <div>
             <span class="ai-kicker">Step 2</span>
-            <h2>Editable AI plan</h2>
+            <h2 data-i18n="editablePlan">可编辑 AI 方案</h2>
           </div>
           <button class="ghost nav-link" id="formatPlan" type="button">Refresh plan</button>
         </div>
@@ -192,3 +191,4 @@
   <script src="/static/ai-generate.js"></script>
 </body>
 </html>
+
