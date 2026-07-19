@@ -249,6 +249,19 @@ function currentTopicPayload() {
   };
 }
 
+async function readJsonResponse(response) {
+  const text = await response.text();
+  const data = safeJsonParse(text, null);
+  if (data) return data;
+  const plain = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return {
+    error: response.ok ? "invalid_json" : "request_failed",
+    message: plain
+      ? plain.slice(0, 220)
+      : `Request failed with HTTP ${response.status}. Please check the Cloudflare deployment and API settings.`,
+  };
+}
+
 function renderPlan(plan) {
   state.plan = plan;
   el("planJson").value = JSON.stringify(plan, null, 2);
@@ -261,6 +274,15 @@ async function generatePlan(event) {
     setStatus("Please enter a topic first.", "error");
     return;
   }
+  const payload = currentTopicPayload();
+  if (!payload.integration.endpoint) {
+    setStatus("Please choose an AI service or enter an OpenAI-compatible endpoint first.", "error");
+    return;
+  }
+  if (!payload.integration.apiKey) {
+    setStatus("Please paste and save your AI API key first. The key will be reused on this browser.", "error");
+    return;
+  }
   try {
     await saveIntegration();
     setBusy(true, "AI is planning outline, palette, typography and layout rules...");
@@ -268,9 +290,9 @@ async function generatePlan(event) {
     const response = await fetch("/api/ai-topic-plan", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(currentTopicPayload()),
+      body: JSON.stringify(payload),
     });
-    const data = await response.json();
+    const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.message || data.error || "AI planning failed.");
     renderPlan(data.plan);
     setStatus("Plan ready. You can edit the JSON, then generate HTML.", "ok");
@@ -327,7 +349,7 @@ async function generateHtml() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ...currentTopicPayload(), plan }),
     });
-    const data = await response.json();
+    const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.message || data.error || "AI HTML generation failed.");
     renderJob(data.job);
     setStatus("HTML generated. You can preview, edit, save and download ZIP.", "ok");
