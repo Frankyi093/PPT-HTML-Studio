@@ -551,14 +551,19 @@ function editorRuntime() {
     <script>(() => {
       let currentSlide = 0;
       const slideSelector = '.slide, section, .ai-slide, [data-slide-page]';
-      const slides = Array.from(document.querySelectorAll(slideSelector)).filter((node) => !node.closest('.editor-toolbar,.ppt-runtime-nav'));
+      let slides = [];
       let selectedElement = null;
-      slides.forEach((slide, index) => {
-        slide.classList.add('ppt-runtime-slide');
-        if (!slide.classList.contains('slide')) slide.classList.add('slide');
-        if (!slide.dataset.slidePage) slide.dataset.slidePage = String(index + 1);
-        if (!slide.style.position) slide.style.position = 'relative';
-      });
+      function refreshSlides() {
+        slides = Array.from(document.querySelectorAll(slideSelector)).filter((node) => !node.closest('.editor-toolbar,.ppt-runtime-nav'));
+        slides.forEach((slide, index) => {
+          slide.classList.add('ppt-runtime-slide');
+          if (!slide.classList.contains('slide')) slide.classList.add('slide');
+          if (!slide.dataset.slidePage) slide.dataset.slidePage = String(index + 1);
+          if (!slide.style.position) slide.style.position = 'relative';
+        });
+        currentSlide = Math.max(0, Math.min(currentSlide, Math.max(0, slides.length - 1)));
+      }
+      refreshSlides();
       function showSlide(index) {
         if (!slides.length) return;
         currentSlide = Math.max(0, Math.min(index, slides.length - 1));
@@ -777,6 +782,150 @@ function editorRuntime() {
           selectedElement = null;
         }
       }
+      function htmlEscape(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+      }
+      function compactHtml(node, max = 4000) {
+        return node?.outerHTML ? node.outerHTML.replace(/\\s+/g, ' ').slice(0, max) : '';
+      }
+      function getPptPatchContext(scope = 'current_slide') {
+        const slide = activeSlide();
+        const selected = selectedElement && selectedElement !== document.body ? selectedElement : null;
+        return {
+          scope,
+          currentSlide: currentSlide + 1,
+          slideCount: slides.length,
+          currentSlideText: (slide.innerText || '').replace(/\\s+/g, ' ').slice(0, 3200),
+          currentSlideHtml: compactHtml(slide, 9000),
+          selectedTag: selected?.tagName || '',
+          selectedText: (selected?.innerText || selected?.alt || '').replace(/\\s+/g, ' ').slice(0, 1200),
+          selectedHtml: compactHtml(selected, 2600)
+        };
+      }
+      function titleTarget() {
+        return activeSlide().querySelector('h1,h2,h3,.title,.slide-title,[data-title]') || activeSlide().querySelector('.editable-text,p,li');
+      }
+      function textTargets(operation = {}) {
+        const target = String(operation.target || '').toLowerCase();
+        if (target === 'selected' || target === 'selected_element') return selectedElement ? [selectedElement] : [];
+        if (target === 'title') return titleTarget() ? [titleTarget()] : [];
+        if (operation.selector) return Array.from(activeSlide().querySelectorAll(operation.selector)).slice(0, 12);
+        if (target === 'deck') return Array.from(document.querySelectorAll('h1,h2,h3,p,li,.editable-text')).slice(0, 80);
+        return [activeSlide()];
+      }
+      function imageTargets(operation = {}) {
+        const target = String(operation.target || '').toLowerCase();
+        const slide = activeSlide();
+        const boxes = Array.from((target === 'deck' ? document : slide).querySelectorAll('.media-box,.editable-image-box,figure:has(img),img')).map((node) => node.closest?.('.media-box,.editable-image-box,figure') || node);
+        if ((target === 'selected' || target === 'selected_element') && selectedElement) return [selectedElement.closest?.('.media-box,.editable-image-box,figure') || selectedElement].filter(Boolean);
+        if (target === 'all_images' || target === 'deck') return Array.from(new Set(boxes));
+        const measured = boxes.map((box) => ({ box, area: (box.getBoundingClientRect().width || 0) * (box.getBoundingClientRect().height || 0) })).sort((a, b) => b.area - a.area);
+        return measured[0] ? [measured[0].box] : [];
+      }
+      function sanitizeStyles(styles = {}) {
+        const allow = new Set(['color','background','backgroundColor','borderColor','fontSize','fontFamily','fontWeight','fontStyle','textDecoration','textAlign','lineHeight','width','height','maxWidth','maxHeight','left','top','display','gridTemplateColumns','gap','padding','margin']);
+        const clean = {};
+        Object.entries(styles || {}).forEach(([key, value]) => {
+          if (allow.has(key) && typeof value !== 'object') clean[key] = String(value);
+        });
+        return clean;
+      }
+      function applyStyles(targets, styles) {
+        const clean = sanitizeStyles(styles);
+        targets.forEach((target) => Object.assign(target.style, clean));
+      }
+      function constrainImages(scope = 'current_slide') {
+        const root = scope === 'deck' ? document : activeSlide();
+        root.querySelectorAll('.media-box,.editable-image-box,figure:has(img)').forEach((box) => {
+          box.style.maxWidth = '46%';
+          box.style.maxHeight = '54%';
+          box.style.overflow = 'hidden';
+          box.querySelectorAll('img').forEach((img) => {
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            img.style.objectFit = 'contain';
+          });
+        });
+      }
+      function fixOverflow(scope = 'current_slide') {
+        const targets = scope === 'deck' ? slides : [activeSlide()];
+        targets.forEach((slide) => {
+          slide.style.overflow = 'hidden';
+          slide.querySelectorAll('h1,h2,h3,p,li,.editable-text').forEach((node) => {
+            node.style.writingMode = 'horizontal-tb';
+            node.style.whiteSpace = 'normal';
+            node.style.wordBreak = 'normal';
+            node.style.overflowWrap = 'normal';
+            node.style.maxWidth = '92%';
+            if ((node.getBoundingClientRect().width || 0) < 120 && (node.innerText || '').length > 8) node.style.minWidth = '320px';
+          });
+        });
+        constrainImages(scope);
+      }
+      function splitCurrentSlide(operation = {}) {
+        const slide = activeSlide();
+        const candidates = Array.from(slide.querySelectorAll('li,.body-paragraph,.point-card,p')).filter((node) => (node.innerText || '').trim().length > 0);
+        if (candidates.length < 4) return 0;
+        const clone = slide.cloneNode(true);
+        clone.id = 'slide-' + (slides.length + 1);
+        clone.dataset.slidePage = String(slides.length + 1);
+        const cloneCandidates = Array.from(clone.querySelectorAll('li,.body-paragraph,.point-card,p')).filter((node) => (node.innerText || '').trim().length > 0);
+        const splitAt = Math.max(2, Math.ceil(candidates.length / 2));
+        candidates.slice(splitAt).forEach((node) => node.remove());
+        cloneCandidates.slice(0, splitAt).forEach((node) => node.remove());
+        const cloneTitle = clone.querySelector('h1,h2,h3,.title,.slide-title');
+        if (cloneTitle && operation.newSlideTitle) cloneTitle.textContent = operation.newSlideTitle;
+        slide.after(clone);
+        refreshSlides();
+        showSlide(currentSlide + 1);
+        return 1;
+      }
+      function applyPptPatch(patch = {}) {
+        const operations = Array.isArray(patch.operations) ? patch.operations : [];
+        let applied = 0;
+        operations.forEach((operation) => {
+          const type = String(operation.type || '').toLowerCase();
+          if (type === 'set_text' || type === 'modify_title') {
+            const targets = textTargets({ ...operation, target: operation.target || (type === 'modify_title' ? 'title' : 'selected') });
+            targets.slice(0, 1).forEach((target) => { target.textContent = String(operation.value || operation.text || ''); applied += 1; });
+          } else if (type === 'set_style' || type === 'change_colors' || type === 'replace_style') {
+            if (operation.target === 'deck' || type === 'replace_style') {
+              applyStyles(slides, operation.styles || operation.palette || {});
+              if (operation.palette) {
+                Object.entries(operation.palette).forEach(([key, value]) => document.documentElement.style.setProperty('--chat-' + key, String(value)));
+              }
+            } else {
+              applyStyles(textTargets(operation), operation.styles || operation.palette || {});
+            }
+            applied += 1;
+          } else if (type === 'resize_image' || type === 'adjust_images' || type === 'move_image') {
+            imageTargets(operation).forEach((target) => {
+              if (!target.style.position || target.style.position === 'static') target.style.position = 'absolute';
+              applyStyles([target], {
+                width: operation.width || operation.styles?.width || target.style.width || '38%',
+                height: operation.height || operation.styles?.height || target.style.height || 'auto',
+                maxWidth: operation.maxWidth || operation.styles?.maxWidth || '46%',
+                maxHeight: operation.maxHeight || operation.styles?.maxHeight || '54%',
+                left: operation.left || operation.styles?.left || target.style.left,
+                top: operation.top || operation.styles?.top || target.style.top,
+              });
+              target.querySelectorAll?.('img').forEach((img) => { img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain'; });
+              makeDraggable(target);
+              keepImageInBounds(target);
+              applied += 1;
+            });
+          } else if (type === 'fix_overflow') {
+            fixOverflow(operation.target === 'deck' ? 'deck' : 'current_slide');
+            applied += 1;
+          } else if (type === 'split_slide' || type === 'split_crowded_slide') {
+            applied += splitCurrentSlide(operation);
+          }
+        });
+        fixOverflow(patch.scope === 'deck' ? 'deck' : 'current_slide');
+        return { applied, slideCount: slides.length };
+      }
       async function exportEditedHtml(mode = 'paged') {
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('.editor-toolbar')?.remove();
@@ -799,11 +948,15 @@ function editorRuntime() {
       }
       window.toggleEdit = toggleEdit;
       window.exportEditedHtml = exportEditedHtml;
+      window.getPptPatchContext = getPptPatchContext;
+      window.applyPptPatch = applyPptPatch;
       window.showSlide = showSlide;
       window.nextSlide = nextSlide;
       window.prevSlide = prevSlide;
       globalThis.toggleEdit = toggleEdit;
       globalThis.exportEditedHtml = exportEditedHtml;
+      globalThis.getPptPatchContext = getPptPatchContext;
+      globalThis.applyPptPatch = applyPptPatch;
       globalThis.showSlide = showSlide;
       globalThis.nextSlide = nextSlide;
       globalThis.prevSlide = prevSlide;
@@ -832,7 +985,7 @@ function injectEditorRuntime(html) {
     output = output.replace(/<\/body>/i, `${runtime}</body>`);
     if (output === html) output += runtime;
   }
-  if (!/function\s+showSlide|const\s+slides\s*=/.test(output)) {
+  if (!/function\s+showSlide|let\s+slides\s*=|const\s+slides\s*=/.test(output)) {
     output = output.replace(/<\/body>/i, `<script>window.nextSlide=window.nextSlide||function(){};window.prevSlide=window.prevSlide||function(){};</script></body>`);
   }
   return output;
@@ -1461,6 +1614,151 @@ async function callWorkflowTextApi(prompt, config, extra = {}) {
   return extractTextFromApiData(data);
 }
 
+function chatEditPatchPrompt(payload = {}) {
+  const scopeLabel = {
+    current_slide: "current slide only",
+    selected_element: "selected element only",
+    deck: "whole deck",
+  }[payload.scope] || "current slide only";
+  const style = payload.style || "clean";
+  const context = payload.context || {};
+  return `You are editing an existing editable 16:9 HTML slide deck.
+
+Return ONLY strict JSON. Do not return HTML. Do not rewrite the whole page.
+
+User instruction:
+${payload.instruction || ""}
+
+Edit scope:
+${scopeLabel}
+
+Selected style:
+${style}
+
+Current slide:
+${context.currentSlide || 1} / ${context.slideCount || 1}
+
+Current slide text:
+${String(context.currentSlideText || "").slice(0, 3200)}
+
+Selected element text:
+${String(context.selectedText || "").slice(0, 1200)}
+
+Selected element HTML:
+${String(context.selectedHtml || "").slice(0, 2200)}
+
+Current slide HTML excerpt:
+${String(context.currentSlideHtml || "").slice(0, 7000)}
+
+Patch contract:
+{
+  "summary": "short user-facing summary",
+  "scope": "current_slide | selected_element | deck",
+  "operations": [
+    {
+      "type": "set_text | set_style | resize_image | move_image | adjust_images | fix_overflow | split_slide | replace_style",
+      "target": "title | selected | current_slide | deck | largest_image | all_images",
+      "value": "new text when type is set_text",
+      "styles": {
+        "color": "#hex",
+        "backgroundColor": "#hex",
+        "fontSize": "48px",
+        "fontFamily": "Arial, sans-serif",
+        "textAlign": "center",
+        "width": "38%",
+        "height": "auto",
+        "left": "52%",
+        "top": "26%",
+        "maxWidth": "46%",
+        "maxHeight": "54%"
+      },
+      "newSlideTitle": "optional title for split_slide"
+    }
+  ]
+}
+
+Rules:
+- Return 1 to 6 operations only.
+- Never output complete HTML or Markdown.
+- For title edits, use target "title" and keep titles as complete phrases.
+- For selected element edits, use target "selected"; if no selected element is visible in context, edit current slide instead.
+- For images, prefer maxWidth <= 46%, maxHeight <= 54%, object containment, and avoid overlap.
+- For overflow, use fix_overflow first; use split_slide if a slide is clearly too crowded.
+- For color changes, keep high contrast between text and background.
+- For replace_style, include deck-level palette/font styles but preserve all slide content.`;
+}
+
+function normalizeChatPatch(raw, payload = {}) {
+  const allowedTypes = new Set(["set_text", "set_style", "resize_image", "move_image", "adjust_images", "fix_overflow", "split_slide", "replace_style", "modify_title", "change_colors", "split_crowded_slide"]);
+  const allowedTargets = new Set(["title", "selected", "selected_element", "current_slide", "deck", "largest_image", "all_images", "slide"]);
+  const allowedStyles = new Set(["color", "background", "backgroundColor", "borderColor", "fontSize", "fontFamily", "fontWeight", "fontStyle", "textDecoration", "textAlign", "lineHeight", "width", "height", "maxWidth", "maxHeight", "left", "top", "display", "gridTemplateColumns", "gap", "padding", "margin"]);
+  const source = raw && typeof raw === "object" ? raw : {};
+  const operations = (Array.isArray(source.operations) ? source.operations : [])
+    .map((operation) => {
+      const type = String(operation?.type || "").trim();
+      if (!allowedTypes.has(type)) return null;
+      const target = allowedTargets.has(String(operation.target || "")) ? String(operation.target) : (
+        type.includes("image") ? "largest_image" : payload.scope === "selected_element" ? "selected" : "current_slide"
+      );
+      const styles = {};
+      Object.entries(operation.styles || operation.palette || {}).forEach(([key, value]) => {
+        if (allowedStyles.has(key) && value !== undefined && value !== null && typeof value !== "object") styles[key] = String(value);
+      });
+      return {
+        type,
+        target,
+        value: operation.value !== undefined ? String(operation.value) : undefined,
+        text: operation.text !== undefined ? String(operation.text) : undefined,
+        styles,
+        width: operation.width !== undefined ? String(operation.width) : undefined,
+        height: operation.height !== undefined ? String(operation.height) : undefined,
+        left: operation.left !== undefined ? String(operation.left) : undefined,
+        top: operation.top !== undefined ? String(operation.top) : undefined,
+        maxWidth: operation.maxWidth !== undefined ? String(operation.maxWidth) : undefined,
+        maxHeight: operation.maxHeight !== undefined ? String(operation.maxHeight) : undefined,
+        newSlideTitle: operation.newSlideTitle !== undefined ? String(operation.newSlideTitle) : undefined,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 6);
+  if (!operations.length) {
+    const instruction = String(payload.instruction || "").toLowerCase();
+    if (/split|拆分|crowded|拥挤/.test(instruction)) operations.push({ type: "split_slide", target: "current_slide", styles: {} });
+    else if (/image|图片|photo|resize|move|调整/.test(instruction)) operations.push({ type: "adjust_images", target: payload.scope === "selected_element" ? "selected" : "largest_image", styles: { maxWidth: "42%", maxHeight: "50%" } });
+    else operations.push({ type: "fix_overflow", target: payload.scope === "deck" ? "deck" : "current_slide", styles: {} });
+  }
+  return {
+    summary: cleanText(source.summary || "Patch ready."),
+    scope: payload.scope || source.scope || "current_slide",
+    operations,
+  };
+}
+
+async function createChatEditPatch(payload) {
+  const requestConfig = mergedIntegrationConfig(payload.integration);
+  if (!requestConfig || requestConfig.mode === LOCAL_MODE) throw new Error("Chat Edit requires an AI service. Configure an API key first.");
+  if (!requestConfig.apiKey) throw new Error("API key is required for Chat Edit.");
+  if (!requestConfig.endpoint) throw new Error("API endpoint is required for Chat Edit.");
+  const prompt = chatEditPatchPrompt(payload);
+  const config = { ...requestConfig, maxTokens: 1800 };
+  const text = requestConfig.mode === "workflow_api"
+    ? await callWorkflowTextApi(prompt, config, { task: "chat_edit_patch", scope: payload.scope || "current_slide" })
+    : await callAiTextApi(prompt, config, "You are a patch generator for an HTML slide editor. Return strict JSON only.");
+  let parsed;
+  try {
+    parsed = JSON.parse(extractJsonBlock(text));
+  } catch (error) {
+    throw new Error(`AI did not return a valid patch JSON: ${String(error.message || error)}`);
+  }
+  return normalizeChatPatch(parsed, payload);
+}
+
+async function handleChatEditPatch(request) {
+  const payload = await readJson(request);
+  const patch = await createChatEditPatch(payload);
+  return json({ patch });
+}
+
 async function createTopicPlan(payload) {
   const requestConfig = mergedIntegrationConfig(payload.integration);
   if (!requestConfig || requestConfig.mode === LOCAL_MODE) throw new Error("AI topic generation requires an AI service. Configure an API key first.");
@@ -1975,6 +2273,7 @@ async function handleApi(request, env) {
   if (request.method === "POST" && path === "/api/generate-ai-from-slides") return handleGenerateFromSlides(request);
   if (request.method === "POST" && path === "/api/ai-topic-plan") return handleTopicPlan(request);
   if (request.method === "POST" && path === "/api/generate-from-topic") return handleGenerateFromTopic(request);
+  if (request.method === "POST" && path === "/api/chat-edit-patch") return handleChatEditPatch(request);
   const saveMatch = path.match(/^\/api\/jobs\/([^/]+)\/save-edited$/);
   if (request.method === "POST" && saveMatch) return saveEdited(request, saveMatch[1]);
   const shareMatch = path.match(/^\/api\/jobs\/([^/]+)\/share$/);
