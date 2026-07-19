@@ -110,6 +110,38 @@ html[data-theme="dark"] body::after {
   display: none;
 }
 
+html[data-theme="beige"] {
+  --navy: #31402e;
+  --navy-2: #40563a;
+  --blue: #40563a;
+  --blue-2: #8fb885;
+  --cyan: #9fbd91;
+  --violet: #d7cbb8;
+  --green: #40563a;
+  --text: #31402e;
+  --muted: #6f7768;
+  --line: rgba(120, 105, 80, .20);
+  --line-strong: rgba(64, 86, 58, .28);
+  --bg: #f5f0e6;
+  --panel: rgba(255, 253, 247, .86);
+  --panel-strong: rgba(255, 250, 240, .95);
+  --glass: rgba(255, 253, 247, .72);
+  --soft: rgba(250, 246, 236, .86);
+  --shadow: 0 28px 74px rgba(78, 66, 45, .12);
+  --shadow-soft: 0 18px 42px rgba(78, 66, 45, .09);
+  --glass-edge: inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 0 rgba(120,105,80,.08);
+}
+
+html[data-theme="beige"] body {
+  color: var(--text);
+  background: #f5f0e6;
+}
+
+html[data-theme="beige"] body::before,
+html[data-theme="beige"] body::after {
+  display: none;
+}
+
 button,
 input,
 select,
@@ -161,6 +193,37 @@ html[data-theme="dark"] .rail {
   border-color: rgba(159,190,255,.12);
 }
 
+html[data-theme="beige"] .topbar,
+html[data-theme="beige"] .upload-panel,
+html[data-theme="beige"] .preview-panel,
+html[data-theme="beige"] .history-panel,
+html[data-theme="beige"] .help-panel,
+html[data-theme="beige"] .quick-fix-panel,
+html[data-theme="beige"] .platform-editor-dock {
+  background: rgba(255, 253, 247, .88);
+  border-color: rgba(120,105,80,.20);
+  box-shadow: 0 24px 58px rgba(78, 66, 45, .10);
+}
+
+html[data-theme="beige"] .rail {
+  background: #40563a;
+  border-color: rgba(64,86,58,.18);
+}
+
+html[data-theme="beige"] .upload-panel::before,
+html[data-theme="beige"] .preview-panel::before,
+html[data-theme="beige"] .history-panel::before {
+  display: none;
+}
+
+html[data-theme="beige"] :where(h1,h2,h3,strong,.brand,.settings-field,.advanced summary,.style-card-name,.job-card-title strong,th,td) {
+  color: #31402e;
+}
+
+html[data-theme="beige"] :where(p,small,.style-card-sample,.job-card-title span,.job-meta,.settings-content p,.api-intro,.drop-zone small,.file-card p) {
+  color: #6f7768;
+}
+
 html[data-theme="dark"] .upload-panel::before,
 html[data-theme="dark"] .preview-panel::before,
 html[data-theme="dark"] .history-panel::before {
@@ -197,6 +260,10 @@ html[data-theme="dark"] :where(p,small,.style-card-sample,.job-card-title span,.
   display: flex;
   align-items: center;
   gap: 11px;
+}
+
+.compat-hidden {
+  display: none !important;
 }
 
 .ghost {
