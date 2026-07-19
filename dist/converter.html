@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PPT HTML Studio</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <a class="brand brand-link" href="/">PPT HTML Studio</a>
+      <nav class="top-actions" aria-label="Utility">
+        <a class="ghost nav-link" href="/ai-generate.html">AI Create</a>
+        <a class="ghost nav-link" href="/chat-create.html">Chat Creation</a>
+        <a class="ghost nav-link" href="/ai-settings.html">AI Settings</a>
+        <button class="ghost" id="helpButton" type="button">Help</button>
+        <button class="ghost" id="settingsButton" type="button">Settings</button>
+        <span class="avatar" aria-label="User">U</span>
+      </nav>
+    </header>
+
+    <main class="workspace">
+      <aside class="rail" aria-label="Workflow">
+        <ol class="steps" id="steps"></ol>
+        <div class="tip">
+          <div class="tip-icon">i</div>
+          <strong id="tipTitle">Workflow tip</strong>
+          <p id="tipBody">Follow the steps from top to bottom. Download exports a ZIP with HTML and images.</p>
+        </div>
+      </aside>
+
+      <section class="main-panel">
+        <section class="upload-panel">
+          <div class="panel-header">
+            <h1 id="uploadTitle">Upload PPT</h1>
+            <span id="health" class="health">Checking backend</span>
+          </div>
+
+          <label class="drop-zone" id="dropZone">
+            <input id="fileInput" type="file" accept=".ppt,.pptx">
+            <strong id="dropStrong">Drag & drop your PPT file here</strong>
+            <span id="dropOr">or</span>
+            <button id="dropButton" class="button-like" type="button">Upload PPT</button>
+            <small id="uploadLimitText">Checking upload limit...</small>
+          </label>
+
+          <div class="file-card hidden" id="fileCard">
+            <div class="ppt-icon">P</div>
+            <div>
+              <strong id="fileName"></strong>
+              <p id="fileMeta"></p>
+            </div>
+            <button class="icon-button" id="clearFile" type="button" aria-label="Clear file">x</button>
+          </div>
+
+          <div class="style-section">
+            <div class="style-head">
+              <h2 id="styleTitle">Style</h2>
+              <div class="style-actions">
+                <button id="newCustomStyle" class="style-toggle" type="button">Custom style</button>
+                <button id="importStylePpt" class="style-toggle" type="button">Import PPT style</button>
+                <button id="toggleStyles" class="style-toggle" type="button">Show all</button>
+              </div>
+            </div>
+            <input id="styleImportInput" type="file" accept=".pptx" hidden>
+            <div class="style-tabs" id="styleTabs"></div>
+            <div class="rule-grid">
+              <label><input type="checkbox" id="keepText" checked> <span id="keepTextLabel">Keep text unchanged</span><small id="keepTextSmall">Do not modify wording</small></label>
+              <label><input type="checkbox" id="readableText" checked> <span id="readableTextLabel">Readable 16px+</span><small id="readableTextSmall">Ensure text is easy to read</small></label>
+              <label><input type="checkbox" id="imagesIntact" checked> <span id="imagesIntactLabel">Images intact</span><small id="imagesIntactSmall">Keep original images visible</small></label>
+            </div>
+          </div>
+
+          <section class="advanced shared-ai-card">
+            <div class="shared-ai-head">
+              <div>
+                <span class="shared-ai-kicker">Optimization method</span>
+                <h2>Local rules or AI optimization</h2>
+              </div>
+              <a class="style-toggle" href="/ai-settings.html">AI Settings</a>
+            </div>
+            <div class="shared-ai-grid">
+              <label>
+                <span>Mode</span>
+                <select id="optimizationMode">
+                  <option value="local">Local rules</option>
+                  <option value="ai">AI optimization</option>
+                </select>
+              </label>
+              <div class="shared-ai-status" id="sharedAiStatus">AI not configured</div>
+            </div>
+          </section>
+
+          <details class="advanced api-card api-compat-card" open>
+            <summary id="apiSummary">AI connection</summary>
+            <p id="apiIntro" class="api-intro">Pick a service, paste the key, then save. Your saved API settings stay on this machine and are reused for every generation.</p>
+            <input id="apiMode" type="hidden" value="local">
+            <div class="api-simple-grid">
+              <label>
+                <span id="apiProviderLabel">Service</span>
+                <select id="apiProvider">
+                  <option value="local">Local rules</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="doubao_seed">Doubao Seed 2.0</option>
+                  <option value="openai">OpenAI compatible</option>
+                  <option value="custom_ai">Custom AI API</option>
+                  <option value="workflow">Workflow API</option>
+                  <option value="dify">Dify workflow</option>
+                </select>
+              </label>
+              <label id="apiEndpointField">
+                <span id="apiEndpointLabel">Endpoint</span>
+                <input id="apiEndpoint" type="url" placeholder="https://api.example.com/v1">
+              </label>
+              <label id="apiModelField">
+                <span id="apiModelLabel">Model</span>
+                <input id="apiModel" type="text" placeholder="deepseek-chat">
+              </label>
+              <label>
+                <span id="apiKeyLabel">API key</span>
+                <input id="apiKey" type="password" autocomplete="off" placeholder="Paste key once, then leave blank">
+              </label>
+            </div>
+            <div class="api-key-note" id="apiKeyNote">No saved key yet.</div>
+            <details class="api-advanced">
+              <summary id="apiAdvancedSummary">Advanced connection settings</summary>
+              <div class="api-grid">
+                <label>
+                  <span id="apiKeyHeaderLabel">API key header</span>
+                  <select id="apiKeyHeader">
+                    <option value="Authorization">Authorization</option>
+                    <option value="X-API-Key">X-API-Key</option>
+                    <option value="api-key">api-key</option>
+                    <option value="none">No API key header</option>
+                  </select>
+                </label>
+                <label>
+                  <span id="apiKeyPrefixLabel">API key prefix</span>
+                  <input id="apiKeyPrefix" type="text" placeholder="Bearer ">
+                </label>
+                <label>
+                  <span id="workflowPayloadLabel">Workflow payload</span>
+                  <select id="workflowPayload">
+                    <option value="flat">Flat JSON</option>
+                    <option value="input">{ "input": ... }</option>
+                    <option value="dify">Dify blocking</option>
+                  </select>
+                </label>
+                <label>
+                  <span id="apiTimeoutLabel">Timeout (sec)</span>
+                  <input id="apiTimeout" type="number" min="10" max="600" value="90">
+                </label>
+                <label class="api-wide">
+                  <span id="customHeadersLabel">Custom headers</span>
+                  <textarea id="customHeaders" rows="3" placeholder='{"X-Workflow-Token":"..."} or Header-Name: value'></textarea>
+                </label>
+                <label class="api-checkbox">
+                  <input id="fallbackToLocal" type="checkbox" checked>
+                  <span id="fallbackToLocalLabel">Fallback to local rules if API fails</span>
+                </label>
+                <label class="api-checkbox">
+                  <input id="clearApiKey" type="checkbox">
+                  <span id="clearApiKeyLabel">Clear saved API key on save</span>
+                </label>
+              </div>
+            </details>
+            <div class="api-actions">
+              <button type="button" id="saveApiSettings">Save connection</button>
+              <button type="button" id="testApiSettings">Test API</button>
+              <span id="apiStatus" class="api-status">Local rules active</span>
+            </div>
+          </details>
+
+          <button class="run-button" id="runButton" type="button">Generate HTML</button>
+          <div class="status-line" id="statusLine"></div>
+        </section>
+
+        <section class="preview-panel">
+          <div class="preview-head">
+            <h2 id="previewTitle">Preview</h2>
+            <div class="preview-controls">
+              <select id="jobSelect" aria-label="Select generated job"></select>
+              <button class="icon-button" id="openPreview" type="button">Preview</button>
+              <button class="icon-button" id="shareJob" type="button">Analyze & Share</button>
+              <button class="icon-button primary" id="downloadJob" type="button">Download ZIP</button>
+            </div>
+          </div>
+          <div class="preview-frame">
+            <iframe id="previewFrame" title="HTML slide preview"></iframe>
+            <div class="preview-empty" id="previewEmpty">
+              <strong id="previewEmptyTitle">No generated HTML yet</strong>
+              <span id="previewEmptyDesc">Upload a PPT and run the workflow to see the first slide here.</span>
+            </div>
+          </div>
+          <div class="preview-footer">
+            <button id="fitButton" type="button">Fit</button>
+            <button id="editHtml" class="primary-outline" type="button">Edit HTML</button>
+            <button id="saveEditedHtml" type="button">Save Edits</button>
+            <button id="openScrollHtml" type="button">Open Scroll HTML</button>
+          </div>
+          <div class="quick-fix-panel hidden" id="quickFixPanel">
+            <div class="quick-fix-head">
+              <strong id="quickFixTitle">Quick fixes</strong>
+              <span id="quickFixSummary">No issues detected.</span>
+            </div>
+            <div class="quick-fix-actions">
+              <button type="button" id="fixOverflow">Fix overflow</button>
+              <button type="button" id="fixImages">Re-layout images</button>
+              <button type="button" id="fixContrast">Improve contrast</button>
+              <button type="button" id="fixMissingImages">Restore missing images</button>
+              <button type="button" id="fixCrowded">Split crowded slide</button>
+              <button type="button" id="fixAi">AI repair layout</button>
+            </div>
+          </div>
+          <div class="share-panel hidden" id="sharePanel">
+            <div class="share-head">
+              <strong id="shareTitle">Share readiness</strong>
+              <span id="shareBadge" class="share-badge">Not checked</span>
+            </div>
+            <p id="shareSummary"></p>
+            <div class="share-stats" id="shareStats"></div>
+            <div class="share-actions">
+              <button type="button" id="downloadShareZip">Download ZIP package</button>
+              <button type="button" id="openSingleFile">Open single-file HTML</button>
+              <button type="button" id="openScrollSingleFile">Open scroll single-file HTML</button>
+              <button type="button" id="openShareReport">Open report</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="history-panel">
+          <div class="history-head">
+            <h2 id="historyTitle">Job History</h2>
+            <button class="ghost" id="refreshJobs" type="button">Refresh</button>
+          </div>
+          <div class="job-cards" id="jobCards"></div>
+          <div class="table-wrap history-table">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="id">ID</th>
+                  <th data-i18n="fileName">File Name</th>
+                  <th data-i18n="slides">Slides</th>
+                  <th data-i18n="style">Style</th>
+                  <th data-i18n="status">Status</th>
+                  <th data-i18n="ai">AI</th>
+                  <th data-i18n="updatedAt">Updated At</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="jobRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <div id="settingsOverlay" class="help-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <section class="help-panel settings-panel">
+      <header class="help-head">
+        <div>
+          <span id="settingsKicker" class="help-kicker">Interface language</span>
+          <h2 id="settingsTitle">Settings</h2>
+        </div>
+        <button id="closeSettings" class="help-close" type="button" aria-label="Close settings">Close</button>
+      </header>
+      <div class="settings-content">
+        <label class="settings-field">
+          <span id="settingsLanguageLabel">Language</span>
+          <select id="languageSelect">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
+        </label>
+        <label class="settings-field">
+          <span id="settingsThemeLabel">Appearance</span>
+          <select id="themeSelect">
+            <option value="light">Light mode</option>
+            <option value="dark">Dark mode</option>
+          </select>
+        </label>
+        <p id="settingsHint">This only changes the platform interface. Generated PPT/HTML content stays unchanged.</p>
+      </div>
+    </section>
+  </div>
+  <div id="customStyleOverlay" class="help-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="customStyleTitle">
+    <section class="help-panel custom-style-panel">
+      <header class="help-head">
+        <div>
+          <span id="customStyleKicker" class="help-kicker">Custom style</span>
+          <h2 id="customStyleTitle">Create a reusable style</h2>
+        </div>
+        <button id="closeCustomStyle" class="help-close" type="button" aria-label="Close custom style">Close</button>
+      </header>
+      <div class="help-content custom-style-content">
+        <div class="custom-style-grid">
+          <label><span id="customStyleNameLabel">Style name</span><input id="customStyleName" type="text" placeholder="Workshop Blue"></label>
+          <label><span id="customStyleTitleFontLabel">Title font</span><input id="customStyleTitleFont" type="text" placeholder="Inter, Arial, sans-serif"></label>
+          <label><span id="customStyleBodyFontLabel">Body font</span><input id="customStyleBodyFont" type="text" placeholder="Inter, Arial, sans-serif"></label>
+          <label><span id="customStyleLayoutLabel">Layout preference</span>
+            <select id="customStyleLayout">
+              <option value="balanced">Balanced</option>
+              <option value="centered">Centered title</option>
+              <option value="two-column">Two-column</option>
+              <option value="image-focus">Image focus</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </label>
+          <label><span id="customStyleBgLabel">Background</span><input id="customStyleBg" type="color" value="#f8fbff"></label>
+          <label><span id="customStyleTextLabel">Text</span><input id="customStyleText" type="color" value="#10203f"></label>
+          <label><span id="customStylePrimaryLabel">Primary</span><input id="customStylePrimary" type="color" value="#2563eb"></label>
+          <label><span id="customStyleAccentLabel">Accent</span><input id="customStyleAccent" type="color" value="#38bdf8"></label>
+          <label class="custom-style-wide"><span id="customStylePromptLabel">AI prompt addon</span><textarea id="customStylePrompt" rows="5" placeholder="Describe the visual style for AI generation..."></textarea></label>
+          <label class="custom-style-wide"><span id="customStyleLocalLabel">Local rule summary</span><textarea id="customStyleLocalRules" rows="4" placeholder="Describe layout rules for local generation..."></textarea></label>
+        </div>
+        <div class="custom-style-preview" id="customStylePreview">
+          <strong>Preview</strong>
+          <span>Large centered title</span>
+          <p>Readable content with image-safe layout.</p>
+        </div>
+        <div class="api-actions custom-style-buttons">
+          <button type="button" id="saveCustomStyle">Save style</button>
+          <button type="button" id="deleteCustomStyle">Delete</button>
+          <span id="customStyleStatus" class="api-status"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div id="generationOverlay" class="generation-overlay hidden" role="status" aria-live="polite" aria-label="Generation in progress">
+    <div class="generation-card">
+      <button id="closeGenerationOverlay" class="generation-close" type="button" aria-label="Hide generation animation">x</button>
+      <div class="generation-orbit" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <strong id="generationTitle">Generating HTML</strong>
+      <p id="generationMessage">AI is arranging content, images, and layout...</p>
+      <div class="generation-progress" aria-hidden="true"><span></span></div>
+    </div>
+  </div>
+  <div id="helpOverlay" class="help-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <section class="help-panel">
+      <header class="help-head">
+        <div>
+          <span id="helpKicker" class="help-kicker">Guide</span>
+          <h2 id="helpTitle">API Configuration Tutorial</h2>
+        </div>
+        <button id="closeHelp" class="help-close" type="button" aria-label="Close help">x</button>
+      </header>
+      <div id="helpContent" class="help-content">
+        <p>Loading API configuration tutorial...</p>
+      </div>
+    </section>
+  </div>
+  <script src="/static/ai-config.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
