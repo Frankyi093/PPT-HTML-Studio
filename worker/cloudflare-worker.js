@@ -2635,16 +2635,19 @@ export default {
         const response = routeOutput(url.pathname);
         if (response) return response;
       }
+      if (url.pathname === "/") {
+        return freshAsset(env, request, "/index.html");
+      }
       if (url.pathname === "/ai-generate.html" || url.pathname === "/ai-generate" || url.pathname === "/ai-create.html" || url.pathname === "/ai-create") {
         return freshAsset(env, request, "/ai-generate-live.html");
       }
-      if (url.pathname === "/converter") {
+      if (url.pathname === "/converter" || url.pathname === "/converter.html") {
         return freshAsset(env, request, "/converter.html");
       }
-      if (url.pathname === "/chat-create") {
+      if (url.pathname === "/chat-create" || url.pathname === "/chat-create.html") {
         return freshAsset(env, request, "/chat-create.html");
       }
-      if (url.pathname === "/ai-settings") {
+      if (url.pathname === "/ai-settings" || url.pathname === "/ai-settings.html") {
         return freshAsset(env, request, "/ai-settings.html");
       }
       if (url.pathname === "/static/ai-generate.js") {
