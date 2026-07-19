@@ -45,6 +45,8 @@ This deployment runs fully on Cloudflare Workers. It does not use Vercel or a Py
 - API keys saved here are kept in the Worker isolate memory and may reset after redeploy or idle periods. For production, store provider keys as Cloudflare Secrets and hide them from the browser.
 `;
 
+const APP_SETTINGS_SCRIPT = "(function () {\n  const THEME_KEY = \"ppt-html-studio-theme\";\n  const LANGUAGE_KEY = \"ppt-html-studio-language\";\n  const themes = new Set([\"light\", \"dark\", \"beige\"]);\n  const languages = new Set([\"zh\", \"en\"]);\n\n  const text = {\n    zh: {\n      home: \"首页\",\n      converter: \"PPT 转 HTML\",\n      quickCreate: \"快速创建\",\n      chatCreation: \"对话创作\",\n      aiSettings: \"AI 配置\",\n      settings: \"设置\",\n      backHome: \"返回主页\",\n      productName: \"PPT HTML Studio\",\n      workbench: \"AI PRESENTATION WORKBENCH\",\n      heroTitle: \"开始创建演示文稿\",\n      heroSubtitle: \"导入 PPT、输入主题，或通过对话逐步构建你的演示内容。\",\n      enterConverter: \"进入转换\",\n      startCreate: \"开始生成\",\n      startChat: \"开始对话\",\n      converterDesc: \"上传现有 PPT，转为可编辑、可分享、可下载的 HTML 演示。\",\n      quickCreateDesc: \"输入主题和需求，AI 自动规划大纲、风格和页面布局。\",\n      chatDesc: \"先和 AI 聊清楚需求，逐步确认大纲，再一键生成 PPT。\",\n      sharedAi: \"统一 AI 配置\",\n      sharedAiDesc: \"三个功能共用同一份 API 设置，只需要配置一次。\",\n      configureAi: \"配置 AI\",\n      settingsTitle: \"设置\",\n      settingsSubtitle: \"选择界面语言和主题，也可以在同一页配置三个功能共用的 AI。\",\n      interfaceSettings: \"界面设置\",\n      themeMode: \"主题模式\",\n      language: \"界面语言\",\n      lightMode: \"浅色模式\",\n      darkMode: \"深色模式\",\n      beigeMode: \"米色模式\",\n      chinese: \"中文\",\n      english: \"English\",\n      settingsSaved: \"设置已保存。\",\n      chatTitle: \"对话创作\",\n      chatSubtitle: \"先用对话梳理需求、内容和页面结构，再一键生成可编辑 HTML PPT。\",\n      history: \"历史记录\",\n      newChat: \"新建对话\",\n      loadingAi: \"正在读取 AI 设置...\",\n      chatPlaceholder: \"描述你想呈现的主题和内容...\",\n      send: \"发送\",\n      liveStructure: \"实时结构\",\n      outline: \"页面大纲\",\n      addPage: \"新增页\",\n      title: \"标题\",\n      audience: \"受众\",\n      style: \"风格\",\n      confirmGenerate: \"确认并生成\",\n      preview: \"预览\",\n      editHtml: \"Edit HTML\",\n      saveEdits: \"保存修改\",\n      openScroll: \"打开滑动版 HTML\",\n      downloadZip: \"下载 ZIP\",\n      noHtmlYet: \"暂无生成的 HTML\",\n      noHtmlHint: \"确认大纲后，生成一份 16:9 HTML PPT。\",\n      aiCreating: \"AI 正在创建演示文稿\",\n      aiCreatingHint: \"正在规划内容、风格和 16:9 页面...\",\n      quickCreateTitle: \"快速创建\",\n      quickCreateHero: \"从主题快速生成完整 HTML 演示。\",\n      topicRequirements: \"主题和需求\",\n      editablePlan: \"可编辑 AI 方案\",\n    },\n    en: {\n      home: \"Home\",\n      converter: \"PPT to HTML\",\n      quickCreate: \"Quick Create\",\n      chatCreation: \"Chat Creation\",\n      aiSettings: \"AI Settings\",\n      settings: \"Settings\",\n      backHome: \"Back home\",\n      productName: \"PPT HTML Studio\",\n      workbench: \"AI PRESENTATION WORKBENCH\",\n      heroTitle: \"Start creating presentations\",\n      heroSubtitle: \"Import a PPT, enter a topic, or build your deck step by step through conversation.\",\n      enterConverter: \"Enter converter\",\n      startCreate: \"Start creating\",\n      startChat: \"Start chat\",\n      converterDesc: \"Upload an existing PPT and turn it into editable, shareable, downloadable HTML slides.\",\n      quickCreateDesc: \"Enter a topic and requirements. AI plans the outline, style, and layouts.\",\n      chatDesc: \"Clarify the brief with AI, confirm the outline, then generate the PPT in one click.\",\n      sharedAi: \"Shared AI settings\",\n      sharedAiDesc: \"All three features reuse one API configuration. Set it up once.\",\n      configureAi: \"Configure AI\",\n      settingsTitle: \"Settings\",\n      settingsSubtitle: \"Choose interface language and theme, and configure the shared AI connection.\",\n      interfaceSettings: \"Interface settings\",\n      themeMode: \"Theme\",\n      language: \"Language\",\n      lightMode: \"Light mode\",\n      darkMode: \"Dark mode\",\n      beigeMode: \"Beige mode\",\n      chinese: \"中文\",\n      english: \"English\",\n      settingsSaved: \"Settings saved.\",\n      chatTitle: \"Chat Creation\",\n      chatSubtitle: \"Clarify needs, content, and page structure through conversation, then generate editable HTML slides.\",\n      history: \"History\",\n      newChat: \"New chat\",\n      loadingAi: \"Loading AI settings...\",\n      chatPlaceholder: \"Describe the topic and content you want to present...\",\n      send: \"Send\",\n      liveStructure: \"Live structure\",\n      outline: \"Page outline\",\n      addPage: \"Add page\",\n      title: \"Title\",\n      audience: \"Audience\",\n      style: \"Style\",\n      confirmGenerate: \"Confirm and generate\",\n      preview: \"Preview\",\n      editHtml: \"Edit HTML\",\n      saveEdits: \"Save Edits\",\n      openScroll: \"Open Scroll HTML\",\n      downloadZip: \"Download ZIP\",\n      noHtmlYet: \"No generated HTML yet\",\n      noHtmlHint: \"Confirm the outline, then generate a 16:9 HTML PPT.\",\n      aiCreating: \"AI is creating your deck\",\n      aiCreatingHint: \"Planning content, style and 16:9 pages...\",\n      quickCreateTitle: \"Quick Create\",\n      quickCreateHero: \"Create a complete HTML slide deck from a topic.\",\n      topicRequirements: \"Topic and requirements\",\n      editablePlan: \"Editable AI plan\",\n    },\n  };\n\n  function readTheme() {\n    const value = localStorage.getItem(THEME_KEY);\n    return themes.has(value) ? value : \"light\";\n  }\n\n  function readLanguage() {\n    const value = localStorage.getItem(LANGUAGE_KEY);\n    return languages.has(value) ? value : \"zh\";\n  }\n\n  function applyTheme(theme) {\n    const next = themes.has(theme) ? theme : \"light\";\n    document.documentElement.dataset.theme = next;\n    document.documentElement.style.colorScheme = next === \"dark\" ? \"dark\" : \"light\";\n    try {\n      localStorage.setItem(THEME_KEY, next);\n    } catch {\n      // Ignore storage failures; the theme still applies for this session.\n    }\n    document.querySelectorAll(\"[data-theme-select]\").forEach((node) => {\n      node.value = next;\n    });\n    return next;\n  }\n\n  function translate(language) {\n    const next = languages.has(language) ? language : \"zh\";\n    const bundle = text[next] || text.zh;\n    document.documentElement.lang = next === \"zh\" ? \"zh-CN\" : \"en\";\n    document.querySelectorAll(\"[data-i18n]\").forEach((node) => {\n      const key = node.dataset.i18n;\n      if (bundle[key]) node.textContent = bundle[key];\n    });\n    document.querySelectorAll(\"[data-i18n-placeholder]\").forEach((node) => {\n      const key = node.dataset.i18nPlaceholder;\n      if (bundle[key]) node.setAttribute(\"placeholder\", bundle[key]);\n    });\n    document.querySelectorAll(\"[data-language-select]\").forEach((node) => {\n      node.value = next;\n    });\n    try {\n      localStorage.setItem(LANGUAGE_KEY, next);\n    } catch {\n      // Ignore storage failures; the language still applies for this session.\n    }\n    return next;\n  }\n\n  function init() {\n    const theme = applyTheme(readTheme());\n    const runTranslation = () => {\n      const language = translate(readLanguage());\n      document.dispatchEvent(new CustomEvent(\"ppt-settings-ready\", { detail: { theme, language } }));\n    };\n    if (document.readyState === \"loading\") {\n      document.addEventListener(\"DOMContentLoaded\", runTranslation, { once: true });\n    } else {\n      runTranslation();\n    }\n  }\n\n  window.PptAppSettings = {\n    THEME_KEY,\n    LANGUAGE_KEY,\n    themes: Array.from(themes),\n    languages: Array.from(languages),\n    text,\n    readTheme,\n    readLanguage,\n    applyTheme,\n    translate,\n    init,\n  };\n\n  init();\n})();\n";
+
 function corsHeaders() {
   return {
     "access-control-allow-origin": "*",
@@ -2636,25 +2638,37 @@ export default {
         if (response) return response;
       }
       if (url.pathname === "/") {
-        return freshAsset(env, request, "/index.html");
+        return freshAsset(env, request, "/index-current.html");
       }
       if (url.pathname === "/ai-generate.html" || url.pathname === "/ai-generate" || url.pathname === "/ai-create.html" || url.pathname === "/ai-create") {
-        return freshAsset(env, request, "/ai-generate-live.html");
+        return freshAsset(env, request, "/quick-create-current.html");
       }
       if (url.pathname === "/converter" || url.pathname === "/converter.html") {
-        return freshAsset(env, request, "/converter.html");
+        return freshAsset(env, request, "/converter-current.html");
       }
       if (url.pathname === "/chat-create" || url.pathname === "/chat-create.html") {
-        return freshAsset(env, request, "/chat-create.html");
+        return freshAsset(env, request, "/chat-create-current.html");
       }
       if (url.pathname === "/ai-settings" || url.pathname === "/ai-settings.html" || url.pathname === "/settings" || url.pathname === "/settings.html") {
-        return freshAsset(env, request, "/ai-settings.html");
+        return freshAsset(env, request, "/settings-current.html");
       }
       if (url.pathname === "/static/ai-generate.js") {
         return freshAsset(env, request, "/static/ai-generate-live.js");
       }
       if (url.pathname === "/static/ai-generate.css") {
         return freshAsset(env, request, "/static/ai-generate-live.css");
+      }
+      if (url.pathname === "/static/app-settings.js" || url.pathname === "/static/studio-settings.js") {
+        return textResponse(APP_SETTINGS_SCRIPT, "text/javascript; charset=utf-8");
+      }
+      if (
+        url.pathname === "/static/home.css" ||
+        url.pathname === "/static/styles.css" ||
+        url.pathname === "/static/chat-create.css" ||
+        url.pathname === "/static/ai-settings.css" ||
+        url.pathname === "/static/ai-settings.js"
+      ) {
+        return freshAsset(env, request, url.pathname);
       }
       return env.ASSETS.fetch(request);
     } catch (error) {
