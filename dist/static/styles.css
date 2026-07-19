@@ -349,10 +349,12 @@ html[data-theme="dark"] :where(p,small,.style-card-sample,.job-card-title span,.
 .main-panel {
   padding: 18px;
   display: grid;
-  grid-template-columns: minmax(400px, 0.92fr) minmax(500px, 1.08fr);
-  grid-template-rows: auto minmax(220px, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
   gap: 18px;
   min-width: 0;
+  width: min(1480px, 100%);
+  margin: 0 auto;
 }
 
 .upload-panel,
@@ -1498,20 +1500,21 @@ html[data-theme="dark"] .custom-style-preview {
   padding: 22px;
   display: flex;
   flex-direction: column;
-  min-height: 610px;
+  grid-column: 1 / -1;
+  min-height: 780px;
 }
 
 .preview-controls {
   display: grid;
-  flex: 1 1 430px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1 1 720px;
+  grid-template-columns: minmax(260px, 1.35fr) repeat(3, minmax(128px, .72fr));
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
 }
 
 .preview-controls select {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .preview-controls button {
@@ -1536,7 +1539,8 @@ html[data-theme="dark"] .custom-style-preview {
   margin-top: 13px;
   flex: 0 0 auto;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: clamp(560px, 74vh, 900px);
+  aspect-ratio: auto;
   min-height: 0;
   border: 1px solid rgba(255,255,255,.58);
   border-radius: 18px;
@@ -1579,9 +1583,10 @@ html[data-theme="dark"] .custom-style-preview {
 }
 
 .preview-footer {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
+  gap: 12px;
   border-top: 1px solid rgba(255,255,255,.48);
   margin-top: 12px;
   padding-top: 12px;
@@ -2118,6 +2123,7 @@ tr:last-child td {
     flex: none;
     min-height: 0;
     aspect-ratio: 16 / 9;
+    height: auto;
     margin-top: 10px;
     border-radius: 14px;
   }
@@ -2131,12 +2137,11 @@ tr:last-child td {
 
   .preview-footer {
     align-items: stretch;
-    flex-wrap: wrap;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
   }
 
   .preview-footer button {
-    flex: 1 1 calc(50% - 7px);
     min-width: 0;
     min-height: 36px;
     padding: 7px 8px;
@@ -2200,6 +2205,7 @@ tr:last-child td {
 
   .preview-frame {
     aspect-ratio: 16 / 9;
+    height: auto;
   }
 
   .rule-grid {
