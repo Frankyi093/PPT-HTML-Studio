@@ -532,6 +532,8 @@ function hydrateJob(job) {
 function renderJob(job) {
   state.job = hydrateJob(job);
   state.editing = false;
+  platformEditorSelected = null;
+  document.querySelector(".topic-preview")?.classList.remove("editor-active");
   el("previewFrame").src = state.job.previewUrl;
   el("previewEmpty").classList.add("hidden");
   ["openPreviewHtml", "editHtml", "saveEditedHtml", "openScrollHtml", "downloadZip"].forEach((id) => {
@@ -574,13 +576,234 @@ function previewWindow() {
   return el("previewFrame").contentWindow;
 }
 
+function previewDocument() {
+  try {
+    return el("previewFrame").contentDocument;
+  } catch {
+    return null;
+  }
+}
+
+let platformEditorSelected = null;
+
+function activePreviewSlide(doc = previewDocument()) {
+  if (!doc) return null;
+  const slides = [...doc.querySelectorAll(".ppt-runtime-slide,.slide,section[data-slide-page],.ai-slide,[data-slide-page]")]
+    .filter((node) => !node.closest(".editor-toolbar,.ppt-runtime-nav,.nav,.runtime-controls,.ppt-ve-sidebar,.ppt-ve-inspector"));
+  return slides.find((node) => node.classList.contains("ppt-active-slide") || node.classList.contains("active") || getComputedStyle(node).display !== "none") || slides[0] || doc.body;
+}
+
+function platformEditorCandidate(target) {
+  return target?.closest?.(".media-box,.editable-image-box,figure,.free-textbox,.editable-text,.point-card,h1,h2,h3,h4,p,li,td,th,[contenteditable=true]");
+}
+
+function setPlatformEditorSelected(target) {
+  const doc = previewDocument();
+  doc?.querySelectorAll(".ppt-platform-selected").forEach((node) => node.classList.remove("ppt-platform-selected"));
+  platformEditorSelected = target && !target.closest?.(".editor-toolbar,.ppt-ve-sidebar,.ppt-ve-inspector,.ppt-runtime-nav") ? target : null;
+  if (platformEditorSelected) platformEditorSelected.classList.add("ppt-platform-selected");
+  updatePlatformEditorInspector();
+}
+
+function ensurePlatformEditorDock() {
+  const panel = document.querySelector(".topic-preview");
+  if (!panel || panel.querySelector(".platform-editor-dock")) return;
+  const dock = document.createElement("div");
+  dock.className = "platform-editor-dock";
+  dock.innerHTML = `
+    <div class="platform-editor-toolbar">
+      <span class="platform-editor-meta">Edit tools</span>
+      <select data-platform-font>
+        <option value="Arial, sans-serif">Arial</option>
+        <option value="Inter, Arial, sans-serif">Inter</option>
+        <option value="Georgia, serif">Georgia</option>
+        <option value="Times New Roman, serif">Times</option>
+        <option value="Verdana, sans-serif">Verdana</option>
+        <option value="Microsoft YaHei, sans-serif">Microsoft YaHei</option>
+        <option value="Segoe Print, Comic Sans MS, cursive">Hand</option>
+      </select>
+      <input data-platform-size type="number" min="8" max="160" value="30" title="Font size">
+      <input data-platform-color type="color" value="#172554" title="Text color">
+      <button type="button" data-platform-align="left">Left</button>
+      <button type="button" data-platform-align="center">Center</button>
+      <button type="button" data-platform-align="right">Right</button>
+      <button type="button" data-platform-bold>B</button>
+      <button type="button" data-platform-italic>I</button>
+      <button type="button" data-platform-underline>U</button>
+      <button type="button" data-platform-text>Text</button>
+      <button type="button" data-platform-image>Image</button>
+      <input data-platform-image-file type="file" accept="image/*" hidden>
+    </div>
+    <div class="platform-editor-inspector">
+      <span class="platform-editor-meta" data-platform-selected>No element selected</span>
+      <input data-platform-x type="number" title="X">
+      <input data-platform-y type="number" title="Y">
+      <input data-platform-w type="number" title="Width">
+      <input data-platform-h type="number" title="Height">
+      <button type="button" data-platform-front>Front</button>
+      <button type="button" data-platform-back>Back</button>
+      <button type="button" data-platform-delete>Delete</button>
+    </div>`;
+  panel.querySelector(".preview-frame")?.before(dock);
+  dock.querySelector("[data-platform-font]").addEventListener("change", (event) => applyPlatformStyle("fontFamily", event.target.value));
+  dock.querySelector("[data-platform-size]").addEventListener("change", (event) => applyPlatformStyle("fontSize", `${event.target.value}px`));
+  dock.querySelector("[data-platform-color]").addEventListener("input", (event) => applyPlatformStyle("color", event.target.value));
+  dock.querySelectorAll("[data-platform-align]").forEach((button) => button.addEventListener("click", () => applyPlatformStyle("textAlign", button.dataset.platformAlign)));
+  dock.querySelector("[data-platform-bold]").addEventListener("click", () => applyPlatformStyle("fontWeight", "800"));
+  dock.querySelector("[data-platform-italic]").addEventListener("click", () => applyPlatformStyle("fontStyle", "italic"));
+  dock.querySelector("[data-platform-underline]").addEventListener("click", () => applyPlatformStyle("textDecoration", "underline"));
+  dock.querySelector("[data-platform-text]").addEventListener("click", addPlatformTextBox);
+  dock.querySelector("[data-platform-image]").addEventListener("click", () => dock.querySelector("[data-platform-image-file]").click());
+  dock.querySelector("[data-platform-image-file]").addEventListener("change", addPlatformImage);
+  dock.querySelector("[data-platform-front]").addEventListener("click", () => layerPlatformSelected(1));
+  dock.querySelector("[data-platform-back]").addEventListener("click", () => layerPlatformSelected(-1));
+  dock.querySelector("[data-platform-delete]").addEventListener("click", deletePlatformSelected);
+  ["x", "y", "w", "h"].forEach((key) => dock.querySelector(`[data-platform-${key}]`).addEventListener("change", (event) => applyPlatformGeometry(key, event.target.value)));
+}
+
+function installPlatformEditorSurface() {
+  const doc = previewDocument();
+  if (!doc?.body) return;
+  ensurePlatformEditorDock();
+  if (!doc.getElementById("ppt-platform-editor-style")) {
+    const style = doc.createElement("style");
+    style.id = "ppt-platform-editor-style";
+    style.textContent = `body.editing .editor-toolbar,body.editing .ppt-ve-sidebar,body.editing .ppt-ve-inspector,body.editing .ppt-ve-ruler-top,body.editing .ppt-ve-ruler-left{display:none!important}.ppt-platform-selected{outline:2px solid #5b7eff!important;outline-offset:4px!important}`;
+    doc.head.appendChild(style);
+  }
+  if (!doc.body.dataset.platformEditorBound) {
+    doc.body.dataset.platformEditorBound = "1";
+    doc.addEventListener("click", (event) => {
+      if (!doc.body.classList.contains("editing")) return;
+      setPlatformEditorSelected(platformEditorCandidate(event.target));
+    }, true);
+  }
+}
+
+function platformTextTarget() {
+  const target = platformEditorSelected || previewDocument()?.activeElement;
+  if (!target || target === previewDocument()?.body) return null;
+  return target.matches?.(".media-box,.editable-image-box,figure,img") ? null : target;
+}
+
+function applyPlatformStyle(prop, value) {
+  const target = platformTextTarget();
+  if (!target) return;
+  target.style[prop] = value;
+  updatePlatformEditorInspector();
+}
+
+function slideRelativeRect(target) {
+  const slide = activePreviewSlide();
+  if (!target || !slide) return null;
+  const rect = target.getBoundingClientRect();
+  const slideRect = slide.getBoundingClientRect();
+  return { rect, slideRect, x: rect.left - slideRect.left, y: rect.top - slideRect.top };
+}
+
+function updatePlatformEditorInspector() {
+  const dock = document.querySelector(".topic-preview .platform-editor-dock");
+  if (!dock) return;
+  const target = platformEditorSelected;
+  dock.querySelector("[data-platform-selected]").textContent = target ? (target.dataset.pptId || target.tagName.toLowerCase()) : "No element selected";
+  dock.querySelectorAll(".platform-editor-inspector input,.platform-editor-inspector button").forEach((node) => node.disabled = !target);
+  if (!target) return;
+  const rel = slideRelativeRect(target);
+  const style = getComputedStyle(target);
+  if (rel) {
+    dock.querySelector("[data-platform-x]").value = Math.round(rel.x);
+    dock.querySelector("[data-platform-y]").value = Math.round(rel.y);
+    dock.querySelector("[data-platform-w]").value = Math.round(rel.rect.width);
+    dock.querySelector("[data-platform-h]").value = Math.round(rel.rect.height);
+  }
+  dock.querySelector("[data-platform-size]").value = Math.round(parseFloat(style.fontSize) || 30);
+}
+
+function applyPlatformGeometry(key, value) {
+  const target = platformEditorSelected;
+  const slide = activePreviewSlide();
+  if (!target || !slide) return;
+  const prop = { x: "left", y: "top", w: "width", h: "height" }[key];
+  if (!prop) return;
+  if (getComputedStyle(target).position === "static") {
+    const rel = slideRelativeRect(target);
+    target.style.position = "absolute";
+    if (rel) {
+      target.style.left = `${Math.max(0, rel.x)}px`;
+      target.style.top = `${Math.max(0, rel.y)}px`;
+    }
+  }
+  target.style[prop] = `${Math.max(0, Number(value) || 0)}px`;
+  updatePlatformEditorInspector();
+}
+
+function layerPlatformSelected(delta) {
+  if (!platformEditorSelected) return;
+  const z = parseInt(getComputedStyle(platformEditorSelected).zIndex, 10);
+  platformEditorSelected.style.zIndex = String((Number.isFinite(z) ? z : 1) + delta);
+  updatePlatformEditorInspector();
+}
+
+function deletePlatformSelected() {
+  if (!platformEditorSelected) return;
+  platformEditorSelected.remove();
+  platformEditorSelected = null;
+  updatePlatformEditorInspector();
+}
+
+function addPlatformTextBox() {
+  const doc = previewDocument();
+  const slide = activePreviewSlide(doc);
+  if (!doc || !slide) return;
+  const box = doc.createElement("div");
+  box.className = "free-textbox editable-text";
+  box.textContent = "New text";
+  box.contentEditable = "true";
+  Object.assign(box.style, { position: "absolute", left: "96px", top: "110px", width: "360px", minHeight: "58px", fontSize: "32px", color: "#172554", zIndex: "60" });
+  slide.appendChild(box);
+  setPlatformEditorSelected(box);
+  box.focus();
+}
+
+function addPlatformImage(event) {
+  const file = event.target.files?.[0];
+  const doc = previewDocument();
+  const slide = activePreviewSlide(doc);
+  if (!file || !doc || !slide) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const box = doc.createElement("figure");
+    box.className = "media-box editable-image-box";
+    Object.assign(box.style, { position: "absolute", left: "55%", top: "28%", width: "320px", height: "220px", zIndex: "55" });
+    box.innerHTML = '<img alt="Added image" style="width:100%;height:100%;object-fit:contain;display:block">';
+    box.querySelector("img").src = reader.result;
+    slide.appendChild(box);
+    previewWindow()?.toggleEdit?.(true);
+    installPlatformEditorSurface();
+    setPlatformEditorSelected(box);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = "";
+}
+
+function cleanupPlatformEditorArtifacts() {
+  const doc = previewDocument();
+  if (!doc) return;
+  doc.querySelectorAll(".ppt-platform-selected").forEach((node) => node.classList.remove("ppt-platform-selected"));
+  doc.getElementById("ppt-platform-editor-style")?.remove();
+}
+
 async function captureEditedHtml() {
   const win = previewWindow();
   if (!win?.exportEditedHtml) throw new Error("The current preview is not editable yet.");
-  return {
+  const wasEditing = Boolean(previewDocument()?.body?.classList.contains("editing"));
+  cleanupPlatformEditorArtifacts();
+  const output = {
     pagedHtml: await win.exportEditedHtml("paged"),
     scrollHtml: await win.exportEditedHtml("scroll"),
   };
+  if (wasEditing) installPlatformEditorSurface();
+  return output;
 }
 
 async function persistEditedHtml({ reloadPreview = false } = {}) {
@@ -638,6 +861,9 @@ function toggleEdit() {
   }
   state.editing = !state.editing;
   win.toggleEdit(state.editing);
+  document.querySelector(".topic-preview")?.classList.toggle("editor-active", state.editing);
+  if (state.editing) installPlatformEditorSurface();
+  else setPlatformEditorSelected(null);
   el("editHtml").textContent = state.editing ? "Stop Editing" : "Edit HTML";
   requestAnimationFrame(syncPreviewScale);
 }
