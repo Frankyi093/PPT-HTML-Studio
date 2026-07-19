@@ -87,6 +87,22 @@ function bytesResponse(bytes, type, filename) {
   });
 }
 
+async function freshAsset(env, request, pathname) {
+  const url = new URL(request.url);
+  url.pathname = pathname;
+  url.search = "";
+  const assetRequest = new Request(url.toString(), request);
+  const response = await env.ASSETS.fetch(assetRequest);
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "no-store, no-cache, must-revalidate");
+  headers.set("pragma", "no-cache");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function publicIntegration(config = integrationConfig) {
   const { apiKey, ...rest } = config;
   return {
@@ -1989,6 +2005,15 @@ export default {
       if (url.pathname.startsWith("/outputs/")) {
         const response = routeOutput(url.pathname);
         if (response) return response;
+      }
+      if (url.pathname === "/ai-generate.html" || url.pathname === "/ai-create.html") {
+        return freshAsset(env, request, "/ai-generate-live.html");
+      }
+      if (url.pathname === "/static/ai-generate.js") {
+        return freshAsset(env, request, "/static/ai-generate-live.js");
+      }
+      if (url.pathname === "/static/ai-generate.css") {
+        return freshAsset(env, request, "/static/ai-generate-live.css");
       }
       return env.ASSETS.fetch(request);
     } catch (error) {
