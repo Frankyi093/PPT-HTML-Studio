@@ -6,6 +6,29 @@ function setStatus(message, kind = "") {
   node.className = `status-line ${kind}`;
 }
 
+function setInterfaceStatus(message) {
+  const node = el("interfaceStatus");
+  if (!node) return;
+  node.textContent = message || "";
+}
+
+function initInterfaceSettings() {
+  const appSettings = window.PptAppSettings;
+  if (!appSettings) return;
+  const themeSelect = el("globalThemeSelect");
+  const languageSelect = el("globalLanguageSelect");
+  if (themeSelect) themeSelect.value = appSettings.readTheme();
+  if (languageSelect) languageSelect.value = appSettings.readLanguage();
+  themeSelect?.addEventListener("change", (event) => {
+    appSettings.applyTheme(event.target.value);
+    setInterfaceStatus(appSettings.text[appSettings.readLanguage()]?.settingsSaved || "Settings saved.");
+  });
+  languageSelect?.addEventListener("change", (event) => {
+    appSettings.translate(event.target.value);
+    setInterfaceStatus(appSettings.text[event.target.value]?.settingsSaved || "Settings saved.");
+  });
+}
+
 function applyPreset(provider, overwrite = true) {
   const preset = window.PptAiConfig.PROVIDERS[provider] || window.PptAiConfig.PROVIDERS.openai;
   if (overwrite) {
@@ -78,6 +101,7 @@ async function test() {
 }
 
 async function init() {
+  initInterfaceSettings();
   const config = await window.PptAiConfig.loadRemoteAiConfig();
   renderConfig(config);
   el("provider").addEventListener("change", (event) => applyPreset(event.target.value, true));
