@@ -483,13 +483,13 @@ function editorRuntime() {
     <style id="ppt-html-editor-style">
       html, body { width: 100% !important; min-height: 100% !important; margin: 0 !important; }
       body:not(.scroll-mode) { overflow: hidden !important; display: grid !important; place-items: center !important; background: #eef3fb; }
-      body:not(.scroll-mode) :where(section[data-slide-page], .slide, .ai-slide, [data-slide-page]) { width: min(100vw, calc(100vh * 16 / 9)) !important; height: min(100vh, calc(100vw * 9 / 16)) !important; max-width: 100vw !important; max-height: 100vh !important; aspect-ratio: 16 / 9 !important; margin: auto !important; box-sizing: border-box !important; overflow: hidden !important; position: relative !important; }
-      body.scroll-mode :where(section[data-slide-page], .slide, .ai-slide, [data-slide-page]) { width: min(100vw, 1440px) !important; aspect-ratio: 16 / 9 !important; min-height: auto !important; height: auto !important; margin: 22px auto !important; overflow: hidden !important; }
-      body:not(.scroll-mode) section[data-slide-page]:first-of-type, body:not(.scroll-mode) .slide:first-of-type, body:not(.scroll-mode) .ai-slide:first-of-type { overflow: hidden !important; }
+      body:not(.scroll-mode) :where(section, section[data-slide-page], .slide, .ai-slide, [data-slide-page]) { width: min(100vw, calc(100vh * 16 / 9)) !important; height: min(100vh, calc(100vw * 9 / 16)) !important; max-width: 100vw !important; max-height: 100vh !important; aspect-ratio: 16 / 9 !important; margin: auto !important; box-sizing: border-box !important; overflow: hidden !important; position: relative !important; }
+      body.scroll-mode :where(section, section[data-slide-page], .slide, .ai-slide, [data-slide-page]) { width: min(100vw, 1440px) !important; aspect-ratio: 16 / 9 !important; min-height: auto !important; height: auto !important; margin: 22px auto !important; overflow: hidden !important; }
+      body:not(.scroll-mode) section:first-of-type, body:not(.scroll-mode) section[data-slide-page]:first-of-type, body:not(.scroll-mode) .slide:first-of-type, body:not(.scroll-mode) .ai-slide:first-of-type { overflow: hidden !important; }
       body:not(.scroll-mode) :where(.slide-inner, .slide-content, .content, .inner, .deck-slide-inner) { max-width: 100% !important; max-height: 100% !important; box-sizing: border-box !important; overflow: hidden !important; }
-      section[data-slide-page] :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .ai-slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item) { writing-mode: horizontal-tb !important; text-orientation: mixed !important; white-space: normal !important; word-break: normal !important; overflow-wrap: normal !important; hyphens: none !important; letter-spacing: normal; }
-      section[data-slide-page] :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .ai-slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p) { min-width: min(320px, 82vw) !important; max-width: min(1040px, 88vw) !important; }
-      section[data-slide-page] :where(h1,h2,h3,h4), .slide :where(h1,h2,h3,h4), .ai-slide :where(h1,h2,h3,h4) { min-width: min(520px, 86vw) !important; max-width: min(1120px, 90vw) !important; }
+      section :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), section[data-slide-page] :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item), .ai-slide :where(h1,h2,h3,h4,p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item) { writing-mode: horizontal-tb !important; text-orientation: mixed !important; white-space: normal !important; word-break: normal !important; overflow-wrap: normal !important; hyphens: none !important; letter-spacing: normal; }
+      section :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), section[data-slide-page] :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p), .ai-slide :where(p,li,.editable-text,.lead-text,.body-paragraph,.point-card,.cover-subtitle,.agenda-item p) { min-width: min(320px, 82vw) !important; max-width: min(1040px, 88vw) !important; }
+      section :where(h1,h2,h3,h4), section[data-slide-page] :where(h1,h2,h3,h4), .slide :where(h1,h2,h3,h4), .ai-slide :where(h1,h2,h3,h4) { min-width: min(520px, 86vw) !important; max-width: min(1120px, 90vw) !important; }
       body:not(.scroll-mode) .ppt-cover-slide.ppt-active-slide { display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; text-align: center !important; }
       body:not(.scroll-mode) .ppt-cover-slide > :where(.slide-inner, .slide-content, .content, .inner, .deck-slide-inner, main, div:first-child) { height: 100% !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; text-align: center !important; padding-top: clamp(44px, 7%, 92px) !important; padding-bottom: clamp(44px, 7%, 92px) !important; }
       body:not(.scroll-mode) .ppt-cover-slide h1 { text-align: center !important; margin: 0 auto !important; max-width: min(1120px, 88%) !important; transform: none !important; }
@@ -500,9 +500,9 @@ function editorRuntime() {
       body:not(.scroll-mode) .cover .slide-inner { display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; gap: clamp(16px, 3vh, 34px) !important; padding-top: clamp(56px, 8vh, 92px) !important; padding-bottom: clamp(56px, 8vh, 92px) !important; }
       body:not(.scroll-mode) .cover main { display: block !important; min-height: auto !important; }
       body:not(.scroll-mode) .cover footer { position: absolute !important; right: clamp(34px, 5vw, 80px) !important; bottom: 28px !important; }
-      body:not(.scroll-mode) section[data-slide-page]:first-of-type > header, body:not(.scroll-mode) .slide:first-of-type > header, body:not(.scroll-mode) .ai-slide:first-of-type > header { text-align: center !important; max-width: min(1120px, 90vw) !important; margin: clamp(18vh, 24vh, 28vh) auto clamp(2vh, 5vh, 7vh) !important; }
+      body:not(.scroll-mode) section:first-of-type > header, body:not(.scroll-mode) section[data-slide-page]:first-of-type > header, body:not(.scroll-mode) .slide:first-of-type > header, body:not(.scroll-mode) .ai-slide:first-of-type > header { text-align: center !important; max-width: min(1120px, 90vw) !important; margin: clamp(18vh, 24vh, 28vh) auto clamp(2vh, 5vh, 7vh) !important; }
       body:not(.scroll-mode) .cover > .slide-inner > header { margin: 0 auto !important; }
-      body:not(.scroll-mode) section[data-slide-page]:first-of-type h1, body:not(.scroll-mode) .slide:first-of-type h1, body:not(.scroll-mode) .ai-slide:first-of-type h1 { text-align: center !important; margin-left: auto !important; margin-right: auto !important; max-width: min(1120px, 90vw) !important; line-height: 1.06 !important; }
+      body:not(.scroll-mode) section:first-of-type h1, body:not(.scroll-mode) section[data-slide-page]:first-of-type h1, body:not(.scroll-mode) .slide:first-of-type h1, body:not(.scroll-mode) .ai-slide:first-of-type h1 { text-align: center !important; margin-left: auto !important; margin-right: auto !important; max-width: min(1120px, 90vw) !important; line-height: 1.06 !important; }
       .ppt-original-images, .original-ppt-image { box-sizing: border-box !important; }
       .ppt-original-images { position: relative !important; z-index: 2 !important; display: grid !important; gap: clamp(10px, 1.4vw, 18px) !important; align-content: center !important; justify-items: center !important; width: min(42vw, 620px) !important; max-width: 100% !important; max-height: 46vh !important; margin: clamp(14px, 2vh, 24px) auto 0 !important; overflow: hidden !important; clear: both !important; }
       .ppt-original-images[data-count="2"], .ppt-original-images[data-count="3"], .ppt-original-images[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: min(52vw, 780px) !important; max-height: 44vh !important; }
@@ -534,11 +534,13 @@ function editorRuntime() {
     </style>
     <script>(() => {
       let currentSlide = 0;
-      const slideSelector = '.slide, section[data-slide-page], .ai-slide, [data-slide-page]';
+      const slideSelector = '.slide, section, .ai-slide, [data-slide-page]';
       const slides = Array.from(document.querySelectorAll(slideSelector)).filter((node) => !node.closest('.editor-toolbar,.ppt-runtime-nav'));
       let selectedElement = null;
-      slides.forEach((slide) => {
+      slides.forEach((slide, index) => {
         slide.classList.add('ppt-runtime-slide');
+        if (!slide.classList.contains('slide')) slide.classList.add('slide');
+        if (!slide.dataset.slidePage) slide.dataset.slidePage = String(index + 1);
         if (!slide.style.position) slide.style.position = 'relative';
       });
       function showSlide(index) {
@@ -769,7 +771,7 @@ function editorRuntime() {
         clone.querySelector('body')?.classList.remove('editing');
         if (mode === 'scroll') {
           clone.querySelector('body')?.classList.add('scroll-mode');
-          clone.querySelectorAll('.slide,section[data-slide-page],[data-slide-page]').forEach((node) => {
+          clone.querySelectorAll('.slide,section,section[data-slide-page],[data-slide-page]').forEach((node) => {
             node.style.display = 'block';
             node.style.visibility = 'visible';
             node.style.opacity = '1';
@@ -956,7 +958,7 @@ function makeScrollHtml(html) {
     output = output.replace(/<body\b([^>]*)>/i, '<body$1 class="scroll-mode">');
   }
   if (!/ppt-scroll-export-style/.test(output)) {
-    const style = `<style id="ppt-scroll-export-style">body.scroll-mode{overflow:auto!important}body.scroll-mode .slide,body.scroll-mode section[data-slide-page],body.scroll-mode [data-slide-page]{display:block!important;visibility:visible!important;opacity:1!important;min-height:100vh}body.scroll-mode .ppt-runtime-nav,body.scroll-mode .nav{display:none!important}</style>`;
+    const style = `<style id="ppt-scroll-export-style">body.scroll-mode{overflow:auto!important}body.scroll-mode .slide,body.scroll-mode section,body.scroll-mode section[data-slide-page],body.scroll-mode [data-slide-page]{display:block!important;visibility:visible!important;opacity:1!important;min-height:100vh}body.scroll-mode .ppt-runtime-nav,body.scroll-mode .nav{display:none!important}</style>`;
     output = /<\/head>/i.test(output) ? output.replace(/<\/head>/i, `${style}</head>`) : `${style}${output}`;
   }
   output = output.replace(/(<(?:section|div)\b(?=[^>]*(?:class=["'][^"']*\bslide\b|data-slide-page\b))[^>]*\bstyle=["'])([^"']*)(["'][^>]*>)/gi, (match, start, style, end) => {
