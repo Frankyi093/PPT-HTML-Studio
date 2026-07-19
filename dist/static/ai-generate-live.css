@@ -251,24 +251,30 @@ html[data-theme="dark"] .plan-generate-row {
 .preview-chat-layout {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: stretch;
 }
 
 .topic-preview {
   min-height: 0;
+  grid-row: auto;
+}
+
+.topic-preview .preview-controls {
+  flex: 1 1 760px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .topic-preview .preview-frame {
-  height: min(72vh, 760px);
+  height: clamp(560px, 76vh, 900px);
 }
 
 .chat-edit-panel {
   display: grid;
-  grid-template-rows: auto auto auto minmax(240px, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(180px, auto) auto;
   gap: 16px;
-  min-height: min(72vh, 760px);
+  min-height: auto;
 }
 
 .chat-mode-tabs {
@@ -546,7 +552,8 @@ html[data-theme="dark"] .generation-card {
   }
 
   .topic-preview .preview-frame {
-    height: 58vh;
+    height: auto;
+    aspect-ratio: 16 / 9;
   }
 
   .preview-chat-layout {
