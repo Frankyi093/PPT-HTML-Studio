@@ -1976,6 +1976,146 @@ async function createTopicPlan(payload) {
   return normalizeTopicPlan(parsed, payload);
 }
 
+function chatCreationPrompt(payload = {}) {
+  const messages = Array.isArray(payload.messages) ? payload.messages : [];
+  const currentOutline = payload.outline || {};
+  const style = payload.style || currentOutline.style || "teaching";
+  return `You are the planning assistant for PPT HTML Studio Chat Creation.
+
+The user is building an HTML presentation through a multi-turn conversation.
+Return STRICT JSON only. Do not return markdown.
+
+Conversation so far:
+${messages.map((message) => `${message.role || "user"}: ${String(message.content || "").slice(0, 1800)}`).join("\n")}
+
+Current editable outline, if any:
+${JSON.stringify(currentOutline).slice(0, 12000)}
+
+Selected style:
+${stylePrompt(style, null)}
+
+Your job:
+1. Summarize your understanding of the user's request.
+2. Ask at most 3 useful clarification questions, only if needed.
+3. Maintain a complete draft outline that the UI can render as editable page cards.
+4. Set ready=true when there is enough information to generate the deck.
+
+JSON schema:
+{
+  "assistantText": "short helpful response to the user",
+  "questions": ["optional question 1", "optional question 2"],
+  "ready": true,
+  "outline": {
+    "title": "deck title",
+    "audience": "target audience",
+    "language": "English | Simplified Chinese",
+    "style": "${style}",
+    "slideCount": 8,
+    "goal": "presentation goal",
+    "tone": "visual and writing tone",
+    "slides": [
+      {
+        "page": 1,
+        "type": "Cover | Agenda | Content | Transition | Summary | Exercise",
+        "title": "complete slide title",
+        "goal": "core objective of this page",
+        "bullets": ["complete concise point"],
+        "visualSuggestion": "visual focus or layout suggestion",
+        "speakerNoteOptional": "optional note"
+      }
+    ]
+  }
+}
+
+Rules:
+- Do not show JSON to the user inside assistantText.
+- Preserve complete phrases. Never create single-letter or broken-word titles.
+- The first slide should be a centered cover slide.
+- Only add an Agenda slide when it helps the deck.
+- Keep each slide focused on one core idea.
+- Use strong contrast and fixed 16:9 slide thinking.
+- If information is missing, ask questions but still draft the best outline possible.`;
+}
+
+function normalizeChatOutline(raw, payload = {}) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const outline = source.outline && typeof source.outline === "object" ? source.outline : source;
+  const userMessages = Array.isArray(payload.messages) ? payload.messages.filter((message) => message.role === "user") : [];
+  const fallbackTopic = cleanText(userMessages.slice(-1)[0]?.content || payload.topic || "Presentation");
+  const sourceSlides = Array.isArray(outline.slides) && outline.slides.length
+    ? outline.slides
+    : [
+        { type: "Cover", title: outline.title || fallbackTopic, goal: "Introduce the topic and set expectations.", bullets: [], visualSuggestion: "Centered title group." },
+        { type: "Agenda", title: "What we will cover", goal: "Preview the structure.", bullets: ["Context and goals", "Key ideas", "Examples or discussion", "Summary and next steps"], visualSuggestion: "Simple agenda list." },
+        { type: "Content", title: "Key idea", goal: "Explain the central concept.", bullets: ["Add the main point here."], visualSuggestion: "Clean text and one visual focus." },
+      ];
+  const normalizedPlan = normalizeTopicPlan({
+    title: outline.title || payload.topic || "Untitled Presentation",
+    audience: outline.audience || payload.audience || "",
+    goal: outline.goal || "",
+    tone: outline.tone || "",
+    palette: outline.palette || {},
+    typography: outline.typography || {},
+    layoutRules: outline.layoutRules || [],
+    slides: sourceSlides.map((slide) => ({
+      title: slide.title,
+      layout: slide.type || slide.layout || "Content",
+      visualFocus: slide.visualSuggestion || slide.visualFocus || "",
+      body: slide.bullets || slide.body || [],
+      speakerNote: slide.speakerNoteOptional || slide.speakerNote || "",
+    })),
+  }, payload);
+  const slides = normalizedPlan.slides.map((slide, index) => ({
+    page: index + 1,
+    type: cleanText(sourceSlides?.[index]?.type || slide.layout || (index === 0 ? "Cover" : "Content")),
+    title: slide.title,
+    goal: cleanText(sourceSlides?.[index]?.goal || slide.visualFocus || ""),
+    bullets: slide.body,
+    visualSuggestion: slide.visualFocus,
+    speakerNoteOptional: slide.speakerNote || "",
+  }));
+  return {
+    assistantText: cleanText(source.assistantText || "I updated the outline on the right."),
+    questions: Array.isArray(source.questions) ? source.questions.map(cleanText).filter(Boolean).slice(0, 3) : [],
+    ready: Boolean(source.ready || slides.length >= 3),
+    outline: {
+      title: normalizedPlan.title,
+      audience: normalizedPlan.audience,
+      language: cleanText(outline.language || payload.outputLanguage || "English"),
+      style: cleanText(outline.style || payload.style || "teaching"),
+      slideCount: slides.length,
+      goal: normalizedPlan.goal,
+      tone: normalizedPlan.tone,
+      slides,
+    },
+  };
+}
+
+async function createChatOutline(payload) {
+  const requestConfig = mergedIntegrationConfig(payload.integration);
+  if (!requestConfig || requestConfig.mode === LOCAL_MODE) throw new Error("Chat Creation requires an AI service. Configure an API key first.");
+  if (!requestConfig.apiKey) throw new Error("API key is required for Chat Creation.");
+  if (!requestConfig.endpoint) throw new Error("API endpoint is required for Chat Creation.");
+  const prompt = chatCreationPrompt(payload);
+  const config = { ...requestConfig, maxTokens: 6000 };
+  const text = requestConfig.mode === "workflow_api"
+    ? await callWorkflowTextApi(prompt, config, { task: "chat_creation_outline" })
+    : await callAiTextApi(prompt, config, "You are an expert presentation planning assistant. Return strict JSON only.");
+  let parsed;
+  try {
+    parsed = JSON.parse(extractJsonBlock(text));
+  } catch (error) {
+    throw new Error(`AI did not return valid outline JSON: ${String(error.message || error)}`);
+  }
+  return normalizeChatOutline(parsed, payload);
+}
+
+async function handleChatCreateOutline(request) {
+  const payload = await readJson(request);
+  const result = await createChatOutline(payload);
+  return json(result);
+}
+
 async function callAiApi(slides, config, style, customStyle = null) {
   const endpoint = normalizeChatEndpoint(config.endpoint);
   const prompt = deckPrompt(slides, style, customStyle);
@@ -2461,6 +2601,7 @@ async function handleApi(request, env) {
   if (request.method === "POST" && path === "/api/generate") return handleGenerate(request);
   if (request.method === "POST" && path === "/api/generate-ai-from-slides") return handleGenerateFromSlides(request);
   if (request.method === "POST" && path === "/api/ai-topic-plan") return handleTopicPlan(request);
+  if (request.method === "POST" && path === "/api/chat-create-outline") return handleChatCreateOutline(request);
   if (request.method === "POST" && path === "/api/generate-from-topic") return handleGenerateFromTopic(request);
   if (request.method === "POST" && path === "/api/chat-edit-patch") return handleChatEditPatch(request);
   const saveMatch = path.match(/^\/api\/jobs\/([^/]+)\/save-edited$/);
@@ -2496,6 +2637,15 @@ export default {
       }
       if (url.pathname === "/ai-generate.html" || url.pathname === "/ai-generate" || url.pathname === "/ai-create.html" || url.pathname === "/ai-create") {
         return freshAsset(env, request, "/ai-generate-live.html");
+      }
+      if (url.pathname === "/converter") {
+        return freshAsset(env, request, "/converter.html");
+      }
+      if (url.pathname === "/chat-create") {
+        return freshAsset(env, request, "/chat-create.html");
+      }
+      if (url.pathname === "/ai-settings") {
+        return freshAsset(env, request, "/ai-settings.html");
       }
       if (url.pathname === "/static/ai-generate.js") {
         return freshAsset(env, request, "/static/ai-generate-live.js");
