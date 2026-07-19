@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Settings - PPT HTML Studio</title>
+  <link rel="stylesheet" href="/static/home.css">
+  <link rel="stylesheet" href="/static/ai-settings.css">
+</head>
+<body>
+  <aside class="home-sidebar" aria-label="Main navigation">
+    <a class="home-brand" href="/">
+      <span class="brand-mark"></span>
+      <strong>PPT HTML Studio</strong>
+    </a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/converter.html">PPT to HTML</a>
+      <a href="/ai-generate.html">AI Create</a>
+      <a href="/chat-create.html">Chat Creation</a>
+      <a class="active" href="/ai-settings.html">AI Settings</a>
+      <a href="/converter.html#settings">Settings</a>
+    </nav>
+  </aside>
+
+  <main class="settings-main">
+    <section class="settings-hero">
+      <span class="eyebrow">Shared AI connection</span>
+      <h1>AI 配置</h1>
+      <p>只需要配置一次，PPT 转 HTML、AI Create 和对话创作会共用这份 API 设置。</p>
+    </section>
+
+    <form class="settings-card" id="aiSettingsForm">
+      <div class="form-grid">
+        <label>
+          <span>Provider</span>
+          <select id="provider">
+            <option value="openai">OpenAI Compatible</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="doubao_seed">Doubao Seed</option>
+            <option value="custom_ai">Custom AI API</option>
+            <option value="workflow">Custom Workflow</option>
+            <option value="dify">Dify Workflow</option>
+          </select>
+        </label>
+        <label>
+          <span>Model</span>
+          <input id="model" type="text" placeholder="gpt-4.1-mini">
+        </label>
+        <label class="wide">
+          <span>API Key</span>
+          <input id="apiKey" type="password" autocomplete="off" placeholder="Paste key once, then leave blank">
+        </label>
+      </div>
+
+      <div class="key-status" id="keyStatus">No saved key yet.</div>
+
+      <details class="advanced-settings">
+        <summary>Advanced connection settings</summary>
+        <div class="form-grid">
+          <label class="wide">
+            <span>Endpoint</span>
+            <input id="endpoint" type="url" placeholder="https://api.example.com/v1">
+          </label>
+          <label>
+            <span>Timeout seconds</span>
+            <input id="timeoutSec" type="number" min="60" max="600" value="300">
+          </label>
+          <label>
+            <span>API key header</span>
+            <select id="apiKeyHeader">
+              <option value="Authorization">Authorization</option>
+              <option value="X-API-Key">X-API-Key</option>
+              <option value="api-key">api-key</option>
+              <option value="none">No API key header</option>
+            </select>
+          </label>
+          <label>
+            <span>API key prefix</span>
+            <input id="apiKeyPrefix" type="text" placeholder="Bearer ">
+          </label>
+          <label>
+            <span>Workflow payload</span>
+            <select id="workflowPayload">
+              <option value="flat">Flat JSON</option>
+              <option value="input">{ "input": ... }</option>
+              <option value="dify">Dify blocking</option>
+            </select>
+          </label>
+          <label class="wide">
+            <span>Advanced headers</span>
+            <textarea id="customHeaders" rows="4" placeholder='{"X-Workflow-Token":"..."} or Header-Name: value'></textarea>
+          </label>
+        </div>
+      </details>
+
+      <div class="settings-actions">
+        <button class="primary-action" type="submit">Save</button>
+        <button class="secondary-button" id="testApi" type="button">Test API</button>
+        <a class="secondary-button" href="/">Back home</a>
+      </div>
+      <p class="status-line" id="settingsStatus"></p>
+    </form>
+  </main>
+
+  <script src="/static/ai-config.js"></script>
+  <script src="/static/ai-settings.js"></script>
+</body>
+</html>
