@@ -887,6 +887,15 @@ function maskedKey(value) {
 }
 
 function integrationForGeneration() {
+  const optimizationMode = document.getElementById("optimizationMode")?.value || "local";
+  if (optimizationMode === "ai" && window.PptAiConfig) {
+    const shared = window.PptAiConfig.loadAiConfig();
+    if (!window.PptAiConfig.hasValidAiConfig(shared)) {
+      throw new Error(state.language === "zh" ? "请先前往 AI 配置页面设置 API。" : "Please configure AI in AI Settings first.");
+    }
+    syncLegacyAiFields(shared);
+    return { ...shared, fallbackToLocal: true, timeoutSec: Math.max(300, Number(shared.timeoutSec || 300)) };
+  }
   const integration = collectIntegration(false, { allowClear: false });
   const savedKey = localApiKeyForCurrentProvider();
   if (integration.mode !== "local") {
@@ -895,6 +904,39 @@ function integrationForGeneration() {
     integration.fallbackToLocal = true;
   }
   return integration;
+}
+
+function syncLegacyAiFields(config = {}) {
+  const provider = window.PptAiConfig?.providerFromConfig?.(config) || config.provider || "custom_ai";
+  const preset = window.PptAiConfig?.PROVIDERS?.[provider] || {};
+  state.apiProvider = provider;
+  state.integration = { ...state.integration, ...preset, ...config, provider };
+  if (el("apiProvider")) el("apiProvider").value = provider === "dify" ? "dify" : provider;
+  if (el("apiMode")) el("apiMode").value = config.mode || preset.mode || "ai_api";
+  if (el("apiEndpoint")) el("apiEndpoint").value = config.endpoint || preset.endpoint || "";
+  if (el("apiModel")) el("apiModel").value = config.model || preset.model || "";
+  if (el("apiKeyHeader")) el("apiKeyHeader").value = config.apiKeyHeader || preset.apiKeyHeader || "Authorization";
+  if (el("apiKeyPrefix")) el("apiKeyPrefix").value = config.apiKeyPrefix ?? preset.apiKeyPrefix ?? "Bearer ";
+  if (el("customHeaders")) el("customHeaders").value = config.customHeaders || "";
+  if (el("workflowPayload")) el("workflowPayload").value = config.workflowPayload || preset.workflowPayload || "flat";
+  if (el("apiTimeout")) el("apiTimeout").value = Math.max(300, Number(config.timeoutSec || preset.timeoutSec || 300));
+}
+
+function refreshSharedAiStatus() {
+  const status = document.getElementById("sharedAiStatus");
+  const mode = document.getElementById("optimizationMode")?.value || "local";
+  if (!status || !window.PptAiConfig) return;
+  if (mode === "local") {
+    status.textContent = state.language === "zh" ? "当前使用本地规则生成。" : "Local rules are active.";
+    status.className = "shared-ai-status";
+    return;
+  }
+  const config = window.PptAiConfig.loadAiConfig();
+  const valid = window.PptAiConfig.hasValidAiConfig(config);
+  status.textContent = valid
+    ? `${state.language === "zh" ? "AI 已配置：" : "AI configured: "}${window.PptAiConfig.getAiConfigSummary(config)}`
+    : (state.language === "zh" ? "请先前往 AI 配置页面设置 API。" : "Please configure AI in AI Settings first.");
+  status.className = `shared-ai-status ${valid ? "ok" : "error"}`;
 }
 
 function isAiRecoverableError(message) {
@@ -3747,6 +3789,7 @@ function renderIntegration() {
       ? t("savedKey", { key: maskedKey(localKey) || state.integration.apiKeyMasked })
       : t("noSavedKeyPaste");
   setApiStatus(`${modeLabel}.${keyLabel}`, state.integration.mode === "local" ? "" : "ok");
+  refreshSharedAiStatus();
 }
 
 function inferApiProvider(integration) {
@@ -3806,6 +3849,22 @@ function setApiStatus(message, kind = "") {
 }
 
 async function saveIntegration(showSuccess = true, allowClear = true) {
+  if (document.getElementById("optimizationMode")?.value === "ai" && window.PptAiConfig) {
+    const shared = window.PptAiConfig.loadAiConfig();
+    if (!window.PptAiConfig.hasValidAiConfig(shared)) {
+      refreshSharedAiStatus();
+      throw new Error(state.language === "zh" ? "请先前往 AI 配置页面设置 API。" : "Please configure AI in AI Settings first.");
+    }
+    syncLegacyAiFields(shared);
+    try {
+      await window.PptAiConfig.syncAiConfig(shared);
+    } catch {
+      // The browser request still carries the config, so generation can continue.
+    }
+    refreshSharedAiStatus();
+    if (showSuccess) setApiStatus(state.language === "zh" ? "已使用统一 AI 配置。" : "Using shared AI settings.", "ok");
+    return state.integration;
+  }
   const integration = collectIntegration(true, { allowClear });
   const typedKey = el("apiKey").value.trim();
   if (typedKey && integration.mode !== "local") {
@@ -3943,6 +4002,11 @@ function bindEvents() {
   el("toggleStyles")?.addEventListener("click", () => {
     state.stylesExpanded = !state.stylesExpanded;
     renderStyles();
+  });
+  el("optimizationMode")?.addEventListener("change", () => {
+    refreshSharedAiStatus();
+    state.activeStep = Math.max(state.activeStep, 2);
+    renderSteps();
   });
   dropZone.addEventListener("click", (event) => {
     if (event.target.tagName !== "INPUT") fileInput.click();
