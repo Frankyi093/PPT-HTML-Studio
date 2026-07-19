@@ -2,6 +2,7 @@ const el = (id) => document.getElementById(id);
 
 function setStatus(message, kind = "") {
   const node = el("settingsStatus");
+  if (!node) return;
   node.textContent = message || "";
   node.className = `status-line ${kind}`;
 }
@@ -102,14 +103,18 @@ async function test() {
 
 async function init() {
   initInterfaceSettings();
-  const config = await window.PptAiConfig.loadRemoteAiConfig();
+  if (!window.PptAiConfig) {
+    setStatus("AI settings module did not load, but interface theme and language settings are available.", "error");
+    return;
+  }
+  const config = await window.PptAiConfig.loadRemoteAiConfig().catch(() => window.PptAiConfig.loadAiConfig());
   renderConfig(config);
-  el("provider").addEventListener("change", (event) => applyPreset(event.target.value, true));
-  el("aiSettingsForm").addEventListener("submit", (event) => {
+  el("provider")?.addEventListener("change", (event) => applyPreset(event.target.value, true));
+  el("aiSettingsForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
     save().catch((error) => setStatus(error.message, "error"));
   });
-  el("testApi").addEventListener("click", test);
+  el("testApi")?.addEventListener("click", test);
 }
 
 document.addEventListener("DOMContentLoaded", init);
