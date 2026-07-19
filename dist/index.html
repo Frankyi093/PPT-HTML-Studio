@@ -1,67 +1,68 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PPT HTML Studio</title>
+  <script src="/static/app-settings.js"></script>
   <link rel="stylesheet" href="/static/home.css">
 </head>
-<body>
+<body class="home-page">
   <aside class="home-sidebar" aria-label="Main navigation">
     <a class="home-brand" href="/">
       <span class="brand-mark"></span>
-      <strong>PPT HTML Studio</strong>
+      <strong data-i18n="productName">PPT HTML Studio</strong>
     </a>
     <nav>
-      <a class="active" href="/">Home</a>
-      <a href="/converter.html">PPT to HTML</a>
-      <a href="/ai-generate.html">AI Create</a>
-      <a href="/chat-create.html">Chat Creation</a>
-      <a href="/ai-settings.html">AI Settings</a>
-      <a href="/converter.html#settings">Settings</a>
+      <a class="active" href="/" data-i18n="home">首页</a>
+      <a href="/converter.html" data-i18n="converter">PPT 转 HTML</a>
+      <a href="/ai-generate.html" data-i18n="quickCreate">快速创建</a>
+      <a href="/chat-create.html" data-i18n="chatCreation">对话创作</a>
+      <a href="/settings.html" data-i18n="settings">设置</a>
     </nav>
   </aside>
 
   <main class="home-main">
     <section class="home-hero">
-      <span class="eyebrow">AI presentation workbench</span>
-      <h1>开始创建演示文稿</h1>
-      <p>导入 PPT、输入主题，或通过对话逐步构建你的演示内容。</p>
+      <span class="eyebrow" data-i18n="workbench">AI PRESENTATION WORKBENCH</span>
+      <h1 data-i18n="heroTitle">开始创建演示文稿</h1>
+      <p data-i18n="heroSubtitle">导入 PPT、输入主题，或通过对话逐步构建你的演示内容。</p>
     </section>
 
     <section class="entry-grid" aria-label="Product features">
       <article class="entry-card converter-card">
         <span class="tag">PPTX</span>
         <div class="card-icon">P</div>
-        <h2>PPT 转 HTML</h2>
-        <p>上传现有 PPT，转为可编辑、可分享、可下载的 HTML 演示。</p>
-        <a class="primary-action" href="/converter.html">进入转换</a>
+        <h2 data-i18n="converter">PPT 转 HTML</h2>
+        <p data-i18n="converterDesc">上传现有 PPT，转为可编辑、可分享、可下载的 HTML 演示。</p>
+        <a class="primary-action" href="/converter.html" data-i18n="enterConverter">进入转换</a>
       </article>
 
       <article class="entry-card ai-card">
         <span class="tag">Topic</span>
         <div class="card-icon">AI</div>
-        <h2>AI Create</h2>
-        <p>输入主题和需求，AI 自动规划大纲、风格和页面布局。</p>
-        <a class="primary-action" href="/ai-generate.html">开始生成</a>
+        <h2 data-i18n="quickCreate">快速创建</h2>
+        <p data-i18n="quickCreateDesc">输入主题和需求，AI 自动规划大纲、风格和页面布局。</p>
+        <a class="primary-action" href="/ai-generate.html" data-i18n="startCreate">开始生成</a>
       </article>
 
       <article class="entry-card chat-card">
         <span class="tag">Explore</span>
         <div class="card-icon">C</div>
-        <h2>对话创作</h2>
-        <p>先和 AI 聊清楚需求，逐步确认大纲，再一键生成 PPT。</p>
-        <a class="primary-action" href="/chat-create.html">开始对话</a>
+        <h2 data-i18n="chatCreation">对话创作</h2>
+        <p data-i18n="chatDesc">先和 AI 聊清楚需求，逐步确认大纲，再一键生成 PPT。</p>
+        <a class="primary-action" href="/chat-create.html" data-i18n="startChat">开始对话</a>
       </article>
     </section>
 
     <section class="home-note">
       <div>
-        <strong>统一 AI 配置</strong>
-        <p>三个功能共用同一份 API 设置，只需要配置一次。</p>
+        <strong data-i18n="sharedAi">统一 AI 配置</strong>
+        <p data-i18n="sharedAiDesc">三个功能共用同一份 API 设置，只需要配置一次。</p>
       </div>
-      <a class="secondary-action" href="/ai-settings.html">配置 AI</a>
+      <a class="secondary-action" href="/settings.html" data-i18n="configureAi">配置 AI</a>
     </section>
   </main>
 </body>
 </html>
+
