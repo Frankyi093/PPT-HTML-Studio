@@ -1,5 +1,7 @@
 const API_SECRET_STORAGE_KEY = "ppt-html-studio-api-secret-v2";
 const THEME_STORAGE_KEY = "ppt-html-studio-theme";
+const PREVIEW_DESKTOP_WIDTH = 1280;
+const PREVIEW_DESKTOP_HEIGHT = 720;
 
 const styles = [
   ["teaching", "Teaching Blue"],
@@ -477,6 +479,40 @@ function createInlineHtmlUrl(html) {
   return url;
 }
 
+function syncPreviewScale() {
+  const frame = el("previewFrame");
+  const shell = frame?.closest(".preview-frame");
+  if (!frame || !shell) return;
+  const rect = shell.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const scale = Math.min(rect.width / PREVIEW_DESKTOP_WIDTH, rect.height / PREVIEW_DESKTOP_HEIGHT, 1);
+  shell.style.setProperty("--preview-scale", String(Math.max(0.18, scale)));
+}
+
+function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  state.objectUrls.push(url);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function refreshJobHtmlUrls(pagedHtml, scrollHtml, reloadPreview = false) {
+  if (!state.job) return;
+  state.job.inlinePreviewHtmlCache = pagedHtml;
+  state.job.inlineScrollHtmlCache = scrollHtml;
+  state.job.previewUrl = createInlineHtmlUrl(pagedHtml);
+  state.job.scrollUrl = createInlineHtmlUrl(scrollHtml);
+  if (reloadPreview) {
+    el("previewFrame").src = state.job.previewUrl;
+    el("previewEmpty").classList.add("hidden");
+  }
+}
+
 function hydrateJob(job) {
   const output = { ...job };
   if (output.inlinePreviewHtml) {
@@ -494,11 +530,14 @@ function hydrateJob(job) {
 
 function renderJob(job) {
   state.job = hydrateJob(job);
+  state.editing = false;
   el("previewFrame").src = state.job.previewUrl;
   el("previewEmpty").classList.add("hidden");
-  ["editHtml", "saveEditedHtml", "openScrollHtml", "downloadZip"].forEach((id) => {
+  ["openPreviewHtml", "editHtml", "saveEditedHtml", "openScrollHtml", "downloadZip"].forEach((id) => {
     el(id).disabled = false;
   });
+  el("editHtml").textContent = "Edit HTML";
+  requestAnimationFrame(syncPreviewScale);
   updateChatSendState();
   setChatStatus("Ready. Choose a scope and describe an edit.", "ok");
 }
@@ -543,31 +582,48 @@ async function captureEditedHtml() {
   };
 }
 
-async function saveEditedHtml() {
+async function persistEditedHtml({ reloadPreview = false } = {}) {
   if (!state.job) return;
   const captured = await captureEditedHtml();
-  const response = await fetch(`/api/jobs/${state.job.id}/save-edited`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(captured),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || data.error || "Could not save edited HTML.");
-  state.job.inlinePreviewHtmlCache = captured.pagedHtml;
-  state.job.inlineScrollHtmlCache = captured.scrollHtml;
+  refreshJobHtmlUrls(captured.pagedHtml, captured.scrollHtml, reloadPreview);
+  try {
+    const response = await fetch(`/api/jobs/${state.job.id}/save-edited`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(captured),
+    });
+    if (response.ok) return { ...captured, savedRemote: true };
+  } catch {
+    // Browser-side edited HTML is still kept and can be downloaded.
+  }
+  return { ...captured, savedRemote: false };
+}
+
+async function saveEditedHtml() {
+  if (!state.job) return;
+  const captured = await persistEditedHtml();
   setStatus("Edits saved. Download ZIP will include the latest HTML.", "ok");
+  return captured;
 }
 
 async function downloadZip() {
   if (!state.job) return;
   try {
-    await saveEditedHtml().catch(() => {});
-    const link = document.createElement("a");
-    link.href = `/api/jobs/${state.job.id}/download`;
-    link.download = `${state.job.id}.zip`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    const captured = await persistEditedHtml();
+    if (window.JSZip) {
+      const zip = new window.JSZip();
+      zip.file("index.html", captured.pagedHtml);
+      zip.file("index-scroll.html", captured.scrollHtml);
+      zip.file("index-single-file.html", captured.pagedHtml);
+      zip.file("index-scroll-single-file.html", captured.scrollHtml);
+      zip.file("README-open.txt", "Open index.html for paged navigation, or index-scroll.html for continuous scrolling.\nImages are embedded in the HTML when available, so edited downloads keep the latest content.\n");
+      const blob = await zip.generateAsync({ type: "blob" });
+      triggerBlobDownload(blob, `${state.job.id || "ai-ppt-html"}.zip`);
+      setStatus("Downloaded ZIP with the latest edited HTML.", "ok");
+      return;
+    }
+    triggerBlobDownload(new Blob([captured.pagedHtml], { type: "text/html;charset=utf-8" }), "index.html");
+    setStatus("Downloaded the latest edited HTML. ZIP runtime was unavailable.", "ok");
   } catch (error) {
     setStatus(error.message || "Could not download ZIP.", "error");
   }
@@ -582,6 +638,12 @@ function toggleEdit() {
   state.editing = !state.editing;
   win.toggleEdit(state.editing);
   el("editHtml").textContent = state.editing ? "Stop Editing" : "Edit HTML";
+  requestAnimationFrame(syncPreviewScale);
+}
+
+function openPreview() {
+  if (!state.job?.previewUrl) return;
+  window.open(state.job.previewUrl, "_blank", "noopener,noreferrer");
 }
 
 function openScroll() {
@@ -737,7 +799,17 @@ function init() {
   el("editHtml").addEventListener("click", toggleEdit);
   el("saveEditedHtml").addEventListener("click", () => saveEditedHtml().catch((error) => setStatus(error.message, "error")));
   el("downloadZip").addEventListener("click", downloadZip);
+  el("openPreviewHtml").addEventListener("click", openPreview);
   el("openScrollHtml").addEventListener("click", openScroll);
+  el("previewFrame").addEventListener("load", () => {
+    requestAnimationFrame(syncPreviewScale);
+    setTimeout(syncPreviewScale, 80);
+  });
+  window.addEventListener("resize", syncPreviewScale);
+  if (window.ResizeObserver) {
+    const shell = el("previewFrame").closest(".preview-frame");
+    if (shell) new ResizeObserver(syncPreviewScale).observe(shell);
+  }
   el("sendChatEdit").addEventListener("click", sendChatEdit);
   el("chatScope").addEventListener("change", (event) => setChatStatus(`${event.target.options[event.target.selectedIndex].text} mode`));
   el("chatInput").addEventListener("keydown", (event) => {
