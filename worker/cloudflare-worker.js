@@ -1190,7 +1190,7 @@ function deckPrompt(slides, style, customStyle = null) {
     imageCount: slide.images.length,
     hasImages: slide.images.length > 0,
   }));
-  return `Generate a complete standalone editable HTML slide deck in English from this PPT JSON.
+  return `Generate a complete standalone editable HTML slide deck from this slide JSON.
 
 Style direction:
 ${stylePrompt(style, customStyle)}
@@ -1212,7 +1212,7 @@ Non-negotiable output rules:
 - Use one global CSS design system: CSS variables for background/text/primary/accent/panel, one title font, one body font, one spacing scale, one media treatment. Apply it consistently to every slide.
 - Slide titles must be visually dominant and complete phrases. Cover/title slides must center the title group both horizontally and vertically. Normal content slide titles should sit in a stable title band with enough top margin, not glued to the edge.
 - Use a clean, elegant, modern education/workshop layout: generous whitespace, simple alignment, readable hierarchy, and no crowded corners. Each page should have one clear visual focus.
-- Preserve the original PPT's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
+- Preserve the source content's intent and rough layout type. Do not convert every slide into an outline, numbered list, or card grid.
 - Choose slide layouts conservatively:
   * cover/title slide: centered title group, optional subtitle/author.
   * agenda/outline slide: numbered or tiled list only when the title is Agenda, Outline, Contents, Schedule, Syllabus, Today, or Overview.
@@ -1241,7 +1241,7 @@ Non-negotiable output rules:
 - Do not write @media rules that turn split layouts into a single column on small screens. Keep the same 16:9 composition and let the platform scale the stage.
 - Before returning, silently audit the HTML: exact slide count, all titles are complete phrases, all body text is horizontal, all images use data-image-slot placeholders, no scrollable text boxes, no low contrast, no content outside the 16:9 canvas.
 
-PPT JSON:
+Slide JSON:
 ${JSON.stringify({ style, customStyle, slideCount: slides.length, slides: compactSlides }).slice(0, 65000)}`;
 }
 
@@ -1286,6 +1286,189 @@ function extractTextFromApiData(data) {
     || data.text
     || data.result
     || "";
+}
+
+function extractJsonBlock(text) {
+  const raw = String(text || "").trim();
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
+  const candidate = fenced || raw;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start >= 0 && end > start) return candidate.slice(start, end + 1);
+  return candidate;
+}
+
+function normalizeTopicPlan(plan, fallback = {}) {
+  const input = plan && typeof plan === "object" ? plan : {};
+  const rawSlides = Array.isArray(input.slides) ? input.slides : [];
+  const slides = rawSlides.map((slide, index) => {
+    const body = Array.isArray(slide?.body)
+      ? slide.body.map(cleanText).filter(isUsefulText).slice(0, 8)
+      : String(slide?.body || "").split(/\n+/).map(cleanText).filter(isUsefulText).slice(0, 8);
+    const titleBody = slideTitleAndBody([slide?.title || "", ...body]);
+    return {
+      page: index + 1,
+      title: titleBody.title || `Key Idea ${index + 1}`,
+      body: titleBody.body.length ? titleBody.body : body,
+      layout: cleanText(slide?.layout || "balanced"),
+      visualFocus: cleanText(slide?.visualFocus || slide?.visual || ""),
+      speakerNote: cleanText(slide?.speakerNote || ""),
+      images: [],
+    };
+  }).filter((slide) => slide.title || slide.body.length);
+
+  if (!slides.length) {
+    throw new Error("The AI plan did not include usable slides.");
+  }
+
+  return {
+    title: cleanText(input.title || fallback.topic || "AI Generated Presentation"),
+    subtitle: cleanText(input.subtitle || ""),
+    audience: cleanText(input.audience || fallback.audience || ""),
+    goal: cleanText(input.goal || fallback.requirements || ""),
+    tone: cleanText(input.tone || "clear, modern, educational"),
+    palette: input.palette && typeof input.palette === "object" ? input.palette : {},
+    typography: input.typography && typeof input.typography === "object" ? input.typography : {},
+    layoutRules: Array.isArray(input.layoutRules)
+      ? input.layoutRules.map(cleanText).filter(Boolean).slice(0, 8)
+      : [],
+    slides,
+  };
+}
+
+function topicPlanningPrompt(args) {
+  const style = args.style || "teaching";
+  const slideCount = Math.max(3, Math.min(30, Number(args.slideCount || 8)));
+  const outputLanguage = args.outputLanguage === "zh" ? "Simplified Chinese" : "English";
+  return `You are an expert presentation planner for PPT HTML Studio.
+
+Create a complete slide-deck plan from the user's topic and requirements.
+Return STRICT JSON only. Do not include markdown.
+
+Topic:
+${args.topic}
+
+Audience:
+${args.audience || "general audience"}
+
+User requirements:
+${args.requirements || "No extra requirements."}
+
+Style:
+${stylePrompt(style, args.customStyle || null)}
+
+Required slide count: ${slideCount}
+Output language for generated deck content: ${outputLanguage}
+
+JSON schema:
+{
+  "title": "complete deck title",
+  "subtitle": "optional subtitle",
+  "audience": "target audience",
+  "goal": "what this deck helps the audience understand or do",
+  "tone": "visual and writing tone",
+  "palette": {
+    "background": "#hex",
+    "text": "#hex",
+    "primary": "#hex",
+    "accent": "#hex",
+    "panel": "#hex"
+  },
+  "typography": {
+    "title": "font direction",
+    "body": "font direction"
+  },
+  "layoutRules": [
+    "short concrete layout rule"
+  ],
+  "slides": [
+    {
+      "title": "complete phrase, never a single word unless it is a proper section title",
+      "layout": "cover | agenda | statement | two-column | comparison | process | image-focus | exercise | closing",
+      "visualFocus": "one core visual focus for this slide",
+      "body": ["complete sentence or concise point", "complete sentence or concise point"],
+      "speakerNote": "optional teacher/presenter note"
+    }
+  ]
+}
+
+Planning rules:
+- The first slide must be a centered cover/title slide.
+- Include an agenda slide only when it helps the deck. Do not force a table of contents for very short decks.
+- Each slide expresses one core idea.
+- Do not split normal sentences into one-word fragments.
+- Keep body points short but complete.
+- Plan layouts with clear 16:9 safe margins, large centered title pages, readable text, and no overflow.
+- Choose palette colors with strong contrast between text and background.
+- Match the selected style; different styles should produce visibly different palette, typography and layout rules.`;
+}
+
+async function callAiTextApi(prompt, config, system = "Return the requested content only.") {
+  const endpoint = normalizeChatEndpoint(config.endpoint);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: integrationHeaders(config),
+    signal: AbortSignal.timeout(Math.max(120, Number(config.timeoutSec || 300)) * 1000),
+    body: JSON.stringify({
+      model: config.model || "gpt-4.1-mini",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.18,
+      max_tokens: Number(config.maxTokens || 8000),
+    }),
+  });
+  const data = await readApiResponse(response);
+  if (!response.ok) throw new Error(data.message || data.error?.message || `API HTTP ${response.status}`);
+  return extractTextFromApiData(data);
+}
+
+async function callWorkflowTextApi(prompt, config, extra = {}) {
+  const endpoint = String(config.endpoint || "").trim();
+  const isDify = config.workflowPayload === "dify" || /\/v1\/workflows\/run|\/workflows\/run/i.test(endpoint);
+  const body = isDify
+    ? { inputs: { prompt, ...extra }, response_mode: "blocking", user: "ppt-html-studio" }
+    : config.workflowPayload === "input"
+      ? { input: { prompt, ...extra } }
+      : { prompt, ...extra };
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: integrationHeaders(config),
+    signal: AbortSignal.timeout(Math.max(120, Number(config.timeoutSec || 300)) * 1000),
+    body: JSON.stringify(body),
+  });
+  const data = await readApiResponse(response);
+  if (!response.ok) throw new Error(data.message || data.error?.message || `Workflow HTTP ${response.status}`);
+  return extractTextFromApiData(data);
+}
+
+async function createTopicPlan(payload) {
+  const requestConfig = mergedIntegrationConfig(payload.integration);
+  if (!requestConfig || requestConfig.mode === LOCAL_MODE) throw new Error("AI topic generation requires an AI service. Configure an API key first.");
+  if (!requestConfig.apiKey) throw new Error("API key is required for AI topic generation.");
+  if (!requestConfig.endpoint) throw new Error("API endpoint is required for AI topic generation.");
+  const style = payload.style || "teaching";
+  const customStyle = normalizeCustomStyle(payload.customStyle);
+  const prompt = topicPlanningPrompt({
+    topic: cleanText(payload.topic || ""),
+    audience: cleanText(payload.audience || ""),
+    requirements: cleanText(payload.requirements || ""),
+    slideCount: payload.slideCount,
+    outputLanguage: payload.outputLanguage || "en",
+    style,
+    customStyle,
+  });
+  const text = requestConfig.mode === "workflow_api"
+    ? await callWorkflowTextApi(prompt, requestConfig, { task: "topic_plan", style })
+    : await callAiTextApi(prompt, requestConfig, "You plan presentation decks and return strict JSON only.");
+  let parsed;
+  try {
+    parsed = JSON.parse(extractJsonBlock(text));
+  } catch (error) {
+    throw new Error(`AI did not return valid planning JSON: ${String(error.message || error)}`);
+  }
+  return normalizeTopicPlan(parsed, payload);
 }
 
 async function callAiApi(slides, config, style, customStyle = null) {
@@ -1581,6 +1764,109 @@ async function createJobFromSlides(payload) {
   return job;
 }
 
+async function createJobFromTopic(payload) {
+  const style = payload.style || "teaching";
+  const customStyle = normalizeCustomStyle(payload.customStyle);
+  const requestConfig = mergedIntegrationConfig(payload.integration);
+  const plan = normalizeTopicPlan(payload.plan || await createTopicPlan(payload), payload);
+  const slides = plan.slides.map((slide, index) => ({
+    page: index + 1,
+    title: cleanText(slide.title || `Key Idea ${index + 1}`),
+    body: (Array.isArray(slide.body) ? slide.body : [])
+      .map(cleanText)
+      .filter(isUsefulText)
+      .slice(0, 10),
+    images: [],
+    layout: cleanText(slide.layout || "balanced"),
+    visualFocus: cleanText(slide.visualFocus || ""),
+  }));
+  let aiStatus = { mode: requestConfig.mode || "local", used: false, topicGenerated: true, planned: true };
+  if (!requestConfig || requestConfig.mode === LOCAL_MODE) {
+    throw new Error("AI intelligent generation requires an AI service. Configure an API key first.");
+  }
+  if (!requestConfig.apiKey) throw new Error("API key is required for AI intelligent generation.");
+  if (!requestConfig.endpoint) throw new Error("API endpoint is required for AI intelligent generation.");
+
+  let pagedHtml = "";
+  try {
+    const generationCustomStyle = customStyle || normalizeCustomStyle({
+      id: "custom-topic-plan",
+      name: `${plan.title} visual plan`,
+      colors: {
+        background: plan.palette?.background || "#f8fbff",
+        text: plan.palette?.text || "#10203f",
+        primary: plan.palette?.primary || "#2563eb",
+        accent: plan.palette?.accent || "#38bdf8",
+        panel: plan.palette?.panel || "#ffffff",
+      },
+      typography: {
+        titleFont: plan.typography?.title || "Inter, Arial, sans-serif",
+        bodyFont: plan.typography?.body || "Inter, Arial, sans-serif",
+      },
+      layout: "balanced",
+      promptAddon: [
+        `Deck planning tone: ${plan.tone}`,
+        `Deck goal: ${plan.goal}`,
+        ...(plan.layoutRules || []),
+      ].filter(Boolean).join("\n"),
+      localRules: "Use the AI-generated planning contract for palette, typography, spacing, and layout.",
+    });
+    pagedHtml = await maybeGenerateAiHtml(slides, requestConfig, style, generationCustomStyle);
+    aiStatus = {
+      mode: requestConfig.mode,
+      provider: requestConfig.endpoint,
+      used: true,
+      resultType: "html",
+      topicGenerated: true,
+      planned: true,
+    };
+  } catch (error) {
+    throw new Error(`AI intelligent generation failed: ${String(error.message || error)}`);
+  }
+
+  validateAiHtmlCompleteness(pagedHtml, slides);
+  pagedHtml = injectEditorRuntime(markCoverSlide(pagedHtml));
+  const scrollHtml = makeScrollHtml(pagedHtml);
+  const safeTitle = cleanText(plan.title || payload.topic || "AI Generated Presentation").slice(0, 80) || "AI Generated Presentation";
+  const id = `AI-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const job = {
+    id,
+    fileName: `${safeTitle}.html`,
+    slides: slides.length,
+    style,
+    status: "completed",
+    updatedAt: new Date().toISOString(),
+    previewUrl: `/outputs/${id}/index.html`,
+    scrollUrl: `/outputs/${id}/index-scroll.html`,
+    downloadUrl: `/api/jobs/${id}/download`,
+    inlinePreviewHtml: pagedHtml,
+    inlineScrollHtml: scrollHtml,
+    inlinePreviewMode: "blob",
+    aiStatus,
+    topicPlan: plan,
+    share: {
+      status: "ready",
+      recommendation: "Ready to share. This deck was generated from a topic and is packaged as self-contained HTML.",
+      totalImages: 0,
+      embeddedImages: 0,
+      missingImages: 0,
+      riskyPaths: 0,
+      externalImages: 0,
+      zipPackageUrl: `/api/jobs/${id}/download`,
+      singleFileUrl: `/outputs/${id}/index-single-file.html`,
+      scrollSingleFileUrl: `/outputs/${id}/index-scroll-single-file.html`,
+      reportUrl: `/outputs/${id}/share-report.json`,
+    },
+  };
+  jobs.set(id, job);
+  jobList.unshift(job);
+  while (jobList.length > 5) {
+    const removed = jobList.pop();
+    if (removed) jobs.delete(removed.id);
+  }
+  return job;
+}
+
 async function handleGenerate(request) {
   const payload = await readJson(request);
   const job = await createJob(payload);
@@ -1590,6 +1876,18 @@ async function handleGenerate(request) {
 async function handleGenerateFromSlides(request) {
   const payload = await readJson(request);
   const job = await createJobFromSlides(payload);
+  return json({ job });
+}
+
+async function handleTopicPlan(request) {
+  const payload = await readJson(request);
+  const plan = await createTopicPlan(payload);
+  return json({ plan });
+}
+
+async function handleGenerateFromTopic(request) {
+  const payload = await readJson(request);
+  const job = await createJobFromTopic(payload);
   return json({ job });
 }
 
@@ -1657,6 +1955,8 @@ async function handleApi(request, env) {
   if (request.method === "POST" && path === "/api/integration/test") return testIntegration();
   if (request.method === "POST" && path === "/api/generate") return handleGenerate(request);
   if (request.method === "POST" && path === "/api/generate-ai-from-slides") return handleGenerateFromSlides(request);
+  if (request.method === "POST" && path === "/api/ai-topic-plan") return handleTopicPlan(request);
+  if (request.method === "POST" && path === "/api/generate-from-topic") return handleGenerateFromTopic(request);
   const saveMatch = path.match(/^\/api\/jobs\/([^/]+)\/save-edited$/);
   if (request.method === "POST" && saveMatch) return saveEdited(request, saveMatch[1]);
   const shareMatch = path.match(/^\/api\/jobs\/([^/]+)\/share$/);
