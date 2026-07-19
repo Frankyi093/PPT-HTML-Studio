@@ -1,7 +1,3 @@
-body {
-  grid-template-columns: 270px minmax(0, 1fr);
-}
-
 .settings-main {
   width: min(980px, 100%);
   padding: clamp(32px, 6vw, 72px);
@@ -16,11 +12,26 @@ body {
 }
 
 .settings-card {
+  margin-bottom: 22px;
   padding: 34px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--home-line);
   border-radius: 26px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
+  background: var(--home-panel);
+  box-shadow: var(--home-shadow);
+}
+
+.settings-section-head {
+  margin-bottom: 22px;
+}
+
+.settings-section-head p {
+  margin: 10px 0 0;
+  color: var(--home-muted);
+}
+
+.eyebrow.compact {
+  padding: 7px 13px;
+  font-size: 13px;
 }
 
 .form-grid {
@@ -32,7 +43,7 @@ body {
 label {
   display: grid;
   gap: 8px;
-  color: var(--muted);
+  color: var(--home-muted);
   font-weight: 800;
 }
 
@@ -45,11 +56,11 @@ select,
 textarea {
   width: 100%;
   min-height: 54px;
-  border: 1px solid #d8d0bd;
+  border: 1px solid var(--home-line);
   border-radius: 16px;
   padding: 0 18px;
-  background: #fffefa;
-  color: var(--ink);
+  background: var(--home-panel-strong);
+  color: var(--home-ink);
   font: inherit;
   font-size: 18px;
   outline: none;
@@ -65,22 +76,22 @@ textarea {
   margin: 18px 0 10px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: #eef6e8;
-  color: #4a6040;
+  background: var(--home-soft);
+  color: var(--home-primary);
   font-weight: 750;
 }
 
 .advanced-settings {
   margin-top: 18px;
-  border: 1px solid #e1dac8;
+  border: 1px solid var(--home-line);
   border-radius: 18px;
   padding: 16px;
-  background: #fbf7ed;
+  background: var(--home-panel-strong);
 }
 
 .advanced-settings summary {
   cursor: pointer;
-  color: var(--green);
+  color: var(--home-primary);
   font-weight: 900;
 }
 
@@ -101,10 +112,10 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 0 24px;
-  border: 1px solid #d8d0bd;
+  border: 1px solid var(--home-line);
   border-radius: 14px;
-  background: #fffefa;
-  color: var(--green);
+  background: var(--home-panel-strong);
+  color: var(--home-primary);
   text-decoration: none;
   font: inherit;
   font-weight: 850;
@@ -114,7 +125,7 @@ textarea {
 .status-line {
   min-height: 28px;
   margin: 18px 0 0;
-  color: var(--muted);
+  color: var(--home-muted);
   font-weight: 750;
 }
 
