@@ -2647,7 +2647,7 @@ export default {
       if (url.pathname === "/chat-create" || url.pathname === "/chat-create.html") {
         return freshAsset(env, request, "/chat-create.html");
       }
-      if (url.pathname === "/ai-settings" || url.pathname === "/ai-settings.html") {
+      if (url.pathname === "/ai-settings" || url.pathname === "/ai-settings.html" || url.pathname === "/settings" || url.pathname === "/settings.html") {
         return freshAsset(env, request, "/ai-settings.html");
       }
       if (url.pathname === "/static/ai-generate.js") {
