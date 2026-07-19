@@ -99,6 +99,10 @@ const state = {
   busy: false,
   editing: false,
   theme: localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light",
+  chat: {
+    messages: [],
+    busy: false,
+  },
 };
 
 const el = (id) => document.getElementById(id);
@@ -109,12 +113,25 @@ function setStatus(message, kind = "") {
   node.className = `status-line ${kind}`;
 }
 
+function setChatStatus(message, kind = "") {
+  const node = el("chatStatus");
+  if (!node) return;
+  node.textContent = message || "";
+  node.className = kind || "";
+}
+
+function updateChatSendState() {
+  const button = el("sendChatEdit");
+  if (button) button.disabled = state.busy || state.chat.busy || !state.job;
+}
+
 function setBusy(value, message = "") {
   state.busy = Boolean(value);
   ["planButton", "generateButton", "saveApi"].forEach((id) => {
     const node = el(id);
     if (node) node.disabled = state.busy || (id === "generateButton" && !state.plan);
   });
+  updateChatSendState();
   el("generationOverlay").classList.toggle("hidden", !value);
   if (message) el("generationMessage").textContent = message;
 }
@@ -482,6 +499,8 @@ function renderJob(job) {
   ["editHtml", "saveEditedHtml", "openScrollHtml", "downloadZip"].forEach((id) => {
     el(id).disabled = false;
   });
+  updateChatSendState();
+  setChatStatus("Ready. Choose a scope and describe an edit.", "ok");
 }
 
 async function generateHtml() {
@@ -570,6 +589,113 @@ function openScroll() {
   window.open(state.job.scrollUrl, "_blank", "noopener,noreferrer");
 }
 
+function renderChatMessages() {
+  const box = el("chatMessages");
+  if (!box) return;
+  if (!state.chat.messages.length) {
+    box.innerHTML = '<div class="chat-empty">No chat messages yet. Describe the edit you want, then apply the patch.</div>';
+    return;
+  }
+  box.innerHTML = state.chat.messages
+    .map((message) => `<div class="chat-message ${message.role}">${String(message.content || "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[char]))}</div>`)
+    .join("");
+  box.scrollTop = box.scrollHeight;
+}
+
+function pushChatMessage(role, content) {
+  state.chat.messages.push({ role, content });
+  renderChatMessages();
+}
+
+function currentPreviewContext(scope) {
+  const win = previewWindow();
+  if (!win) throw new Error("Preview is not ready yet.");
+  if (typeof win.getPptPatchContext === "function") {
+    return win.getPptPatchContext(scope);
+  }
+  const doc = win.document;
+  const slides = Array.from(doc.querySelectorAll(".slide, section, .ai-slide, [data-slide-page]"));
+  const active = doc.querySelector(".ppt-active-slide, .slide.active") || slides[0] || doc.body;
+  const selected = doc.querySelector(".selected-image") || doc.activeElement;
+  return {
+    scope,
+    currentSlide: Math.max(1, slides.indexOf(active) + 1),
+    slideCount: slides.length || 1,
+    currentSlideText: active.innerText?.slice(0, 2800) || "",
+    currentSlideHtml: active.outerHTML?.slice(0, 8000) || "",
+    selectedText: selected && selected !== doc.body ? selected.innerText?.slice(0, 1000) || "" : "",
+    selectedHtml: selected && selected !== doc.body ? selected.outerHTML?.slice(0, 2200) || "" : "",
+  };
+}
+
+function patchOperationSummary(patch) {
+  const operations = Array.isArray(patch?.operations) ? patch.operations : [];
+  const names = operations.map((operation) => operation.type).filter(Boolean);
+  if (!names.length) return patch?.summary || "Patch applied.";
+  return `${patch?.summary || "Patch applied."}\nOperations: ${names.join(", ")}`;
+}
+
+async function sendChatEdit() {
+  if (!state.job) {
+    setChatStatus("Generate HTML first, then use Chat Edit.", "error");
+    return;
+  }
+  const instruction = el("chatInput").value.trim();
+  if (!instruction) {
+    setChatStatus("Please describe what to change.", "error");
+    return;
+  }
+  const scope = el("chatScope").value;
+  let context;
+  try {
+    context = currentPreviewContext(scope);
+  } catch (error) {
+    setChatStatus(error.message || "Could not read preview context.", "error");
+    return;
+  }
+  try {
+    state.chat.busy = true;
+    updateChatSendState();
+    setChatStatus("Asking AI for a patch...");
+    pushChatMessage("user", instruction);
+    el("chatInput").value = "";
+    const integration = await saveIntegration();
+    const response = await fetch("/api/chat-edit-patch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        instruction,
+        scope,
+        style: el("styleSelect").value,
+        plan: editableTextToPlan(el("planText").value, state.plan),
+        context,
+        integration,
+      }),
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(data.message || data.error || "Chat Edit failed.");
+    const patch = data.patch || data;
+    const win = previewWindow();
+    if (!win?.applyPptPatch) throw new Error("The preview runtime cannot apply patches yet.");
+    const result = win.applyPptPatch(patch);
+    pushChatMessage("assistant", patchOperationSummary(patch));
+    setChatStatus(`Applied ${result?.applied ?? patch.operations?.length ?? 0} patch operation(s).`, "ok");
+    await saveEditedHtml().catch(() => {});
+  } catch (error) {
+    pushChatMessage("assistant", `Could not apply the edit: ${error.message || error}`);
+    setChatStatus(error.message || "Chat Edit failed.", "error");
+  } finally {
+    state.chat.busy = false;
+    updateChatSendState();
+  }
+}
+
 function applyTheme(theme) {
   state.theme = theme === "dark" ? "dark" : "light";
   document.documentElement.dataset.theme = state.theme;
@@ -612,9 +738,21 @@ function init() {
   el("saveEditedHtml").addEventListener("click", () => saveEditedHtml().catch((error) => setStatus(error.message, "error")));
   el("downloadZip").addEventListener("click", downloadZip);
   el("openScrollHtml").addEventListener("click", openScroll);
+  el("sendChatEdit").addEventListener("click", sendChatEdit);
+  el("chatScope").addEventListener("change", (event) => setChatStatus(`${event.target.options[event.target.selectedIndex].text} mode`));
+  el("chatInput").addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") sendChatEdit();
+  });
+  document.querySelectorAll("[data-chat-prompt]").forEach((button) => {
+    button.addEventListener("click", () => {
+      el("chatInput").value = button.dataset.chatPrompt || "";
+      el("chatInput").focus();
+    });
+  });
   el("themeToggle").addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark"));
   el("loadSample").addEventListener("click", loadSample);
   el("closeGenerationOverlay").addEventListener("click", () => el("generationOverlay").classList.add("hidden"));
+  updateChatSendState();
 }
 
 document.addEventListener("DOMContentLoaded", init);
