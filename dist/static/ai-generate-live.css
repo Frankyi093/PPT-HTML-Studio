@@ -253,7 +253,7 @@ html[data-theme="dark"] .plan-generate-row {
 .preview-chat-layout {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(720px, 1fr) minmax(320px, 390px);
   gap: 22px;
   align-items: stretch;
 }
@@ -274,9 +274,9 @@ html[data-theme="dark"] .plan-generate-row {
 
 .chat-edit-panel {
   display: grid;
-  grid-template-rows: auto auto auto minmax(180px, auto) auto;
+  grid-template-rows: auto auto auto minmax(220px, 1fr) auto;
   gap: 16px;
-  min-height: auto;
+  min-height: clamp(560px, 76vh, 900px);
 }
 
 .chat-mode-tabs {
