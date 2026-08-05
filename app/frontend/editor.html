@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HTML 编辑器 · PPT HTML Studio</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/deck-workbench.css">
+  <style>
+    body{margin:0;background:#eef2f7;color:#14213d;font-family:Inter,Arial,sans-serif}
+    .import-shell{max-width:1600px;margin:0 auto;padding:24px}
+    .import-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 10px 30px #14213d18}
+    .import-toolbar h1{font-size:20px;margin:0 18px 0 0}.import-toolbar button,.import-toolbar label{border:1px solid #c6d0df;border-radius:10px;background:#fff;padding:10px 16px;font-weight:700;cursor:pointer}.import-toolbar .primary{background:#4263da;color:#fff;border-color:#4263da}.import-status{color:#66758d;min-height:1.3em}.preview-frame{position:relative;margin-top:18px;min-height:calc(100vh - 150px);background:#dfe6ef;border-radius:16px;overflow:hidden;display:flex;align-items:center;justify-content:center}.preview-frame iframe{width:100%;height:calc(100vh - 150px);border:0;background:#dfe6ef}.empty{position:absolute;color:#66758d;font-weight:600;pointer-events:none}.empty[hidden]{display:none}
+  </style>
+</head>
+<body>
+  <main class="import-shell">
+    <div class="import-toolbar">
+      <h1>导入 HTML 编辑</h1>
+      <label for="htmlInput">选择 HTML</label><input id="htmlInput" type="file" accept=".html,text/html" hidden>
+      <button id="editButton" type="button" disabled>编辑</button>
+      <button id="saveButton" type="button" disabled>保存 HTML</button>
+      <a href="/" style="margin-left:auto">返回首页</a>
+      <span id="status" class="import-status" role="status"></span>
+    </div>
+    <section class="preview-frame">
+      <iframe id="importFrame" title="Imported HTML editor"></iframe>
+      <div id="empty" class="empty">选择一个 HTML 文件开始编辑</div>
+    </section>
+  </main>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/deck-workbench.js?v=20260803-generic-import-v5"></script>
+  <script>
+    (() => {
+      const input = document.getElementById('htmlInput');
+      const frame = document.getElementById('importFrame');
+      const edit = document.getElementById('editButton');
+      const save = document.getElementById('saveButton');
+      const status = document.getElementById('status');
+      const empty = document.getElementById('empty');
+      let workbench = null;
+      let currentName = 'imported-deck.html';
+      const historyId = new URLSearchParams(window.location.search).get('history') || sessionStorage.getItem('ppt-html-studio-open-history-id') || '';
+      const setStatus = (message, error = false) => { status.textContent = message || ''; status.style.color = error ? '#c43d31' : ''; };
+      const download = (html) => { const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = currentName.replace(/\.html?$/i, '') + '-edited.html'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+      const loadHtml = (html, name) => {
+        currentName = name || currentName;
+        frame.srcdoc = html;
+        empty.hidden = true;
+        edit.disabled = false; save.disabled = false;
+        if (!workbench) workbench = window.PptDeckWorkbench?.create({ iframe: '#importFrame', section: '.preview-frame', editButton: '#editButton', chatAfterLoad: false, editMode: 'ai', allowGenericElements: true });
+        setStatus('HTML 已载入，可点击“编辑”选择文字和图片。');
+      };
+      input.addEventListener('change', () => {
+        const file = input.files?.[0]; if (!file) return;
+        const reader = new FileReader(); reader.onload = () => loadHtml(String(reader.result || ''), file.name); reader.onerror = () => setStatus('HTML 文件读取失败。', true); reader.readAsText(file);
+      });
+      edit.addEventListener('click', () => { if (!workbench) return; workbench.setMode?.(workbench.mode === 'edit' ? 'preview' : 'edit'); setStatus(workbench.mode === 'edit' ? '编辑模式已开启。' : '预览模式。'); });
+      save.addEventListener('click', async () => { try { const html = await workbench?.exportEditedHtml?.('paged') || `<!doctype html>\n${frame.contentDocument.documentElement.outerHTML}`; download(html); setStatus('已下载编辑后的 HTML。'); } catch (error) { setStatus(error.message || '保存失败。', true); } });
+      if (historyId) {
+        Promise.resolve(window.PptHistory?.getRecord?.(historyId)).then((record) => {
+          const html = record?.editedHtml || record?.html || '';
+          if (!html) {
+            setStatus('历史记录不存在或没有可编辑的 HTML。', true);
+            return;
+          }
+          loadHtml(html, record.fileName || record.title || currentName);
+          sessionStorage.removeItem('ppt-html-studio-open-history-id');
+          sessionStorage.removeItem('ppt-html-studio-open-history-edit');
+        }).catch((error) => setStatus(error?.message || '历史记录读取失败。', true));
+      }
+    })();
+  </script>
+</body>
+</html>
