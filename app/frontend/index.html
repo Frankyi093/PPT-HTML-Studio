@@ -17,8 +17,10 @@
       converter: "PPT 转 HTML",
       quickCreate: "快速创建",
       chatCreation: "对话创作",
+      posterCreate: "AI 海报",
       aiSettings: "AI 配置",
       settings: "设置",
+      help: "帮助",
       backHome: "返回主页",
       productName: "PPT HTML Studio",
       workbench: "AI PRESENTATION WORKBENCH",
@@ -30,6 +32,8 @@
       converterDesc: "上传现有 PPT，转为可编辑、可分享、可下载的 HTML 演示。",
       quickCreateDesc: "输入主题和需求，AI 自动规划大纲、风格和页面布局。",
       chatDesc: "先和 AI 聊清楚需求，逐步确认大纲，再一键生成 PPT。",
+      posterDesc: "输入文案与品牌素材，AI 生成可编辑、可导出的海报。",
+      startPoster: "制作海报",
       sharedAi: "统一 AI 配置",
       sharedAiDesc: "三个功能共用同一份 API 设置，只需要配置一次。",
       configureAi: "配置 AI",
@@ -77,8 +81,10 @@
       converter: "PPT to HTML",
       quickCreate: "Quick Create",
       chatCreation: "Chat Creation",
+      posterCreate: "AI Poster",
       aiSettings: "AI Settings",
       settings: "Settings",
+      help: "Help",
       backHome: "Back home",
       productName: "PPT HTML Studio",
       workbench: "AI PRESENTATION WORKBENCH",
@@ -90,6 +96,8 @@
       converterDesc: "Upload an existing PPT and turn it into editable, shareable, downloadable HTML slides.",
       quickCreateDesc: "Enter a topic and requirements. AI plans the outline, style, and layouts.",
       chatDesc: "Clarify the brief with AI, confirm the outline, then generate the PPT in one click.",
+      posterDesc: "Turn copy and brand assets into an editable, export-ready poster.",
+      startPoster: "Create Poster",
       sharedAi: "Shared AI settings",
       sharedAiDesc: "All three features reuse one API configuration. Set it up once.",
       configureAi: "Configure AI",
@@ -182,9 +190,45 @@
     return next;
   }
 
+  function wireSettingsLinks() {
+    const selectors = [
+      'a[href="/settings.html"]',
+      'a[href="/settings"]',
+      'a[href="settings.html"]',
+      '[data-settings-link]',
+      '[data-i18n="settings"]',
+      '#settingsButton',
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach((node) => {
+      if (node.dataset.settingsWired === "1") return;
+      node.dataset.settingsWired = "1";
+      if (node.tagName === "A") {
+        node.setAttribute("href", "/settings.html");
+        node.style.pointerEvents = "auto";
+      }
+      node.addEventListener(
+        "click",
+        (event) => {
+          const href = node.getAttribute("href") || "";
+          const isSettings =
+            node.id === "settingsButton" ||
+            node.dataset.settingsLink !== undefined ||
+            node.dataset.i18n === "settings" ||
+            href.includes("settings");
+          if (!isSettings) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.assign("/settings.html");
+        },
+        true,
+      );
+    });
+  }
+
   function init() {
     const theme = applyTheme(readTheme());
     const runTranslation = () => {
+      wireSettingsLinks();
       const language = translate(readLanguage());
       document.dispatchEvent(new CustomEvent("ppt-settings-ready", { detail: { theme, language } }));
     };
@@ -205,14 +249,14 @@
     readLanguage,
     applyTheme,
     translate,
+    wireSettingsLinks,
     init,
   };
 
   init();
 })();
-
 </script>
-  <link rel="stylesheet" href="/static/home.css">
+  <link rel="stylesheet" href="/static/home.css?v=20260728-history-first-slide">
 </head>
 <body class="home-page">
   <aside class="home-sidebar" aria-label="Main navigation">
@@ -225,7 +269,9 @@
       <a href="/converter.html" data-i18n="converter">PPT 转 HTML</a>
       <a href="/ai-generate.html" data-i18n="quickCreate">快速创建</a>
       <a href="/chat-create.html" data-i18n="chatCreation">对话创作</a>
-      <a href="/settings.html" data-i18n="settings">设置</a>
+      <a href="/poster.html" data-i18n="posterCreate">AI 海报</a>
+      <a href="/settings.html" onclick="window.location.href='/settings.html'; return false;" data-i18n="settings">设置</a>
+      <a href="/help.html" data-i18n="help">帮助</a>
     </nav>
   </aside>
 
@@ -260,6 +306,14 @@
         <p data-i18n="chatDesc">先和 AI 聊清楚需求，逐步确认大纲，再一键生成 PPT。</p>
         <a class="primary-action" href="/chat-create.html" data-i18n="startChat">开始对话</a>
       </article>
+
+      <article class="entry-card poster-card">
+        <span class="tag">Poster</span>
+        <div class="card-icon">P+</div>
+        <h2 data-i18n="posterCreate">AI 海报</h2>
+        <p data-i18n="posterDesc">输入文案与品牌素材，AI 生成可编辑、可导出的海报。</p>
+        <a class="primary-action" href="/poster.html" data-i18n="startPoster">制作海报</a>
+      </article>
     </section>
 
     <section class="home-note">
@@ -267,9 +321,12 @@
         <strong data-i18n="sharedAi">统一 AI 配置</strong>
         <p data-i18n="sharedAiDesc">三个功能共用同一份 API 设置，只需要配置一次。</p>
       </div>
-      <a class="secondary-action" href="/settings.html" data-i18n="configureAi">配置 AI</a>
+      <a class="secondary-action" href="/settings.html" onclick="window.location.href='/settings.html'; return false;" data-i18n="configureAi">配置 AI</a>
     </section>
   </main>
+  <script src="/static/jszip.min.js"></script>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/history-ui.js?v=20260802-history-v2"></script>
 </body>
 </html>
 
