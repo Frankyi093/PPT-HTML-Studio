@@ -182,9 +182,45 @@
     return next;
   }
 
+  function wireSettingsLinks() {
+    const selectors = [
+      'a[href="/settings.html"]',
+      'a[href="/settings"]',
+      'a[href="settings.html"]',
+      '[data-settings-link]',
+      '[data-i18n="settings"]',
+      '#settingsButton',
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach((node) => {
+      if (node.dataset.settingsWired === "1") return;
+      node.dataset.settingsWired = "1";
+      if (node.tagName === "A") {
+        node.setAttribute("href", "/settings.html");
+        node.style.pointerEvents = "auto";
+      }
+      node.addEventListener(
+        "click",
+        (event) => {
+          const href = node.getAttribute("href") || "";
+          const isSettings =
+            node.id === "settingsButton" ||
+            node.dataset.settingsLink !== undefined ||
+            node.dataset.i18n === "settings" ||
+            href.includes("settings");
+          if (!isSettings) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.assign("/settings.html");
+        },
+        true,
+      );
+    });
+  }
+
   function init() {
     const theme = applyTheme(readTheme());
     const runTranslation = () => {
+      wireSettingsLinks();
       const language = translate(readLanguage());
       document.dispatchEvent(new CustomEvent("ppt-settings-ready", { detail: { theme, language } }));
     };
@@ -205,14 +241,17 @@
     readLanguage,
     applyTheme,
     translate,
+    wireSettingsLinks,
     init,
   };
 
   init();
 })();
-
 </script>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=20260803-pdf-v4">
+  <link rel="stylesheet" href="/static/ai-progress.css">
+  <link rel="stylesheet" href="/static/reference-pack.css">
+  <link rel="stylesheet" href="/static/deck-workbench.css">
 </head>
 <body>
   <div id="app">
@@ -220,9 +259,9 @@
       <a class="brand brand-link" href="/">PPT HTML Studio</a>
       <nav class="top-actions" aria-label="Utility">
         <a class="ghost nav-link" href="/" data-i18n="backHome">返回主页</a>
-        <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+        <a class="ghost nav-link" href="/settings.html" onclick="window.location.href='/settings.html'; return false;" data-i18n="settings">设置</a>
         <button class="ghost compat-hidden" id="helpButton" type="button">Help</button>
-        <button class="ghost compat-hidden" id="settingsButton" type="button">Settings</button>
+        <button class="ghost compat-hidden" id="settingsButton" type="button" onclick="window.location.href='/settings.html'">Settings</button>
       </nav>
     </header>
 
@@ -239,15 +278,20 @@
       <section class="main-panel">
         <section class="upload-panel">
           <div class="panel-header">
-            <h1 id="uploadTitle">Upload PPT</h1>
+            <h1 id="uploadTitle">Upload PPT / Word</h1>
             <span id="health" class="health">Checking backend</span>
           </div>
 
+          <div class="source-mode-tabs" id="sourceModeTabs" role="tablist" aria-label="Source type">
+            <button class="source-mode-tab active" type="button" data-source-mode="ppt" role="tab" aria-selected="true">PPT / PPTX 转 HTML</button>
+            <button class="source-mode-tab" type="button" data-source-mode="word" role="tab" aria-selected="false">Word / DOCX 转 HTML</button>
+          </div>
+
           <label class="drop-zone" id="dropZone">
-            <input id="fileInput" type="file" accept=".ppt,.pptx">
-            <strong id="dropStrong">Drag & drop your PPT file here</strong>
+            <input id="fileInput" type="file" accept=".ppt,.pptx,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+            <strong id="dropStrong">Drag & drop your PPT or Word file here</strong>
             <span id="dropOr">or</span>
-            <button id="dropButton" class="button-like" type="button">Upload PPT</button>
+            <button id="dropButton" class="button-like" type="button">Upload PPT / Word</button>
             <small id="uploadLimitText">Checking upload limit...</small>
           </label>
 
@@ -278,6 +322,19 @@
             </div>
           </div>
 
+
+          <section class="reference-pack" aria-labelledby="referencePackTitle">
+            <div class="reference-pack-head">
+              <div>
+                <strong id="referencePackTitle">AI 参考素材</strong>
+                <small>上传 Word、Markdown、TXT 或图片，AI 会提取内容辅助重排。</small>
+              </div>
+              <label class="reference-upload-button" for="referenceInput">＋ 添加素材</label>
+            </div>
+            <input id="referenceInput" class="reference-pack-input" type="file" accept=".docx,.doc,.md,.markdown,.txt,text/plain,text/markdown,image/*" multiple>
+            <div class="reference-list" id="referenceFiles"></div>
+          </section>
+
           <section class="advanced shared-ai-card">
             <div class="shared-ai-head">
               <div>
@@ -296,6 +353,29 @@
               </label>
               <div class="shared-ai-status" id="sharedAiStatus">AI not configured</div>
             </div>
+          </section>
+
+          <section class="advanced pdf-research-card hidden" id="wordOutlineStage" aria-live="polite">
+            <div class="shared-ai-head">
+              <div>
+                <span class="shared-ai-kicker">WORD RESEARCH PIPELINE</span>
+                <h2>Word 文档与汇报大纲</h2>
+              </div>
+              <span class="shared-ai-status" id="wordOutlineStatus">等待解析</span>
+            </div>
+            <p class="api-intro">先在浏览器本地提取 DOCX 语义块，再由 AI 总结为可编辑 Markdown 大纲；确认大纲后才生成 HTML。长文档按块处理，图片和来源引用通过稳定 ID 保留。</p>
+            <details id="wordMarkdownDetails" hidden>
+              <summary>AI 总结 Markdown</summary>
+              <textarea id="wordMarkdownPreview" rows="8" readonly aria-label="Extracted Word Markdown"></textarea>
+            </details>
+            <details id="wordOutlineDetails">
+              <summary>查看 AI 汇报大纲</summary>
+              <div class="pdf-research-outline-cards" id="wordOutlineCards" aria-live="polite"></div>
+              <textarea id="wordOutlineJson" rows="8" readonly aria-label="Word outline JSON" hidden></textarea>
+              <div class="pdf-research-outline-actions">
+                <button class="secondary-button" id="wordOutlineContinueButton" type="button" hidden>应用修改并生成 HTML</button>
+              </div>
+            </details>
           </section>
 
           <details class="advanced api-card api-compat-card" open>
@@ -353,18 +433,16 @@
                     <option value="dify">Dify blocking</option>
                   </select>
                 </label>
-                <label>
-                  <span id="apiTimeoutLabel">Timeout (sec)</span>
-                  <input id="apiTimeout" type="number" min="10" max="600" value="90">
+                <label class="api-generation-note">
+                  <span id="apiTimeoutLabel">Generation lifetime</span>
+                  <small>AI mode waits for the provider to finish. There is no product-level countdown.</small>
+                  <input id="apiTimeout" type="hidden" value="0">
                 </label>
                 <label class="api-wide">
                   <span id="customHeadersLabel">Custom headers</span>
                   <textarea id="customHeaders" rows="3" placeholder='{"X-Workflow-Token":"..."} or Header-Name: value'></textarea>
                 </label>
-                <label class="api-checkbox">
-                  <input id="fallbackToLocal" type="checkbox" checked>
-                  <span id="fallbackToLocalLabel">Fallback to local rules if API fails</span>
-                </label>
+                <input id="fallbackToLocal" type="hidden" value="false">
                 <label class="api-checkbox">
                   <input id="clearApiKey" type="checkbox">
                   <span id="clearApiKeyLabel">Clear saved API key on save</span>
@@ -396,7 +474,7 @@
             <iframe id="previewFrame" title="HTML slide preview"></iframe>
             <div class="preview-empty" id="previewEmpty">
               <strong id="previewEmptyTitle">No generated HTML yet</strong>
-              <span id="previewEmptyDesc">Upload a PPT and run the workflow to see the first slide here.</span>
+              <span id="previewEmptyDesc">Upload a PPT or PDF and run the workflow to see the first page here.</span>
             </div>
           </div>
           <div class="preview-footer">
@@ -404,20 +482,6 @@
             <button id="editHtml" class="primary-outline" type="button">Edit HTML</button>
             <button id="saveEditedHtml" type="button">Save Edits</button>
             <button id="openScrollHtml" type="button">Open Scroll HTML</button>
-          </div>
-          <div class="quick-fix-panel hidden" id="quickFixPanel">
-            <div class="quick-fix-head">
-              <strong id="quickFixTitle">Quick fixes</strong>
-              <span id="quickFixSummary">No issues detected.</span>
-            </div>
-            <div class="quick-fix-actions">
-              <button type="button" id="fixOverflow">Fix overflow</button>
-              <button type="button" id="fixImages">Re-layout images</button>
-              <button type="button" id="fixContrast">Improve contrast</button>
-              <button type="button" id="fixMissingImages">Restore missing images</button>
-              <button type="button" id="fixCrowded">Split crowded slide</button>
-              <button type="button" id="fixAi">AI repair layout</button>
-            </div>
           </div>
           <div class="share-panel hidden" id="sharePanel">
             <div class="share-head">
@@ -543,7 +607,7 @@
         <span></span>
       </div>
       <strong id="generationTitle">Generating HTML</strong>
-      <p id="generationMessage">AI is arranging content, images, and layout...</p>
+      <p id="generationMessage">Preparing conversion...</p>
       <div class="generation-progress" aria-hidden="true"><span></span></div>
     </div>
   </div>
@@ -561,8 +625,18 @@
       </div>
     </section>
   </div>
+  <script src="/static/jszip.min.js"></script>
+  <script src="/static/pptx-local-core.js?v=20260802-fixed-stage-v2"></script>
+  <script src="/static/ai-progress.js?v=20260801-provider-recovery"></script>
   <script src="/static/ai-config.js"></script>
-  <script src="/static/app.js"></script>
+  <script src="/static/reference-pack.js"></script>
+  <script src="/static/deck-workbench.js?v=20260802-fixed-stage-v2"></script>
+  <script src="/static/style-registry.js?v=20260727-style-migration-v1"></script>
+  <script src="/static/quality-system.js?v=20260723-quality-system"></script>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/mammoth.browser.min.js"></script>
+  <script src="/static/turndown.js"></script>
+  <script src="/static/app.js?v=20260803-word-v1"></script>
 </body>
 </html>
 
