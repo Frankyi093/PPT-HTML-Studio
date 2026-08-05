@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help - PPT HTML Studio</title>
+  <script>
+    (function () {
+      const theme = localStorage.getItem("ppt-html-studio-theme") || "light";
+      const language = localStorage.getItem("ppt-html-studio-language") || "zh";
+      document.documentElement.dataset.theme = ["light", "dark", "beige"].includes(theme) ? theme : "light";
+      document.documentElement.lang = language === "en" ? "en" : "zh-CN";
+      document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
+      window.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("[data-lang]").forEach((node) => {
+          node.hidden = node.dataset.lang !== (language === "en" ? "en" : "zh");
+        });
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/home.css">
+  <link rel="stylesheet" href="/static/help.css">
+</head>
+<body class="home-page help-page">
+  <aside class="home-sidebar" aria-label="Main navigation">
+    <a class="home-brand" href="/">
+      <span class="brand-mark"></span>
+      <strong>PPT HTML Studio</strong>
+    </a>
+    <nav>
+      <a href="/">首页 / Home</a>
+      <a href="/converter.html">PPT 转 HTML</a>
+      <a href="/ai-generate.html">快速创建 / Quick Create</a>
+      <a href="/chat-create.html">对话创作 / Chat Creation</a>
+      <a href="/settings.html">设置 / Settings</a>
+      <a class="active" href="/help.html">帮助 / Help</a>
+    </nav>
+  </aside>
+
+  <main class="home-main help-main">
+    <section class="help-hero">
+      <span class="eyebrow">USER GUIDE</span>
+      <h1 data-lang="zh">PPT HTML Studio 使用教程</h1>
+      <h1 data-lang="en">PPT HTML Studio Guide</h1>
+      <p data-lang="zh">从导入 PPT、AI 快速生成、对话创作，到编辑、分享和下载，一页看懂平台的完整工作流。</p>
+      <p data-lang="en">A practical guide for importing PPT files, generating decks with AI, editing, sharing, and downloading HTML presentations.</p>
+    </section>
+
+    <section class="help-layout">
+      <nav class="help-toc" aria-label="Guide sections">
+        <a href="#quick-start">快速开始</a>
+        <a href="#ai-settings">AI 配置</a>
+        <a href="#converter">PPT 转 HTML</a>
+        <a href="#quick-create">快速创建</a>
+        <a href="#chat-create">对话创作</a>
+        <a href="#edit-download">编辑与下载</a>
+        <a href="#faq">常见问题</a>
+      </nav>
+
+      <div class="help-doc">
+        <section id="quick-start" class="help-card">
+          <h2>快速开始</h2>
+          <ol>
+            <li>进入首页，选择「PPT 转 HTML」「快速创建」或「对话创作」。</li>
+            <li>如果要使用 AI，请先进入「设置」配置 API Key、模型和服务商。</li>
+            <li>生成 HTML PPT 后，在预览区翻页检查，必要时进入编辑模式微调。</li>
+            <li>确认无误后下载 ZIP，压缩包会包含可翻页版和滑动版 HTML。</li>
+          </ol>
+        </section>
+
+        <section id="ai-settings" class="help-card">
+          <h2>AI 配置</h2>
+          <p>三个功能共用同一份 AI 配置。只需要在「设置」里保存一次，PPT 转 HTML、快速创建、对话创作都会自动读取。API Key 会保存在你的浏览器本地，页面再次打开时只显示脱敏状态。</p>
+
+          <div class="help-steps">
+            <div class="help-step"><b>1</b><span>打开首页左侧「设置」，进入统一 AI 配置区。</span></div>
+            <div class="help-step"><b>2</b><span>选择 Provider，例如 DeepSeek、Doubao Seed、OpenAI Compatible 或 Custom Workflow。</span></div>
+            <div class="help-step"><b>3</b><span>粘贴 API Key。保存后不会明文展示，后续生成时会复用这份配置。</span></div>
+            <div class="help-step"><b>4</b><span>确认 Model。内置服务会给出常用默认值，自定义接口需要按服务商文档填写。</span></div>
+            <div class="help-step"><b>5</b><span>Endpoint 通常会自动填写；只有自定义模型、本地模型或工作流接口需要手动修改。</span></div>
+            <div class="help-step"><b>6</b><span>点击 Test API 验证连接，成功后点击 Save AI / Save connection 保存。</span></div>
+          </div>
+
+          <div class="help-table-wrap">
+            <table class="help-table">
+              <thead>
+                <tr>
+                  <th>配置项</th>
+                  <th>如何填写</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Provider</td>
+                  <td>DeepSeek / Doubao Seed / OpenAI Compatible / Custom Workflow</td>
+                  <td>优先选择平台内置项；如果服务商兼容 OpenAI 格式，选择 OpenAI Compatible。</td>
+                </tr>
+                <tr>
+                  <td>API Key</td>
+                  <td>粘贴服务商控制台生成的密钥</td>
+                  <td>通常只显示一次，请妥善保存；余额不足也会导致生成失败。</td>
+                </tr>
+                <tr>
+                  <td>Model</td>
+                  <td>如 deepseek-chat、doubao-seed-2.0、gpt-4o-mini</td>
+                  <td>必须与服务商支持的模型名称一致。</td>
+                </tr>
+                <tr>
+                  <td>Endpoint</td>
+                  <td>内置服务自动填充；自定义服务手动填写</td>
+                  <td>OpenAI 兼容接口通常类似 https://api.example.com/v1。</td>
+                </tr>
+                <tr>
+                  <td>Timeout seconds</td>
+                  <td>建议 90-180 秒</td>
+                  <td>长 PPT 或复杂生成可适当调高，但仍受浏览器和部署平台限制。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="help-callout">
+            <h3>推荐模型怎么选？</h3>
+            <p>国内网络环境下可优先尝试 DeepSeek、豆包 Doubao、智谱 GLM、通义千问 Qwen、Moonshot Kimi 等模型；国际模型可选 GPT、Claude、Gemini 等。课程 PPT 和长文档建议选择上下文更长、速度稳定、价格可控的模型。</p>
+          </div>
+
+          <div class="help-callout">
+            <h3>如何接入本地模型 Ollama？</h3>
+            <p>Provider 选择 OpenAI Compatible，Model 填写本地模型名，例如 <code>qwen2.5:14b</code>，Endpoint 填写：</p>
+            <code class="code-pill">http://localhost:11434/v1</code>
+          </div>
+
+          <div class="help-callout">
+            <h3>连接超时或验证失败怎么办？</h3>
+            <p>按顺序检查：网络是否可访问服务商、API Key 是否正确、Endpoint 是否包含正确路径、Model 名称是否存在、账户余额是否充足。如果访问国际服务较慢，需要在高级设置中使用可用的兼容地址或代理后的 Endpoint。</p>
+          </div>
+
+          <div class="help-callout">
+            <h3>API Key 安全吗？</h3>
+            <p>当前平台把配置保存在你的浏览器本地，用于 Test API 和生成内容时向你选择的服务商发起请求。请不要在公共电脑上保存自己的 Key；如果需要清理，可在设置中重新保存或清除浏览器站点数据。</p>
+          </div>
+        </section>
+
+        <section id="converter" class="help-card">
+          <h2>PPT 转 HTML</h2>
+          <p>适合已经有 PPT 文件，希望转成可编辑、可分享网页演示的场景。</p>
+          <ol>
+            <li>上传 .pptx 文件，Cloudflare 线上模式建议文件不超过 50MB。</li>
+            <li>选择视觉风格。折叠状态默认展示教学蓝、学术风、瑞士网格。</li>
+            <li>选择「本地规则」或「AI 优化」。本地规则不会调用 AI。</li>
+            <li>点击生成后，在右侧预览、编辑并下载最终 ZIP。</li>
+          </ol>
+        </section>
+
+        <section id="quick-create" class="help-card">
+          <h2>快速创建</h2>
+          <p>适合你只有主题和要求，希望 AI 直接生成完整演示稿的场景。</p>
+          <ol>
+            <li>输入主题、受众、页数、语言、风格和补充要求。</li>
+            <li>点击 Generate HTML，AI 会直接生成可编辑 HTML PPT。</li>
+            <li>生成后可以翻页预览、进入编辑、保存修改并下载。</li>
+          </ol>
+        </section>
+
+        <section id="chat-create" class="help-card">
+          <h2>对话创作</h2>
+          <p>适合需求还不够明确，希望 AI 像策划助手一样一步步追问、整理大纲的场景。</p>
+          <ol>
+            <li>在输入框描述你想做的主题、受众、用途或页数。</li>
+            <li>AI 会在对话框中显示「正在思考中」，并同步整理右侧页面大纲。</li>
+            <li>你可以继续补充信息，也可以直接编辑右侧每页标题、要点和视觉建议。</li>
+            <li>点击「确认并生成」后再进入 HTML PPT 生成阶段。</li>
+          </ol>
+        </section>
+
+        <section id="edit-download" class="help-card">
+          <h2>编辑与下载</h2>
+          <p>生成结果支持文字、图片、字号、颜色、对齐和图层调整。保存后再下载 ZIP，下载内容会使用最新编辑版本。</p>
+          <ul>
+            <li>Preview：打开当前翻页版 HTML。</li>
+            <li>Edit HTML：进入可视化编辑模式。</li>
+            <li>Save Edits：保存当前编辑结果。</li>
+            <li>Open Scroll HTML：打开上下滑动版本。</li>
+            <li>Download ZIP：下载最终包，包含翻页版和滑动版。</li>
+          </ul>
+        </section>
+
+        <section id="faq" class="help-card">
+          <h2>常见问题</h2>
+          <details open>
+            <summary>为什么 AI 没有反应？</summary>
+            <p>请先检查设置页的 API Key、模型和 Endpoint 是否正确，并点击 Test API。余额不足或服务商超时也会导致失败。</p>
+          </details>
+          <details>
+            <summary>下载后图片会丢失吗？</summary>
+            <p>平台会尽量把图片嵌入单文件 HTML 或放入 ZIP 资源中。分享时请发送完整 ZIP，不要只发送单独 HTML。</p>
+          </details>
+          <details>
+            <summary>本地规则和 AI 优化有什么区别？</summary>
+            <p>本地规则速度快、稳定，不调用外部模型；AI 优化会根据提示词重排版，但需要可用 API。</p>
+          </details>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/history-ui.js?v=20260802-history-v2"></script>
+</body>
+</html>
