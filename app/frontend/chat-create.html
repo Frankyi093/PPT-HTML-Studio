@@ -182,9 +182,45 @@
     return next;
   }
 
+  function wireSettingsLinks() {
+    const selectors = [
+      'a[href="/settings.html"]',
+      'a[href="/settings"]',
+      'a[href="settings.html"]',
+      '[data-settings-link]',
+      '[data-i18n="settings"]',
+      '#settingsButton',
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach((node) => {
+      if (node.dataset.settingsWired === "1") return;
+      node.dataset.settingsWired = "1";
+      if (node.tagName === "A") {
+        node.setAttribute("href", "/settings.html");
+        node.style.pointerEvents = "auto";
+      }
+      node.addEventListener(
+        "click",
+        (event) => {
+          const href = node.getAttribute("href") || "";
+          const isSettings =
+            node.id === "settingsButton" ||
+            node.dataset.settingsLink !== undefined ||
+            node.dataset.i18n === "settings" ||
+            href.includes("settings");
+          if (!isSettings) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.assign("/settings.html");
+        },
+        true,
+      );
+    });
+  }
+
   function init() {
     const theme = applyTheme(readTheme());
     const runTranslation = () => {
+      wireSettingsLinks();
       const language = translate(readLanguage());
       document.dispatchEvent(new CustomEvent("ppt-settings-ready", { detail: { theme, language } }));
     };
@@ -205,22 +241,25 @@
     readLanguage,
     applyTheme,
     translate,
+    wireSettingsLinks,
     init,
   };
 
   init();
 })();
-
 </script>
-  <link rel="stylesheet" href="/static/styles.css">
-  <link rel="stylesheet" href="/static/chat-create.css">
+  <link rel="stylesheet" href="/static/styles.css?v=20260803-preview-v2">
+  <link rel="stylesheet" href="/static/ai-progress.css">
+  <link rel="stylesheet" href="/static/reference-pack.css">
+  <link rel="stylesheet" href="/static/chat-create.css?v=20260723-layout-contract">
+  <link rel="stylesheet" href="/static/deck-workbench.css?v=20260723-layout-contract">
 </head>
 <body class="chat-create-page">
   <header class="topbar">
     <a class="brand brand-link" href="/">PPT HTML Studio</a>
     <nav class="top-actions" aria-label="Utility">
       <a class="ghost nav-link" href="/" data-i18n="backHome">返回主页</a>
-      <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+      <a class="ghost nav-link" href="/settings.html" onclick="window.location.href='/settings.html'; return false;" data-i18n="settings">设置</a>
     </nav>
   </header>
 
@@ -232,7 +271,10 @@
         <p data-i18n="chatSubtitle">先用对话梳理需求、内容和页面结构，再一键生成可编辑 HTML PPT。</p>
       </div>
       <div class="hero-actions">
-        <button id="historyButton" type="button" data-i18n="history">历史记录</button>
+        <div class="chat-history-menu">
+          <button id="historyButton" type="button" data-i18n="history">历史记录</button>
+          <div class="history-list hidden" id="historyList"></div>
+        </div>
         <button id="newChatButton" type="button" data-i18n="newChat">新建对话</button>
       </div>
     </section>
@@ -243,9 +285,13 @@
         <div class="messages" id="messages" aria-live="polite"></div>
         <form class="composer" id="chatForm">
           <textarea id="chatInput" rows="3" placeholder="描述你想呈现的主题和内容..." data-i18n-placeholder="chatPlaceholder"></textarea>
-          <button id="sendButton" type="submit" data-i18n="send">发送</button>
+          <div class="composer-tools">
+            <label class="reference-upload-button" for="referenceInput">＋ 添加 Word / Markdown / 图片</label>
+            <input id="referenceInput" class="reference-pack-input" type="file" accept=".docx,.doc,.md,.markdown,.txt,text/plain,text/markdown,image/*" multiple>
+            <button id="sendButton" type="submit" data-i18n="send">发送</button>
+          </div>
+          <div class="reference-list" id="referenceFiles"></div>
         </form>
-        <div class="history-list hidden" id="historyList"></div>
       </section>
 
       <aside class="outline-panel">
@@ -259,8 +305,7 @@
         <div class="outline-meta">
           <label><span data-i18n="title">标题</span><input id="deckTitle" type="text" placeholder="Deck title"></label>
           <label><span data-i18n="audience">受众</span><input id="deckAudience" type="text" placeholder="Target audience"></label>
-          <label><span data-i18n="style">风格</span>
-            <select id="deckStyle">
+          <select id="deckStyle" class="visually-hidden" aria-hidden="true" tabindex="-1">
               <option value="teaching">Teaching Blue</option>
               <option value="academic">Academic Style</option>
               <option value="swiss">Swiss Grid</option>
@@ -270,11 +315,23 @@
               <option value="doodle">Doodle Sketch</option>
               <option value="editorial">Editorial</option>
               <option value="vivid">Vivid</option>
-            </select>
-          </label>
+          </select>
+          <section class="style-picker chat-style-library" aria-label="风格选择">
+            <div class="style-swatches" id="chatStyleSwatches"></div>
+          </section>
         </div>
+        <section class="brief-summary-panel" id="briefSummaryPanel">
+          <div>
+            <span class="chat-kicker">Brief</span>
+            <strong id="briefReadyLabel">继续确认需求</strong>
+          </div>
+          <p id="briefSummaryText">先通过对话确认主题、受众、页数、素材和风格。信息齐全后再生成大纲。</p>
+        </section>
         <div class="outline-cards" id="outlineCards"></div>
-        <button class="confirm-button" id="confirmGenerate" type="button" disabled data-i18n="confirmGenerate">确认并生成</button>
+        <div class="outline-actions" aria-label="Outline actions">
+          <button class="plan-button" id="startPlanning" type="button" disabled>开始规划</button>
+          <button class="confirm-button" id="confirmGenerate" type="button" disabled data-i18n="confirmGenerate">确认并生成</button>
+        </div>
       </aside>
     </section>
 
@@ -311,8 +368,14 @@
   </div>
 
   <script src="/static/jszip.min.js"></script>
+  <script src="/static/ai-progress.js?v=20260801-provider-recovery"></script>
   <script src="/static/ai-config.js"></script>
-  <script src="/static/chat-create.js"></script>
+  <script src="/static/reference-pack.js"></script>
+  <script src="/static/deck-workbench.js?v=20260802-fixed-stage-v2"></script>
+  <script src="/static/style-registry.js?v=20260726-style-registry"></script>
+  <script src="/static/quality-system.js?v=20260723-quality-system"></script>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/chat-create.js?v=20260803-preview-v2"></script>
 </body>
 </html>
 
