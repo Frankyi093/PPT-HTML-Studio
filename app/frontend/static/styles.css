@@ -471,6 +471,33 @@ html[data-theme="dark"] :where(p,small,.style-card-sample,.job-card-title span,.
   gap: 12px;
 }
 
+.source-mode-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 5px;
+  border: 1px solid var(--line, #d9e1ec);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface, #fff) 88%, #edf3fb);
+}
+
+.source-mode-tab {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  background: transparent;
+  color: var(--muted, #64748b);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.source-mode-tab.active {
+  background: var(--primary, #3658df);
+  color: #fff;
+}
+
 .preview-head {
   flex-wrap: wrap;
   align-items: flex-start;
@@ -839,6 +866,31 @@ html[data-theme="dark"] .job-card.active {
 .style-preview-contrast { background: #0f172a; }
 .style-preview-contrast .style-preview-title,
 .style-preview-contrast .style-preview-lines i { background: #fff; }
+
+.style-preview-trigger {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgba(37,99,235,.24);
+  border-radius: 6px;
+  background: rgba(255,255,255,.9);
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.style-preview-trigger:hover,
+.style-preview-trigger:focus-visible {
+  background: #fff;
+  border-color: #2563eb;
+  outline: none;
+}
 
 .style-card-body {
   display: grid;
@@ -2464,5 +2516,43 @@ tr:last-child td {
 }
 
 /* edit-workbench-layout-20260719 */
+
+/* PDF research outline: keep source data readable without making the main
+   converter panel a raw JSON/debug view. */
+.pdf-research-card { overflow: hidden; }
+.pdf-research-card > .api-intro { max-width: 920px; }
+.pdf-research-card details { min-width: 0; }
+.pdf-research-card details > summary { cursor: pointer; user-select: none; }
+.pdf-research-outline-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.pdf-research-outline-card { min-width: 0; padding: 14px 16px; border: 1px solid rgba(40, 71, 105, .18); border-radius: 14px; background: rgba(248, 251, 255, .78); }
+.pdf-research-outline-card input,.pdf-research-outline-card textarea{width:100%;box-sizing:border-box;border:1px solid rgba(40,71,105,.2);border-radius:9px;background:#fff;color:#172a46;padding:8px 10px;font:inherit;line-height:1.4;resize:vertical}
+.pdf-research-outline-card input{font-weight:800;font-size:17px;margin:10px 0 6px}.pdf-research-outline-card textarea{font-size:14px;min-height:64px}.pdf-research-outline-card .pdf-research-body-editor{min-height:92px;margin-top:8px}.pdf-research-outline-actions{display:flex;justify-content:flex-end;margin-top:16px}.pdf-research-outline-actions button{padding:10px 16px;border:0;border-radius:10px;background:#315fe8;color:#fff;font-weight:800;cursor:pointer}.pdf-research-outline-actions button[hidden]{display:none}
+.pdf-research-outline-card-head, .pdf-research-asset-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pdf-research-page { display: inline-grid; place-items: center; min-width: 32px; height: 26px; border-radius: 8px; background: #172a46; color: #fff; font: 800 12px/1 Arial, sans-serif; }
+.pdf-research-role { color: #356887; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; overflow-wrap: anywhere; }
+.pdf-research-outline-card h4 { margin: 10px 0 6px; color: #142843; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+.pdf-research-claim { margin: 0; color: #445d78; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.pdf-research-outline-card ul { margin: 8px 0 0; padding-left: 18px; color: #526b82; font-size: 13px; line-height: 1.45; }
+.pdf-research-outline-card li { margin: 3px 0; overflow-wrap: anywhere; }
+.pdf-research-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pdf-research-chip { max-width: 100%; padding: 4px 7px; border-radius: 999px; font: 700 11px/1.2 Arial, sans-serif; overflow-wrap: anywhere; }
+.pdf-research-chip.source { color: #315f7a; background: #e7f1f7; }
+.pdf-research-chip.evidence { color: #754c2f; background: #f8eadb; }
+.pdf-research-raw { margin-top: 12px; }
+.pdf-research-raw textarea { width: 100%; max-width: 100%; min-height: 180px; box-sizing: border-box; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.pdf-research-assets-wrap { margin-top: 18px; }
+.pdf-research-assets-wrap h3 { margin: 0; color: #142843; font-size: 18px; }
+.pdf-research-assets-wrap > p { margin: 4px 0 10px; color: #61758a; font-size: 13px; }
+.pdf-research-assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; min-width: 0; }
+.pdf-research-asset { min-width: 0; padding: 11px 12px; border: 1px solid rgba(40, 71, 105, .16); border-radius: 11px; background: #fff; }
+.pdf-research-asset code { color: #234c68; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
+.pdf-research-asset-head span { color: #bd7042; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.pdf-research-asset strong { display: block; margin-top: 7px; color: #263b52; font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
+.pdf-research-asset small { display: block; margin-top: 4px; color: #718296; font-size: 11px; }
+.pdf-research-empty { margin: 12px 0; color: #6a7d91; font-size: 13px; }
+@media (max-width: 760px) {
+  .pdf-research-outline-cards { grid-template-columns: 1fr; }
+  .pdf-research-assets { grid-template-columns: 1fr; }
+}
 
 
