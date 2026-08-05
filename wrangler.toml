@@ -1,8 +1,14 @@
 name = "ppt-html-studio"
-compatibility_date = "2026-06-29"
-main = "worker/cloudflare-worker.js"
+compatibility_date = "2026-07-08"
+main = "dist/cloudflare-worker.js"
 
 [assets]
-directory = "./dist"
+directory = "./dist/public"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+# Keep application aliases and API/output routes in the Worker; immutable
+# /static files are served directly by Cloudflare's asset pipeline.
+run_worker_first = ["/", "/ai-generate*", "/ai-create*", "/converter*", "/chat-create*", "/poster*", "/settings*", "/editor*", "/import-html*", "/html-editor*", "/api/*", "/outputs/*"]
+
+[ai]
+binding = "AI"
+
