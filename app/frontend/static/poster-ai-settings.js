@@ -1,0 +1,16 @@
+(function () {
+  "use strict";
+  const KEY = "ppt-poster-ai-v3";
+  const $ = (id) => document.getElementById(id);
+  const defaults = { provider: "cloudflare-workers-ai", model: "@cf/black-forest-labs/flux-2-klein-9b", endpoint: "", apiKey: "", apiKeyHeader: "Authorization", apiKeyPrefix: "Bearer ", customHeaders: "", outputFormat: "png", profile: "openai-images" };
+  function get() { try { return { ...defaults, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return { ...defaults }; } }
+  function setStatus(text, error) { const el = $("posterAiSettingsStatus"); if (el) { el.textContent = String(text || ""); el.style.color = error ? "#c83b2a" : "#176b87"; } }
+  function load() { const c = get(); $("posterAiProvider").value = c.provider; $("posterAiModel").value = c.model; $("posterAiEndpoint").value = c.endpoint; $("posterAiKey").value = c.apiKey; $("posterAiFormat").value = c.outputFormat; $("posterAiKeyHeader").value = c.apiKeyHeader || "Authorization"; $("posterAiKeyPrefix").value = c.apiKeyPrefix ?? "Bearer "; $("posterAiCustomHeaders").value = c.customHeaders || ""; $("posterAiProfile").value = c.profile || "openai-images"; }
+  function save() { const c = { provider: $("posterAiProvider").value, model: $("posterAiModel").value.trim(), endpoint: $("posterAiEndpoint").value.trim(), apiKey: $("posterAiKey").value, apiKeyHeader: $("posterAiKeyHeader").value.trim() || "Authorization", apiKeyPrefix: $("posterAiKeyPrefix").value, customHeaders: $("posterAiCustomHeaders").value.trim(), outputFormat: $("posterAiFormat").value, profile: $("posterAiProfile").value }; localStorage.setItem(KEY, JSON.stringify(c)); return c; }
+  async function testImage() {
+    const c = save(); setStatus("正在测试图像模型…");
+    try { const r = await fetch("/api/image-model/test", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageConfig: c, prompt: "A sparse aged-paper zine poster background, one cobalt visual anchor, no readable text", width: 1024, height: 1536 }) }); const d = r.headers.get("content-type")?.includes("json") ? await r.json().catch(() => ({})) : {}; if (!r.ok) throw new Error(d.message || `HTTP ${r.status}`); setStatus("图像模型连接成功。"); } catch (e) { setStatus(String(e.message || e), true); }
+  }
+  async function testCopy() { const c = window.PptAiConfig?.loadAiConfig?.() || {}; if (!c.apiKey || c.mode === "local") return setStatus("请先在系统 AI 设置中配置文案模型。", true); setStatus("正在测试文案模型…"); try { const r = await fetch("/api/minimal-zine-poster/v1/compile/stream", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ theme: "雨天旧书店与短暂停留", exactPhrase: "雨停之前", integration: c }) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); const text = await r.text(); if (!text.includes("compiled") && !text.includes("complete")) throw new Error("文案模型未返回可用视觉方案"); setStatus("文案模型连接成功。"); } catch (e) { setStatus(String(e.message || e), true); } }
+  document.addEventListener("DOMContentLoaded", () => { load(); $("posterAiSettingsForm")?.addEventListener("submit", (e) => { e.preventDefault(); save(); setStatus("海报图像配置已保存。"); }); $("testPosterImage")?.addEventListener("click", testImage); $("testPosterCopy")?.addEventListener("click", testCopy); });
+})();
