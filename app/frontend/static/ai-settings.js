@@ -38,7 +38,7 @@ function applyPreset(provider, overwrite = true) {
     el("apiKeyHeader").value = preset.apiKeyHeader || "Authorization";
     el("apiKeyPrefix").value = preset.apiKeyPrefix ?? "Bearer ";
     el("workflowPayload").value = preset.workflowPayload || "flat";
-    el("timeoutSec").value = preset.timeoutSec || 300;
+    el("timeoutSec").value = 0;
     el("customHeaders").value = preset.customHeaders || "";
   }
   el("model").closest("label").style.display = preset.mode === "workflow_api" ? "none" : "";
@@ -57,8 +57,8 @@ function formConfig() {
     apiKeyPrefix: el("apiKeyPrefix").value,
     customHeaders: el("customHeaders").value.trim(),
     workflowPayload: el("workflowPayload").value,
-    timeoutSec: Number(el("timeoutSec").value || 300),
-    fallbackToLocal: true,
+    timeoutSec: 0,
+    fallbackToLocal: false,
   };
 }
 
@@ -72,7 +72,7 @@ function renderConfig(config) {
   el("apiKeyPrefix").value = config.apiKeyPrefix ?? "Bearer ";
   el("customHeaders").value = config.customHeaders || "";
   el("workflowPayload").value = config.workflowPayload || window.PptAiConfig.PROVIDERS[provider]?.workflowPayload || "flat";
-  el("timeoutSec").value = Math.max(60, Number(config.timeoutSec || 300));
+  el("timeoutSec").value = 0;
   el("apiKey").value = "";
   el("keyStatus").textContent = config.hasApiKey || config.apiKey
     ? `Saved key: ${config.apiKeyMasked || window.PptAiConfig.maskedKey(config.apiKey)}. Leave the field blank to keep it.`
