@@ -19,6 +19,7 @@
       chatCreation: "对话创作",
       aiSettings: "AI 配置",
       settings: "设置",
+      help: "帮助",
       backHome: "返回主页",
       productName: "PPT HTML Studio",
       workbench: "AI PRESENTATION WORKBENCH",
@@ -79,6 +80,7 @@
       chatCreation: "Chat Creation",
       aiSettings: "AI Settings",
       settings: "Settings",
+      help: "Help",
       backHome: "Back home",
       productName: "PPT HTML Studio",
       workbench: "AI PRESENTATION WORKBENCH",
@@ -182,9 +184,45 @@
     return next;
   }
 
+  function wireSettingsLinks() {
+    const selectors = [
+      'a[href="/settings.html"]',
+      'a[href="/settings"]',
+      'a[href="settings.html"]',
+      '[data-settings-link]',
+      '[data-i18n="settings"]',
+      '#settingsButton',
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach((node) => {
+      if (node.dataset.settingsWired === "1") return;
+      node.dataset.settingsWired = "1";
+      if (node.tagName === "A") {
+        node.setAttribute("href", "/settings.html");
+        node.style.pointerEvents = "auto";
+      }
+      node.addEventListener(
+        "click",
+        (event) => {
+          const href = node.getAttribute("href") || "";
+          const isSettings =
+            node.id === "settingsButton" ||
+            node.dataset.settingsLink !== undefined ||
+            node.dataset.i18n === "settings" ||
+            href.includes("settings");
+          if (!isSettings) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.assign("/settings.html");
+        },
+        true,
+      );
+    });
+  }
+
   function init() {
     const theme = applyTheme(readTheme());
     const runTranslation = () => {
+      wireSettingsLinks();
       const language = translate(readLanguage());
       document.dispatchEvent(new CustomEvent("ppt-settings-ready", { detail: { theme, language } }));
     };
@@ -205,12 +243,12 @@
     readLanguage,
     applyTheme,
     translate,
+    wireSettingsLinks,
     init,
   };
 
   init();
 })();
-
 </script>
   <link rel="stylesheet" href="/static/home.css">
   <link rel="stylesheet" href="/static/ai-settings.css">
@@ -227,6 +265,7 @@
       <a href="/ai-generate.html" data-i18n="quickCreate">快速创建</a>
       <a href="/chat-create.html" data-i18n="chatCreation">对话创作</a>
       <a class="active" href="/settings.html" data-i18n="settings">设置</a>
+      <a href="/help.html" data-i18n="help">帮助</a>
     </nav>
   </aside>
 
@@ -260,6 +299,16 @@
         </label>
       </div>
       <p class="status-line ok" id="interfaceStatus"></p>
+    </section>
+
+    <section class="settings-card style-management-card">
+      <div class="settings-section-head">
+        <span class="eyebrow compact">风格管理</span>
+        <p>统一管理 PPT 转 HTML、快速创建和对话创作共用的风格；可预览、创建自定义风格或从 PPT 导入风格。</p>
+      </div>
+      <div class="settings-actions">
+        <a class="primary-action" href="/converter.html?manageStyles=1">打开风格管理</a>
+      </div>
     </section>
 
     <form class="settings-card" id="aiSettingsForm">
@@ -298,9 +347,10 @@
             <span>Endpoint</span>
             <input id="endpoint" type="url" placeholder="https://api.example.com/v1">
           </label>
-          <label>
-            <span>Timeout seconds</span>
-            <input id="timeoutSec" type="number" min="60" max="600" value="300">
+          <label class="wide api-generation-note">
+            <span>Generation lifetime</span>
+            <small>AI generation is allowed to complete without a product-level countdown. Provider limits and server retries still apply.</small>
+            <input id="timeoutSec" type="hidden" value="0">
           </label>
           <label>
             <span>API key header</span>
@@ -341,6 +391,8 @@
 
   <script src="/static/ai-config.js"></script>
   <script src="/static/ai-settings.js"></script>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/history-ui.js?v=20260802-history-v2"></script>
 </body>
 </html>
 
