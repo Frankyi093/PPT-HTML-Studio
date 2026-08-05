@@ -130,7 +130,6 @@
       quickCreateTitle: "Quick Create",
       quickCreateHero: "Create a complete HTML slide deck from a topic.",
       topicRequirements: "Topic and requirements",
-      editablePlan: "Editable AI plan",
     },
   };
 
@@ -182,9 +181,45 @@
     return next;
   }
 
+  function wireSettingsLinks() {
+    const selectors = [
+      'a[href="/settings.html"]',
+      'a[href="/settings"]',
+      'a[href="settings.html"]',
+      '[data-settings-link]',
+      '[data-i18n="settings"]',
+      '#settingsButton',
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach((node) => {
+      if (node.dataset.settingsWired === "1") return;
+      node.dataset.settingsWired = "1";
+      if (node.tagName === "A") {
+        node.setAttribute("href", "/settings.html");
+        node.style.pointerEvents = "auto";
+      }
+      node.addEventListener(
+        "click",
+        (event) => {
+          const href = node.getAttribute("href") || "";
+          const isSettings =
+            node.id === "settingsButton" ||
+            node.dataset.settingsLink !== undefined ||
+            node.dataset.i18n === "settings" ||
+            href.includes("settings");
+          if (!isSettings) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.assign("/settings.html");
+        },
+        true,
+      );
+    });
+  }
+
   function init() {
     const theme = applyTheme(readTheme());
     const runTranslation = () => {
+      wireSettingsLinks();
       const language = translate(readLanguage());
       document.dispatchEvent(new CustomEvent("ppt-settings-ready", { detail: { theme, language } }));
     };
@@ -205,22 +240,25 @@
     readLanguage,
     applyTheme,
     translate,
+    wireSettingsLinks,
     init,
   };
 
   init();
 })();
-
 </script>
-  <link rel="stylesheet" href="/static/styles.css">
-  <link rel="stylesheet" href="/static/ai-generate.css">
+  <link rel="stylesheet" href="/static/styles.css?v=20260803-preview-v2">
+  <link rel="stylesheet" href="/static/ai-progress.css">
+  <link rel="stylesheet" href="/static/ai-generate-live.css">
+  <link rel="stylesheet" href="/static/reference-pack.css">
+  <link rel="stylesheet" href="/static/deck-workbench.css">
 </head>
 <body class="ai-page">
   <header class="topbar">
       <a class="brand brand-link" href="/">PPT HTML Studio</a>
       <nav class="top-actions" aria-label="Utility">
       <a class="ghost nav-link" href="/" data-i18n="backHome">返回主页</a>
-      <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+      <a class="ghost nav-link" href="/settings.html" onclick="window.location.href='/settings.html'; return false;" data-i18n="settings">设置</a>
       <button class="ghost compat-hidden" id="themeToggle" type="button">Theme</button>
     </nav>
   </header>
@@ -230,12 +268,12 @@
       <div>
         <span class="ai-kicker">Quick Create</span>
         <h1 data-i18n="quickCreateHero">从主题快速生成完整 HTML 演示。</h1>
-        <p>Enter a topic and requirements. AI will plan the outline, palette, typography, layouts, and then generate an editable 16:9 HTML presentation.</p>
+        <p>输入一句话，或粘贴一份 Markdown 大纲，AI 会生成可编辑、可翻页、可下载的 16:9 HTML PPT。</p>
       </div>
       <div class="ai-flow" aria-hidden="true">
-        <span>Topic</span>
+        <span>灵感</span>
         <i></i>
-        <span>Plan</span>
+        <span>设计</span>
         <i></i>
         <span>HTML</span>
       </div>
@@ -248,77 +286,99 @@
             <span class="ai-kicker">Step 1</span>
             <h2 data-i18n="topicRequirements">主题和需求</h2>
           </div>
-          <button class="ghost nav-link" type="button" id="loadSample">Load sample</button>
+          <button class="ghost nav-link" type="button" id="loadSample">填入示例</button>
         </div>
 
-        <label>
-          <span>Topic</span>
-          <input id="topic" type="text" placeholder="Example: Human-computer interaction usability testing workshop" required>
+        <div class="creation-mode-tabs" role="tablist" aria-label="Creation mode">
+          <button class="active" id="modeOneLine" type="button" role="tab" aria-selected="true"><span class="mode-icon">✦</span>一句话生成</button>
+          <button id="modeOutline" type="button" role="tab" aria-selected="false"><span class="mode-icon">▤</span>从大纲生成</button>
+        </div>
+
+        <label id="topicField">
+          <span>你想做什么？</span>
+          <input id="topic" type="text" placeholder="例如：生成一份关于 AI 发展史的演讲 PPT" required>
+        </label>
+
+        <label class="outline-source-field hidden" id="outlineSourceField">
+          <span>粘贴或上传你的 Markdown 大纲</span>
+          <textarea id="outlineSource" rows="10" placeholder="# 主题
+
+## 第 1 页：封面
+- 一句话说明主题
+
+## 第 2 页：核心结论
+- 这一页观众应该记住的结论
+- 支撑事实或案例"></textarea>
+          <small>支持 # 章节、## 页面标题和 - 要点；会保留原始顺序与内容。</small>
         </label>
 
         <div class="field-row">
           <label>
-            <span>Audience</span>
-            <input id="audience" type="text" placeholder="Students, team, investors...">
+            <span>面向谁</span>
+            <input id="audience" type="text" placeholder="学生、团队、客户、投资人">
           </label>
           <label>
-            <span>Slides</span>
+            <span>页数</span>
             <input id="slideCount" type="number" min="3" max="30" value="8">
           </label>
         </div>
 
         <div class="field-row">
           <label>
-            <span>Language</span>
+            <span>语言</span>
             <select id="outputLanguage">
+              <option value="zh">中文</option>
               <option value="en">English</option>
-              <option value="zh">Chinese</option>
             </select>
-          </label>
-          <label>
-            <span>Style</span>
-            <select id="styleSelect"></select>
           </label>
         </div>
 
         <label>
-          <span>Requirements</span>
-          <textarea id="requirements" rows="6" placeholder="Tell AI the goal, structure, scenario, required points, or visual preference."></textarea>
+          <span>补充要求</span>
+          <textarea id="requirements" rows="4" placeholder="补充演讲场景、必须包含的内容、语气或排版偏好"></textarea>
         </label>
 
+        <section class="style-picker" aria-labelledby="stylePickerTitle">
+          <select id="styleSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
+          <div class="style-picker-head">
+            <div>
+              <strong id="stylePickerTitle">选择风格模板</strong>
+              <small>风格会同时影响 AI 的叙事、版式和 HTML 视觉系统。</small>
+            </div>
+            <div class="style-picker-actions"><span class="style-picked" id="stylePicked">Banana Paper</span></div>
+          </div>
+          <div class="style-swatches" id="styleSwatches"></div>
+        </section>
+
+        <section class="reference-pack" aria-labelledby="quickReferenceTitle">
+          <div class="reference-pack-head">
+            <div>
+              <strong id="quickReferenceTitle">参考素材</strong>
+              <small>Word、Markdown、TXT 和图片都会作为生成依据。</small>
+            </div>
+            <label class="reference-upload-button" for="referenceInput">＋ 添加素材</label>
+          </div>
+          <input id="referenceInput" class="reference-pack-input" type="file" accept=".docx,.doc,.md,.markdown,.txt,text/plain,text/markdown,image/*" multiple>
+          <div class="reference-list" id="referenceFiles"></div>
+        </section>
+
         <div class="ai-actions plan-only-actions">
-          <button class="run-button" id="planButton" type="submit">Generate outline and design plan</button>
+          <button class="run-button" id="planButton" type="submit"><span>✦</span> 一句话生成 PPT</button>
         </div>
+        <p class="api-note ai-status-inline" id="apiNote">正在读取 AI 配置...</p>
         <p class="status-line" id="statusLine"></p>
       </form>
 
-      <section class="ai-card shared-ai-mini">
+      <section class="ai-card outline-editor-card" id="planEditorCard" hidden>
         <div class="ai-card-head">
           <div>
-            <span class="ai-kicker">Shared API</span>
-            <h2>AI settings</h2>
+            <span class="ai-kicker">Banana-style outline</span>
+            <h2>可编辑大纲</h2>
           </div>
-          <a class="ghost nav-link" href="/settings.html" data-i18n="settings">设置</a>
+          <button class="ghost nav-link" id="regenerateFromPlan" type="button">按大纲重新生成</button>
         </div>
-        <p class="api-note" id="apiNote">Loading shared AI settings...</p>
-      </section>
-
-      <section class="ai-card plan-panel">
-        <div class="ai-card-head">
-          <div>
-            <span class="ai-kicker">Step 2</span>
-            <h2 data-i18n="editablePlan">可编辑 AI 方案</h2>
-          </div>
-          <button class="ghost nav-link" id="formatPlan" type="button">Refresh plan</button>
-        </div>
-        <textarea id="planText" class="plan-text" spellcheck="true" placeholder="The AI plan will appear here as editable text. You can change titles, layouts, design rules, and slide points before generating HTML."></textarea>
-        <div class="plan-generate-row">
-          <div>
-            <strong>Ready for HTML</strong>
-            <span>Edit the readable plan above, then generate the slide deck.</span>
-          </div>
-          <button class="run-button compact-run" id="generateButton" type="button" disabled>Generate HTML</button>
-        </div>
+        <textarea id="planEditor" rows="14" aria-label="Editable generated outline"></textarea>
+        <small>先审阅页面标题和 takeaway，再生成 HTML；大纲格式与“从大纲生成”入口一致。</small>
       </section>
 
       <div class="preview-chat-layout">
@@ -337,49 +397,11 @@
             <iframe id="previewFrame" title="AI generated HTML preview"></iframe>
             <div class="preview-empty" id="previewEmpty">
               <strong>No generated HTML yet</strong>
-              <span>Generate a plan first, then create the HTML deck.</span>
+              <span>Enter a topic and generate the complete HTML deck.</span>
             </div>
           </div>
         </section>
 
-        <aside class="ai-card chat-edit-panel" aria-label="Chat Edit">
-          <div class="chat-mode-tabs" role="tablist" aria-label="Chat edit mode">
-            <button class="active" type="button">Chat Edit</button>
-            <button type="button" disabled>Image mode</button>
-          </div>
-          <div class="chat-context-card">
-            <div class="chat-context-head">
-              <div>
-                <span class="ai-kicker">AI patch</span>
-                <h2>Chat Edit</h2>
-              </div>
-              <select id="chatScope" aria-label="Edit scope">
-                <option value="current_slide">Current slide</option>
-                <option value="selected_element">Selected element</option>
-                <option value="deck">Whole PPT</option>
-              </select>
-            </div>
-            <p class="chat-hint">Turn on Edit HTML and click a text or image when you want to edit a selected element. AI returns a patch only.</p>
-          </div>
-          <div class="chat-quick-actions" aria-label="Quick chat edit actions">
-            <button type="button" data-chat-prompt="Modify the current slide title to be shorter, stronger, and centered.">Modify title</button>
-            <button type="button" data-chat-prompt="Adjust the selected image or the largest image so it is smaller, aligned, and does not overlap text.">Adjust images</button>
-            <button type="button" data-chat-prompt="Improve the color scheme with stronger contrast while keeping the current style.">Change colors</button>
-            <button type="button" data-chat-prompt="Split this crowded slide into two clean slides and keep the design consistent.">Split crowded slide</button>
-            <button type="button" data-chat-prompt="Fix overflow on this slide. Keep every text and image inside the 16:9 canvas.">Fix overflow</button>
-            <button type="button" data-chat-prompt="Replace the deck style with a cleaner modern education-tech style while keeping the content.">Replace style</button>
-          </div>
-          <div class="chat-messages" id="chatMessages" aria-live="polite">
-            <div class="chat-empty">No chat messages yet. Describe the edit you want, then apply the patch.</div>
-          </div>
-          <div class="chat-input-card">
-            <textarea id="chatInput" rows="4" placeholder="Example: Make the current page title more centered and reduce the image size by 20%."></textarea>
-            <div class="chat-send-row">
-              <span id="chatStatus">Current slide mode</span>
-              <button class="icon-button primary" id="sendChatEdit" type="button" disabled>Send</button>
-            </div>
-          </div>
-        </aside>
       </div>
     </section>
   </main>
@@ -394,8 +416,14 @@
   </div>
 
   <script src="/static/jszip.min.js"></script>
+  <script src="/static/ai-progress.js?v=20260801-provider-recovery"></script>
   <script src="/static/ai-config.js"></script>
-  <script src="/static/ai-generate.js"></script>
+  <script src="/static/reference-pack.js"></script>
+  <script src="/static/deck-workbench.js?v=20260802-fixed-stage-v2"></script>
+  <script src="/static/style-registry.js?v=20260726-style-registry"></script>
+  <script src="/static/quality-system.js?v=20260723-quality-system"></script>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/ai-generate-live.js?v=20260803-preview-v2"></script>
 </body>
 </html>
 
