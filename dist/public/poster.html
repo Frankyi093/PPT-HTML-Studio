@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>普通 AI 海报 · PPT HTML Studio</title>
+  <link rel="stylesheet" href="/static/deck-workbench.css">
+  <link rel="stylesheet" href="/static/poster.css">
+  <link rel="stylesheet" href="/static/poster-academic.css">
+</head>
+<body class="poster-page">
+  <header class="poster-topbar">
+    <a class="poster-brand" href="/">PPT HTML Studio</a>
+    <nav aria-label="主导航">
+      <a href="/">首页</a>
+      <a href="/converter.html">PPT 转 HTML</a>
+      <a href="/poster-ai-settings">海报 AI 配置</a>
+      <a href="/settings.html">设置</a>
+    </nav>
+  </header>
+
+  <main class="poster-workspace">
+    <aside class="poster-controls" id="posterControls" aria-label="海报设置">
+      <button class="poster-collapse" id="togglePosterControls" type="button" title="收起设置栏" aria-label="收起设置栏">◀</button>
+      <div class="workspace-heading">
+        <p>EDITORIAL POSTER STUDIO</p>
+        <h1>把主题编排成一张海报</h1>
+        <span id="aiStatus">选择风格，AI 会先生成可确认的文案与视觉方案。</span>
+      </div>
+
+      <div class="poster-creation-modes" role="tablist" aria-label="海报类型">
+        <button type="button" class="active" data-poster-mode="standard" aria-selected="true">普通海报</button>
+        <button type="button" data-poster-mode="academic" aria-selected="false">学术海报</button>
+      </div>
+
+      <form id="zinePosterForm" novalidate>
+        <div class="poster-style-switcher" id="posterStyleSwitcherMondo" role="tablist" aria-label="Qiaomu Mondo">
+          <button type="button" data-poster-style="qiaomu-mondo" aria-selected="false"><strong>Qiaomu Mondo</strong><small>概念海报 · 丝网印刷 · 视觉隐喻</small></button>
+        </div>
+        <div class="poster-style-switcher" id="posterStyleSwitcherAction" role="tablist" aria-label="Editorial Action">
+          <button type="button" data-poster-style="editorial-action" aria-selected="false"><strong>Editorial Action</strong><small>户外动作 · 真实摄影 · 动势排版</small></button>
+        </div>
+        <div class="poster-style-switcher" id="posterStyleSwitcherAcid" role="tablist" aria-label="Retro Acid Swiss">
+          <button type="button" data-poster-style="acid-swiss-pop" aria-selected="false"><strong>Retro Acid Swiss</strong><small>瑞士网格 · 半色调 · 波普撞色</small></button>
+        </div>
+        <div class="poster-style-switcher" id="posterStyleSwitcher" role="tablist" aria-label="普通海报风格">
+          <button type="button" class="active" data-poster-style="minimal-zine" aria-selected="true"><strong>Minimal Zine</strong><small>仿旧纸张 · 安静留白 · 单一色彩锚点</small></button>
+          <button type="button" data-poster-style="quiet-humanist" aria-selected="false"><strong>Quiet Humanist</strong><small>内容主体 · 动作痕迹 · 编辑式图文关系</small></button>
+        </div>
+        <p class="zine-intro" id="posterStyleIntro">3:5 仿旧纸张、充足留白、一个小型主体、一种清晰色彩锚点。重要文字由编辑器准确排版。</p>
+        <label>主题或内容简报
+          <textarea id="zineTheme" rows="5" maxlength="1800" required placeholder="例如：雨天旧书店门口，一盏亮着的蓝色台灯；关于短暂停留与回家的记忆。"></textarea>
+        </label>
+        <label>一句准确显示的短句（可选）
+          <input id="zineExactPhrase" maxlength="70" placeholder="留空则由 AI 提议一句短句">
+        </label>
+        <label>参考照片（可选）
+          <input id="zineReferenceImage" type="file" accept="image/png,image/jpeg,image/webp">
+          <small>会作为可编辑的小型照片锚点，不要求图像模型重绘原图。</small>
+        </label>
+        <div id="humanistInputFields" class="humanist-input-fields" hidden>
+          <label>功能或结果说明（可选）<textarea id="humanistSupportLine" rows="3" maxlength="420" placeholder="例如：把演示文稿整理成可编辑、可分享的网页。"></textarea></label>
+          <label>身份 / 网址 / 作者（可选）<input id="humanistIdentity" maxlength="220" placeholder="例如：PPT HTML Studio · ppthtmlstudio.xyz"></label>
+          <label>日期 / 行动信息（可选）<input id="humanistMetadata" maxlength="220" placeholder="例如：NEW RELEASE · 2026"></label>
+        </div>
+        <div id="acidInputFields" class="acid-input-fields" hidden>
+          <label>系列编号（可选）<input id="acidSeriesNumber" maxlength="12" placeholder="例如：008"></label>
+          <label>年份 / 期号（可选）<input id="acidYear" maxlength="24" placeholder="例如：IN 2026"></label>
+          <label>系列名称（可选）<input id="acidSeriesName" maxlength="80" placeholder="例如：POSTER SERIES"></label>
+          <label>色板偏好<select id="acidPalette"><option value="auto">AI 选择</option><option value="navy-yellow-wine">深蓝黑 · 亮黄 · 酒红 · 奶白</option><option value="cobalt-orange-cream">钴蓝 · 橙色 · 奶白 · 酒红</option><option value="forest-coral-cream">深绿 · 珊瑚红 · 奶白 · 黑蓝</option></select></label>
+        </div>
+        <div id="actionInputFields" class="action-input-fields" hidden>
+          <p class="action-input-hint">以下内容可选填写；留空时由 AI 根据主题自动补全。</p>
+          <label>主体人物及身份（可选）<input id="actionSubject" maxlength="180" placeholder="例如：城市骑行者、户外咖啡师"></label>
+          <label>具体动作（可选）<input id="actionAction" maxlength="180" placeholder="例如：高速压弯冲向镜头"></label>
+          <label>户外地点（可选）<input id="actionLocation" maxlength="180" placeholder="例如：城市高架桥、海边步道"></label>
+          <label>产品或道具（可选）<input id="actionProduct" maxlength="180" placeholder="例如：橙色公路自行车、透明冰咖啡杯"></label>
+        </div>
+        <div id="mondoInputFields" class="mondo-input-fields" hidden>
+          <p class="action-input-hint">主题即可生成；以下选项只用于锁定 Mondo 的叙事方向，不填则由 AI 判断。</p>
+          <label>海报语境（可选）<select id="mondoType"><option value="auto">AI 判断</option><option value="film">电影 / 影展</option><option value="music">音乐 / 专辑</option><option value="book">书籍 / 出版</option><option value="event">活动 / 演出</option><option value="concept">概念 / 社会议题</option></select></label>
+          <label>构图偏好（可选）<select id="mondoComposition"><option value="auto">AI 判断</option><option value="single-symbol">单一象征主体</option><option value="negative-space-dual">负形双重含义</option><option value="geometric-frame">几何框景</option><option value="layered-atmosphere">层叠氛围</option><option value="silhouette-scale">剪影与尺度反差</option></select></label>
+          <label>图片比例（可选）<select id="mondoAspect"><option value="auto">默认竖版 3:5</option><option value="3:5">3:5 竖版</option><option value="2:3">2:3 竖版</option><option value="4:5">4:5 竖版</option></select></label>
+          <label>色彩偏好（可选）<input id="mondoPalette" maxlength="120" placeholder="例如：靛蓝、赭石、暖白；留空则 AI 选择 2–4 色"></label>
+        </div>
+        <button class="poster-primary" id="compileZinePoster" type="submit">生成视觉方案</button>
+      </form>
+
+      <section id="zineBriefStage" class="zine-brief-stage" hidden aria-live="polite">
+        <div class="poster-brief-head"><strong>确认视觉方案</strong><span>确认后才会调用图像模型</span></div>
+        <p id="zineRecipeMeta" class="zine-recipe-meta"></p>
+        <div id="zineVisualFields">
+        <div class="poster-field-row">
+          <label>构图<select id="zineLayout"><option value="center-fragment">中央碎片</option><option value="lower-left-float">左下漂浮</option><option value="upper-right-block">右上色块</option><option value="dual-panel">双面板</option><option value="irregular-cutout">不规则剪纸</option><option value="type-led">文字主导</option><option value="dot-orbit">点状轨道</option><option value="single-specimen">单一标本</option></select></label>
+          <label>色彩锚点<select id="zineAccent"><option value="cobalt">钴蓝</option><option value="cyan">青蓝</option><option value="violet">紫罗兰</option><option value="magenta">洋红</option><option value="lemon">柠檬黄</option><option value="pear-green">梨绿</option><option value="orange">橙色</option><option value="tomato">番茄红</option></select></label>
+        </div>
+        <div class="poster-field-row">
+          <label>主体处理<select id="zineAnchor"><option value="tiny-faded-photo">褪色小照片</option><option value="torn-paper-clipping">撕纸剪贴</option><option value="flat-silhouette">平面剪影</option><option value="solid-color-block">纯色色块</option><option value="old-printed-illustration">旧印刷插图</option><option value="object-specimen">物件标本</option><option value="translucent-overlay">半透明几何片</option><option value="texture-window">纹理窗口</option></select></label>
+          <label>印刷质感<select id="zineTexture"><option value="xerox-softness">复印柔化</option><option value="risograph-grain">孔版颗粒</option><option value="letterpress-bleed">凸版渗墨</option><option value="halftone-degradation">网点退化</option><option value="film-grain">胶片颗粒</option><option value="scan-noise">扫描噪点</option><option value="aged-paper">纸张斑驳</option></select></label>
+        </div>
+        </div>
+        <label>准确短句<input id="zineBriefPhrase" maxlength="70"></label>
+        <label>主题延展文字（可编辑）<textarea id="zineBriefEditorialText" rows="3" maxlength="260" placeholder="AI 会把主题扩展为 2–4 行短文，作为海报的编辑性文字层。"></textarea></label>
+        <div id="humanistBriefFields" class="humanist-brief-fields" hidden>
+          <label>功能说明（可编辑）<textarea id="humanistBriefSupportLine" rows="3" maxlength="420"></textarea></label>
+          <label>身份 / 网址（可编辑）<input id="humanistBriefIdentity" maxlength="220"></label>
+          <label>日期 / 行动信息（可编辑）<input id="humanistBriefMetadata" maxlength="220"></label>
+          <label>视觉方向<select id="humanistDirection"></select></label>
+        </div>
+        <div id="acidBriefFields" class="acid-brief-fields" hidden>
+          <div class="poster-field-row">
+            <label>系列编号<input id="acidBriefSeriesNumber" maxlength="12"></label>
+            <label>年份 / 期号<input id="acidBriefYear" maxlength="24"></label>
+          </div>
+          <div class="poster-field-row">
+            <label>系列名称<input id="acidBriefSeriesName" maxlength="80"></label>
+            <label>色板<select id="acidBriefPalette"><option value="navy-yellow-wine">深蓝黑 · 亮黄 · 酒红 · 奶白</option><option value="cobalt-orange-cream">钴蓝 · 橙色 · 奶白 · 酒红</option><option value="forest-coral-cream">深绿 · 珊瑚红 · 奶白 · 黑蓝</option></select></label>
+          </div>
+          <label>左侧竖排文字<input id="acidBriefVerticalPrimary" maxlength="40"></label>
+          <label>底部说明<textarea id="acidBriefFooterText" rows="3" maxlength="360"></textarea></label>
+          <label>构图<select id="acidBriefLayout"><option value="monumental-specimen">中心主体</option><option value="diagonal-crop">斜切构图</option><option value="geometric-pedestal">几何台座</option><option value="split-grid">分栏网格</option></select></label>
+        </div>
+        <div id="actionBriefFields" class="action-brief-fields" hidden>
+          <p class="action-input-hint">带“用户指定”的字段来自你的输入，其余由 AI 补全；确认前仍可编辑。</p>
+          <div class="poster-field-row">
+            <label>主体人物及身份<input id="actionBriefSubject" maxlength="180"></label>
+            <label>具体动作<input id="actionBriefAction" maxlength="180"></label>
+          </div>
+          <div class="poster-field-row">
+            <label>户外地点<input id="actionBriefLocation" maxlength="180"></label>
+            <label>产品或道具<input id="actionBriefProduct" maxlength="180"></label>
+          </div>
+          <label>服装风格<input id="actionBriefWardrobe" maxlength="180"></label>
+          <label>强调色<input id="actionBriefAccent" maxlength="80"></label>
+        </div>
+        <div id="mondoBriefFields" class="mondo-brief-fields" hidden>
+          <p class="action-input-hint">Mondo 图像只承担隐喻主体和印刷质感；所有精确文字均由可编辑排版层生成。</p>
+          <div class="poster-field-row">
+            <label>海报语境<select id="mondoBriefType"><option value="film">电影 / 影展</option><option value="music">音乐 / 专辑</option><option value="book">书籍 / 出版</option><option value="event">活动 / 演出</option><option value="concept">概念 / 社会议题</option></select></label>
+            <label>构图<select id="mondoBriefComposition"><option value="single-symbol">单一象征主体</option><option value="negative-space-dual">负形双重含义</option><option value="geometric-frame">几何框景</option><option value="layered-atmosphere">层叠氛围</option><option value="silhouette-scale">剪影与尺度反差</option></select></label>
+          </div>
+          <div class="poster-field-row">
+            <label>图片比例<select id="mondoBriefAspect"><option value="3:5">3:5 竖版</option><option value="2:3">2:3 竖版</option><option value="4:5">4:5 竖版</option></select></label>
+            <label>限色色板<input id="mondoBriefPalette" maxlength="120"></label>
+          </div>
+          <label>象征主体<input id="mondoBriefSymbol" maxlength="180"></label>
+          <label>隐藏含义 / 视觉反转<textarea id="mondoBriefMeaning" rows="3" maxlength="360"></textarea></label>
+          <label>印刷年代<select id="mondoBriefEra"><option value="1960s">1960s</option><option value="1970s">1970s</option><option value="1980s">1980s</option></select></label>
+        </div>
+        <label>画面提示词<textarea id="zinePrompt" rows="8"></textarea></label>
+        <label>负面提示词<textarea id="zineNegativePrompt" rows="3"></textarea></label>
+        <div class="poster-brief-actions"><button id="zineBriefCancel" type="button">重新生成方案</button><button id="zineBriefConfirm" type="button" class="poster-primary">确认并生成海报</button></div>
+      </section>
+
+      <form id="academicPosterForm" class="academic-poster-form" hidden novalidate>
+        <div class="academic-poster-intro"><span>PAPER2POSTER · SOURCE LOCKED</span><h2>论文驱动的可编辑学术海报</h2><p>先提取论文结构与原始图表，再由共享 AI 配置规划叙事，并使用确定性 HTML 排版准确文字、图表与来源引用。</p></div>
+        <label>论文 PDF 或 Word<input id="academicPosterWord" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" required><small>支持文本型 PDF 和含正文/图表的 .docx；解析在浏览器本地完成，不会调用学术背景生图，也不会改变其他功能的 AI 配置。</small></label>
+        <label>标题（可选）<input id="academicPosterTitle" maxlength="220" placeholder="默认使用论文标题"></label>
+        <label>作者<input id="academicPosterAuthors" maxlength="260" placeholder="作者姓名"></label>
+        <label>机构 / 会议<input id="academicPosterInstitution" maxlength="260" placeholder="机构、实验室或会议"></label>
+        <label>补充要求<textarea id="academicPosterRequirements" maxlength="1000" rows="3" placeholder="例如：突出方法流程、适合答辩或展板阅读"></textarea></label>
+        <fieldset class="academic-template-fieldset"><legend>选择海报模板</legend><div class="academic-template-grid" id="academicPosterTemplates">
+          <label class="academic-template active"><input type="radio" name="academicPosterTemplate" value="conference_paper_board" checked><i class="template-art portrait"></i><strong>会议论文展板</strong><small>高密度 2:3 · 方法、表格、结果图</small></label>
+          <label class="academic-template"><input type="radio" name="academicPosterTemplate" value="landscape"><i class="template-art landscape"></i><strong>横版三栏</strong><small>Discovery → Method → Results</small></label>
+          <label class="academic-template"><input type="radio" name="academicPosterTemplate" value="portrait"><i class="template-art portrait"></i><strong>BetterPoster</strong><small>竖版结果优先</small></label>
+          <label class="academic-template"><input type="radio" name="academicPosterTemplate" value="teaser"><i class="template-art teaser"></i><strong>Pipeline Teaser</strong><small>16:9 方法叙事</small></label>
+          <label class="academic-template"><input type="radio" name="academicPosterTemplate" value="graphical_abstract"><i class="template-art abstract"></i><strong>Graphical Abstract</strong><small>1:1 图形摘要</small></label>
+        </div></fieldset>
+        <p id="academicPosterStatus" class="academic-poster-status" aria-live="polite">上传论文后将建立来源文本块、原始图表资产和可追溯引用。</p>
+        <div id="academicPosterFigures" class="academic-poster-figures" hidden></div>
+        <div class="academic-poster-actions"><button type="submit" class="poster-primary">分析论文并生成方案</button></div>
+      </form>
+
+      <section id="academicPosterBriefStage" class="academic-v5-brief-stage" hidden aria-live="polite">
+        <div class="poster-brief-head"><strong>确认学术海报文案与视觉方案</strong><span>确认后才会调用生图模型；标题、数字、引用和原始图表将由可编辑排版层准确呈现。</span></div>
+        <p id="academicBriefNarrative" class="academic-brief-narrative"></p>
+        <div class="academic-brief-global">
+          <label>海报标题<input id="academicBriefTitle" maxlength="260"></label>
+          <label>一句话核心结论<textarea id="academicBriefSubtitle" rows="2" maxlength="280"></textarea></label>
+          <label>整体视觉提示词<textarea id="academicBriefVisualPrompt" rows="4" maxlength="2400"></textarea></label>
+          <label>负向提示词<textarea id="academicBriefNegativePrompt" rows="2" maxlength="900"></textarea></label>
+        </div>
+        <div class="academic-brief-panel-heading"><strong>动态板块</strong><span id="academicBriefPanelMeta"></span></div>
+        <div id="academicBriefPanels" class="academic-brief-panels"></div>
+        <div class="poster-brief-actions"><button id="academicBriefCancel" type="button">返回修改论文信息</button><button id="academicBriefConfirm" type="button" class="poster-primary">确认方案并生成学术海报</button></div>
+      </section>
+
+      <section id="posterBriefStage" class="poster-brief-stage" hidden aria-live="polite">
+        <div class="poster-brief-head"><strong>确认学术海报文案与画面提示词</strong><span>确认后才会调用生图模型</span></div>
+        <label>标题<input id="posterBriefTitle"></label>
+        <label>副标题<input id="posterBriefSubtitle"></label>
+        <label>正文<textarea id="posterBriefBody" rows="5"></textarea></label>
+        <label>画面提示词<textarea id="posterBriefVisualPrompt" rows="4"></textarea></label>
+        <label>负面提示词<textarea id="posterBriefNegativePrompt" rows="2">text, letters, logos, watermark, poster typography</textarea></label>
+        <div class="poster-brief-actions"><button id="posterBriefCancel" type="button">重新生成文案</button><button id="posterBriefConfirm" type="button" class="poster-primary">确认并生成图片</button></div>
+      </section>
+    </aside>
+
+    <section class="poster-preview-panel" aria-label="海报预览与编辑">
+      <div class="preview-toolbar">
+        <div><strong id="posterMode">可编辑预览</strong><span id="posterResultMeta">3:5 纸张 · 视觉方案待确认</span></div>
+        <div class="preview-actions">
+          <button id="toggleEdit" type="button" title="进入或退出编辑器" disabled>编辑</button>
+          <button id="savePoster" type="button" title="保存修改" disabled>保存</button>
+          <button id="downloadHtml" type="button" title="下载 HTML" disabled>HTML</button>
+          <button id="downloadPng" type="button" title="下载 PNG" disabled>PNG</button>
+          <button id="downloadWebp" type="button" title="下载 WebP" disabled>WebP</button>
+          <button id="downloadPdf" type="button" title="下载 PDF" disabled>PDF</button>
+        </div>
+      </div>
+      <div class="poster-preview-shell"><div class="preview-frame poster-preview-frame" id="posterPreviewShell"><iframe id="posterPreviewFrame" title="可编辑海报预览"></iframe><div class="poster-empty" id="posterEmpty">从左侧选择风格并输入主题，生成普通海报方案。</div><div class="poster-progress" id="posterProgress" hidden role="status" aria-live="polite"><span></span><strong>正在编排主体、文字与视觉关系</strong><p>先生成可审阅的视觉方案；确认后才会请求图像模型。</p></div></div></div>
+      <p class="poster-helper">两种普通海报共用确认、编辑和导出流程；图像底图保持为独立素材，关键文字由编辑器准确排版。</p>
+    </section>
+  </main>
+
+  <script src="/static/ai-config.js"></script>
+  <script src="/static/history-store.js?v=20260802-history-v2"></script>
+  <script src="/static/anchor-deck/html-to-image.js"></script>
+  <script src="/static/anchor-deck/jspdf.umd.min.js"></script>
+  <script src="/static/deck-workbench.js?v=20260802-fixed-stage-v2"></script>
+  <script src="/static/poster.js?v=20260803-zine-workbench"></script>
+  <script src="/static/poster-zine.js?v=20260803-zine-v1"></script>
+  <script src="/static/poster-quiet-humanist.js?v=20260804-humanist-v1"></script>
+  <script src="/static/poster-acid-swiss.js?v=20260804-acid-v1"></script>
+  <script src="/static/poster-editorial-action.js?v=20260804-action-v1"></script>
+  <script src="/static/poster-qiaomu-mondo.js?v=20260804-mondo-v1"></script>
+  <script src="/static/poster-standard.js?v=20260804-standard-v1"></script>
+  <script src="/static/mammoth.browser.min.js"></script>
+  <script src="/static/turndown.js"></script>
+  <script src="/static/pdf.min.js"></script>
+  <script src="/static/poster-academic-v5.js?v=20260805-academic-v5"></script>
+</body>
+</html>
