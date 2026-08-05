@@ -11,7 +11,7 @@
       apiKeyHeader: "Authorization",
       apiKeyPrefix: "Bearer ",
       workflowPayload: "flat",
-      timeoutSec: 300,
+      timeoutSec: 0,
     },
     deepseek: {
       label: "DeepSeek",
@@ -21,7 +21,7 @@
       apiKeyHeader: "Authorization",
       apiKeyPrefix: "Bearer ",
       workflowPayload: "flat",
-      timeoutSec: 300,
+      timeoutSec: 0,
     },
     doubao_seed: {
       label: "Doubao Seed",
@@ -31,7 +31,7 @@
       apiKeyHeader: "Authorization",
       apiKeyPrefix: "Bearer ",
       workflowPayload: "flat",
-      timeoutSec: 300,
+      timeoutSec: 0,
     },
     custom_ai: {
       label: "Custom AI API",
@@ -41,7 +41,7 @@
       apiKeyHeader: "Authorization",
       apiKeyPrefix: "Bearer ",
       workflowPayload: "flat",
-      timeoutSec: 300,
+      timeoutSec: 0,
     },
     workflow: {
       label: "Custom Workflow",
@@ -51,7 +51,7 @@
       apiKeyHeader: "Authorization",
       apiKeyPrefix: "Bearer ",
       workflowPayload: "flat",
-      timeoutSec: 300,
+      timeoutSec: 0,
     },
     dify: {
       label: "Dify Workflow",
@@ -61,7 +61,7 @@
       apiKeyHeader: "Authorization",
       apiKeyPrefix: "Bearer ",
       workflowPayload: "dify",
-      timeoutSec: 300,
+      timeoutSec: 0,
     },
   };
 
@@ -106,7 +106,7 @@
       provider,
       ...preset,
       ...config,
-      timeoutSec: Math.max(60, Number(config.timeoutSec || preset.timeoutSec || 300)),
+      timeoutSec: Math.max(0, Number(config.timeoutSec || preset.timeoutSec || 0)),
     };
     const secret = readSecret();
     const savedKey = secret[provider] || secret[merged.endpoint] || "";
