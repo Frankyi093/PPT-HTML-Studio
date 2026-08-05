@@ -175,9 +175,45 @@
     return next;
   }
 
+  function wireSettingsLinks() {
+    const selectors = [
+      'a[href="/settings.html"]',
+      'a[href="/settings"]',
+      'a[href="settings.html"]',
+      '[data-settings-link]',
+      '[data-i18n="settings"]',
+      '#settingsButton',
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach((node) => {
+      if (node.dataset.settingsWired === "1") return;
+      node.dataset.settingsWired = "1";
+      if (node.tagName === "A") {
+        node.setAttribute("href", "/settings.html");
+        node.style.pointerEvents = "auto";
+      }
+      node.addEventListener(
+        "click",
+        (event) => {
+          const href = node.getAttribute("href") || "";
+          const isSettings =
+            node.id === "settingsButton" ||
+            node.dataset.settingsLink !== undefined ||
+            node.dataset.i18n === "settings" ||
+            href.includes("settings");
+          if (!isSettings) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.assign("/settings.html");
+        },
+        true,
+      );
+    });
+  }
+
   function init() {
     const theme = applyTheme(readTheme());
     const runTranslation = () => {
+      wireSettingsLinks();
       const language = translate(readLanguage());
       document.dispatchEvent(new CustomEvent("ppt-settings-ready", { detail: { theme, language } }));
     };
@@ -198,6 +234,7 @@
     readLanguage,
     applyTheme,
     translate,
+    wireSettingsLinks,
     init,
   };
 
