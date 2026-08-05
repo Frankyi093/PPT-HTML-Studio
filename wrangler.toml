@@ -1,6 +1,14 @@
 name = "ppt-html-studio"
 compatibility_date = "2026-07-08"
 main = "dist/cloudflare-worker.js"
+workers_dev = true
+preview_urls = true
+
+# Keep the existing custom domain attached when deploying with Wrangler.  This
+# mirrors the dashboard route instead of allowing a deploy to remove it.
+routes = [
+  { pattern = "ppthtmlstudio.xyz", zone_name = "ppthtmlstudio.xyz", custom_domain = true, enabled = true, previews_enabled = false }
+]
 
 [assets]
 directory = "./dist/public"
