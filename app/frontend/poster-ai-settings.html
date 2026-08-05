@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>海报 AI 配置 · PPT HTML Studio</title>
+  <link rel="stylesheet" href="/static/poster.css">
+  <style>
+    body{margin:0;background:#eef3f9;color:#172033;font-family:Inter,Arial,"Microsoft YaHei",sans-serif}.settings{max-width:820px;margin:40px auto;padding:28px;background:#fff;border-radius:18px;box-shadow:0 18px 60px #17335d18}.settings h1{margin:0 0 8px}.settings p{color:#607083;line-height:1.6}.settings form{display:grid;gap:16px}.settings label{display:grid;gap:7px;font-weight:700}.settings input,.settings select{padding:11px;border:1px solid #cbd6e3;border-radius:8px;font:inherit}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions button{padding:11px 16px;border:0;border-radius:8px;background:#265ee8;color:#fff;font-weight:800;cursor:pointer}.actions button.secondary{background:#e7edf7;color:#172033}.status{min-height:26px;color:#176b87}@media(max-width:650px){.settings{margin:12px;padding:18px}.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="settings">
+    <a href="/poster">← 返回海报</a>
+    <h1>独立海报 AI 配置</h1>
+    <p>这里仅配置海报的图像生成模型；海报文案继续使用系统已有的文本 AI 配置。配置保存在当前浏览器，不会写入服务器。</p>
+    <form id="posterAiSettingsForm">
+      <label>图像服务<select id="posterAiProvider"><option value="cloudflare-workers-ai">Cloudflare Workers AI（无需额外服务器）</option><option value="openai-images-compatible">OpenAI-compatible Images API</option></select></label>
+      <div class="row"><label>模型<input id="posterAiModel" placeholder="@cf/black-forest-labs/flux-2-klein-9b"></label><label>输出格式<select id="posterAiFormat"><option value="png">PNG</option><option value="webp">WebP</option></select></label></div>
+      <label>外部 API 基础地址（OpenAI-compatible）<input id="posterAiEndpoint" type="url" placeholder="https://example.com/v1"><small>填写基础地址即可，系统会自动请求 /images/generations；也可直接填写完整路径。</small></label>
+      <label>外部 API Key（仅保存在本机）<input id="posterAiKey" type="password" autocomplete="off"></label>
+      <div class="row"><label>API Key Header<input id="posterAiKeyHeader" value="Authorization" placeholder="Authorization"></label><label>Key Prefix<input id="posterAiKeyPrefix" value="Bearer " placeholder="Bearer "></label></div>
+      <label>额外请求头（JSON，可选）<textarea id="posterAiCustomHeaders" rows="3" placeholder='{"X-API-Key":"..."}'></textarea></label>
+      <label>接口请求配置<select id="posterAiProfile"><option value="openai-images">OpenAI Images /images/generations</option><option value="gpt-image-2">GPT Image 2（同一 Images API）</option><option value="custom">自定义 OpenAI-compatible</option></select></label>
+      <div class="actions"><button type="submit">保存配置</button><button class="secondary" type="button" id="testPosterImage">测试图像模型</button><button class="secondary" type="button" id="testPosterCopy">测试文案模型</button></div>
+      <div id="posterAiSettingsStatus" class="status" role="status"></div>
+    </form>
+  </main>
+  <script src="/static/ai-config.js"></script><script src="/static/poster-ai-settings.js"></script>
+</body>
+</html>
