@@ -1,10 +1,11 @@
-const AI_GENERATE_UI_REVISION = "edit-workbench-20260719";
+const AI_GENERATE_UI_REVISION = "banana-direct-generation-20260725";
 const API_SECRET_STORAGE_KEY = "ppt-html-studio-api-secret-v2";
 const THEME_STORAGE_KEY = "ppt-html-studio-theme";
 const PREVIEW_DESKTOP_WIDTH = 1280;
 const PREVIEW_DESKTOP_HEIGHT = 720;
 
-const styles = [
+const styles = window.PptStyleRegistry?.builtinOptions?.() || (window.PptQualitySystem?.builtinStyles || ((items) => items))([
+  ["banana", "Banana Paper"],
   ["teaching", "Teaching Blue"],
   ["academic", "Academic Style"],
   ["swiss", "Swiss Grid"],
@@ -17,7 +18,7 @@ const styles = [
   ["doodle", "Doodle Sketch"],
   ["editorial", "Editorial"],
   ["vivid", "Vivid"],
-];
+]);
 
 const apiProviders = {
   deepseek: {
@@ -28,7 +29,7 @@ const apiProviders = {
     apiKeyPrefix: "Bearer ",
     customHeaders: "",
     workflowPayload: "flat",
-    timeoutSec: 300,
+    timeoutSec: 0,
   },
   doubao_seed: {
     mode: "ai_api",
@@ -38,7 +39,7 @@ const apiProviders = {
     apiKeyPrefix: "Bearer ",
     customHeaders: "",
     workflowPayload: "flat",
-    timeoutSec: 300,
+    timeoutSec: 0,
   },
   openai: {
     mode: "ai_api",
@@ -48,7 +49,7 @@ const apiProviders = {
     apiKeyPrefix: "Bearer ",
     customHeaders: "",
     workflowPayload: "flat",
-    timeoutSec: 300,
+    timeoutSec: 0,
   },
   custom_ai: {
     mode: "ai_api",
@@ -58,7 +59,7 @@ const apiProviders = {
     apiKeyPrefix: "Bearer ",
     customHeaders: "",
     workflowPayload: "flat",
-    timeoutSec: 300,
+    timeoutSec: 0,
   },
   workflow: {
     mode: "workflow_api",
@@ -68,7 +69,7 @@ const apiProviders = {
     apiKeyPrefix: "Bearer ",
     customHeaders: "",
     workflowPayload: "flat",
-    timeoutSec: 300,
+    timeoutSec: 0,
   },
   dify: {
     mode: "workflow_api",
@@ -78,7 +79,7 @@ const apiProviders = {
     apiKeyPrefix: "Bearer ",
     customHeaders: "",
     workflowPayload: "dify",
-    timeoutSec: 300,
+    timeoutSec: 0,
   },
 };
 
@@ -91,7 +92,7 @@ const state = {
     customHeaders: "",
     workflowPayload: "flat",
     model: "gpt-4.1-mini",
-    timeoutSec: 300,
+    timeoutSec: 0,
     hasApiKey: false,
     apiKeyMasked: "",
   },
@@ -106,9 +107,18 @@ const state = {
     messages: [],
     busy: false,
   },
+  creationMode: "one-line",
+  selectedStyle: localStorage.getItem("ppt-html-studio-selected-style") || "banana",
+  customStyles: window.PptStyleRegistry?.loadCustomStyles?.() || [],
+  referencePack: window.PptReferencePack?.empty?.() || { files: [], images: [], outlineText: "", outline: [] },
 };
 
 const el = (id) => document.getElementById(id);
+
+function activeCustomStyle() {
+  const customStyles = Array.isArray(state.customStyles) ? state.customStyles : [];
+  return customStyles.find((style) => style.id === state.selectedStyle) || null;
+}
 
 function setStatus(message, kind = "") {
   const node = el("statusLine");
@@ -135,8 +145,9 @@ function setBusy(value, message = "") {
     if (node) node.disabled = state.busy || (id === "generateButton" && !state.plan);
   });
   updateChatSendState();
-  el("generationOverlay").classList.toggle("hidden", !value);
-  if (message) el("generationMessage").textContent = message;
+  const overlay = el("generationOverlay");
+  if (overlay) overlay.classList.toggle("hidden", !value);
+  if (message && el("generationMessage")) el("generationMessage").textContent = message;
 }
 
 function safeJsonParse(text, fallback = null) {
@@ -179,7 +190,7 @@ function savedKeyForProvider() {
 
 function collectIntegration() {
   const shared = window.PptAiConfig?.loadAiConfig?.();
-  if (shared) return { ...shared, fallbackToLocal: false, timeoutSec: Math.max(300, Number(shared.timeoutSec || 300)) };
+  if (shared) return { ...shared, fallbackToLocal: false, timeoutSec: 0 };
   return { ...state.integration, apiKey: savedKeyForProvider(), fallbackToLocal: false };
 }
 
@@ -219,15 +230,89 @@ async function saveIntegration() {
 }
 
 function currentTopicPayload() {
+  const style = el("styleSelect").value;
+  const customStyle = activeCustomStyle();
+  const slideCount = Number(el("slideCount").value || 8);
+  const outlineText = el("outlineSource")?.value.trim() || "";
+  const parsedOutline = state.creationMode === "outline"
+    ? (window.PptReferencePack?.parseMarkdownOutline?.(outlineText) || [])
+    : [];
+  const topic = el("topic").value.trim() || window.PptReferencePack?.parseMarkdownOutline?.(outlineText)?.[0]?.title || "Presentation";
   return {
-    topic: el("topic").value.trim(),
+    topic,
     audience: el("audience").value.trim(),
-    slideCount: Number(el("slideCount").value || 8),
+    slideCount: state.creationMode === "outline" ? Math.max(3, Math.min(30, parsedOutline.length || slideCount)) : slideCount,
     outputLanguage: el("outputLanguage").value,
     requirements: el("requirements").value.trim(),
-    style: el("styleSelect").value,
+    outlineText: state.creationMode === "outline" ? outlineText : "",
+    generationMode: state.creationMode,
+    style,
+    creationMode: state.creationMode,
+    referencePack: window.PptReferencePack?.apiPayload?.(state.referencePack) || null,
+    styleProfile: window.PptQualitySystem?.profileFor?.(style, customStyle),
+    layoutRules: window.PptQualitySystem?.layoutRules?.(style),
+    qualityContract: window.PptQualitySystem?.promptContract?.(style, {
+      source: "quick-create",
+      slideCount,
+      customStyle,
+    }),
     integration: collectIntegration(),
   };
+}
+
+function enrichPlanWithQuality(plan, source = "quick-create") {
+  if (!plan) return plan;
+  const style = plan.style || el("styleSelect")?.value || "teaching";
+  const customStyle = activeCustomStyle();
+  const slideCount = Array.isArray(plan.slides) ? plan.slides.length : Number(el("slideCount")?.value || 8);
+  const styleProfile = window.PptQualitySystem?.profileFor?.(style, customStyle) || plan.styleProfile || {};
+  const layoutRules = window.PptQualitySystem?.layoutRules?.(style) || plan.layoutRules || [];
+  return {
+    ...plan,
+    style,
+    styleProfile: { ...styleProfile, ...(plan.styleProfile || {}) },
+    layoutRules: Array.from(new Set([...(layoutRules || []), ...((plan.layoutRules || []).filter(Boolean))])),
+    qualityContract: window.PptQualitySystem?.promptContract?.(style, {
+      source,
+      slideCount,
+      customStyle,
+    }) || plan.qualityContract || "",
+    slides: (plan.slides || []).map((slide, index) => ({
+      ...slide,
+      page: index + 1,
+      layout: slide.layout || layoutRules[index % Math.max(1, layoutRules.length)] || "title-and-body",
+      styleProfile: slide.styleProfile || styleProfile,
+    })),
+  };
+}
+
+function seedSlidesForTopic(payload) {
+  const topic = (payload.topic || "Presentation").trim();
+  const count = Math.max(3, Math.min(30, Number(payload.slideCount || 8)));
+  const requirements = (payload.requirements || "").trim();
+  const patterns = [
+    { label: topic, body: [requirements || `Open with the central question behind ${topic}.`], layout: "cover" },
+    { label: `${topic}: why it matters`, body: [`Explain why ${topic} matters to ${payload.audience || "the audience"} now.`], layout: "statement-plus-context" },
+    { label: `${topic}: core concepts`, body: [`Define the essential ideas, terms, and mental model.`], layout: "concept-map" },
+    { label: `${topic}: how it works`, body: [`Show the process, interaction loop, or cause-and-effect chain.`], layout: "process" },
+    { label: `${topic}: examples and evidence`, body: [`Use concrete examples, source material, or observable cases.`], layout: "case-grid" },
+    { label: `${topic}: practical application`, body: [`Translate the idea into decisions, design choices, or actions.`], layout: "image-text" },
+    { label: `${topic}: trade-offs`, body: [`Name the limits, risks, and choices the audience should consider.`], layout: "comparison" },
+    { label: `${topic}: final takeaways`, body: [`Close with the messages the audience should remember.`], layout: "closing" },
+  ];
+  return Array.from({ length: count }, (_, index) => {
+    const template = patterns[Math.min(index, patterns.length - 1)];
+    return {
+      page: index + 1,
+      title: count > patterns.length && index >= patterns.length - 1
+        ? `${topic}: takeaway ${index - patterns.length + 2}`
+        : template.label,
+      body: template.body,
+      takeaway: template.body[0],
+      layout: template.layout,
+      visualFocus: `${template.layout} visual module for ${topic}`,
+    };
+  });
 }
 
 async function readJsonResponse(response) {
@@ -387,7 +472,7 @@ function editableTextToPlan(text, fallbackPlan = null) {
   plan.slides = plan.slides.map((slide, index) => ({
     ...slide,
     page: index + 1,
-    title: slide.title || `Key Idea ${index + 1}`,
+    title: slide.title || `Untitled slide ${index + 1}`,
     body: Array.isArray(slide.body) ? slide.body.filter(Boolean) : [],
   }));
   return plan;
@@ -395,14 +480,152 @@ function editableTextToPlan(text, fallbackPlan = null) {
 
 function renderPlan(plan) {
   state.plan = plan;
-  el("planText").value = planToEditableText(plan);
-  el("generateButton").disabled = false;
+  el("planEditorCard")?.removeAttribute("hidden");
+  const editor = el("planEditor");
+  if (editor) editor.value = planToMarkdown(plan);
+}
+
+function planToMarkdown(plan) {
+  if (!plan) return "";
+  return [`# ${plan.title || "Presentation"}`, "", ...(plan.slides || []).map((slide, index) => [
+    `## ${slide.title || `Slide ${index + 1}`}`,
+    ...(slide.takeaway ? [`- ${slide.takeaway}`] : []),
+    ...(slide.body || []).filter((item) => item && item !== slide.takeaway).map((item) => `- ${item}`),
+  ].join("\n"))].join("\n\n");
+}
+
+function legacyPlanToMarkdown(plan) {
+  if (!plan) return "";
+  return [`# ${plan.title || "Presentation"}`, "", ...(plan.slides || []).map((slide, index) => [
+    `## 第 ${index + 1} 页：${slide.title || `页面 ${index + 1}`}`,
+    ...(slide.body || []).map((item) => `- ${item}`),
+  ].join("\n"))].join("\n\n");
+}
+
+function planFromEditor() {
+  const text = el("planEditor")?.value.trim();
+  const parsed = window.PptReferencePack?.parseMarkdownOutline?.(text) || [];
+  if (!parsed.length || !state.plan) return state.plan;
+  return enrichPlanWithQuality({
+    ...state.plan,
+    title: text.match(/^#\s+(.+)$/m)?.[1]?.trim() || state.plan.title,
+    slides: parsed.map((slide, index) => ({
+      page: index + 1,
+      title: slide.title || `Slide ${index + 1}`,
+      body: slide.points || [],
+      layout: state.plan.slides?.[index]?.layout || "title-and-body",
+      visualFocus: state.plan.slides?.[index]?.visualFocus || "",
+      speakerNote: state.plan.slides?.[index]?.speakerNote || "",
+    })),
+  }, "quick-create-edited-outline");
+}
+
+function outlineToPlan(text) {
+  const parsed = window.PptReferencePack?.parseMarkdownOutline?.(text) || [];
+  const title = String(text || "").match(/^#\s+(.+)$/m)?.[1]?.trim() || parsed[0]?.title || "Presentation";
+  return enrichPlanWithQuality({
+    title,
+    subtitle: "",
+    audience: el("audience")?.value.trim() || "",
+    goal: el("requirements")?.value.trim() || "",
+    style: el("styleSelect")?.value || "banana",
+    tone: "clear, visual, audience-first",
+    slides: parsed.map((slide, index) => ({
+      page: index + 1,
+      title: slide.title || `Slide ${index + 1}`,
+      takeaway: slide.takeaway || slide.points?.[0] || "",
+      body: slide.points || [],
+      layout: index === 0 ? "cover" : "title-and-body",
+      visualFocus: slide.part ? `Section: ${slide.part}` : "",
+    })),
+  }, "quick-create-outline");
+}
+
+async function runAiPlanGeneration(plan, payload, source = "quick-create") {
+  if (!window.PptAiProgress?.run) throw new Error("AI progress runner is not available. Refresh the page and try again.");
+  const customStyle = activeCustomStyle();
+  const stylePrompt = window.PptQualitySystem?.stylePrompt?.(payload.style, customStyle) || "";
+  const implementationGuide = window.PptQualitySystem?.implementationGuide?.(payload.style, customStyle) || "";
+  const stylePack = window.PptStyleRegistry?.stylePackFor?.(payload.style, customStyle) || null;
+  const data = await window.PptAiProgress.run({
+    filename: `${plan.title || payload.topic || "presentation"}.html`,
+    slides: plan.slides,
+    style: payload.style,
+    stylePack,
+    customStyle,
+    integration: payload.integration,
+    source,
+    mode: payload.generationMode || source,
+    sourceBrief: [
+      `Create a polished ${payload.outputLanguage === "en" ? "English" : "Chinese"} presentation about ${payload.topic || plan.title}.`,
+      `Audience: ${payload.audience || "general audience"}.`,
+      `Goal and requirements: ${payload.requirements || plan.goal || "Make the content clear, visual, and easy to present."}.`,
+      `Selected style contract: ${stylePrompt}`,
+      `Selected style implementation: ${implementationGuide}`,
+      "Use the confirmed outline as the content source. Keep its order, facts, titles, and takeaways.",
+    ].join("\n"),
+    referencePack: payload.referencePack || null,
+    topicPlan: plan,
+    onProgress: (progress) => {
+      const message = progress.message || "AI is generating HTML...";
+      setStatus(`${message} ${Math.round(progress.percent)}%`);
+    },
+  });
+  if (!data.job) throw new Error("AI 已返回内容，但预览 Job 尚未创建完成。");
+  return data;
 }
 
 async function generatePlan(event) {
   event.preventDefault();
-  if (!el("topic").value.trim()) {
+  if (state.creationMode === "one-line" && !el("topic").value.trim()) {
+    setStatus("请输入一句话主题。", "error");
+    return;
+  }
+  if (state.creationMode === "outline" && !el("outlineSource")?.value.trim()) {
+    setStatus("请粘贴 Markdown 大纲或上传一个大纲文件。", "error");
+    return;
+  }
+  const payload = currentTopicPayload();
+  if (!payload.integration.endpoint || !payload.integration.apiKey) {
+    setStatus("请先在 AI 配置中保存 API 服务、模型和密钥。", "error");
+    return;
+  }
+  try {
+    await saveIntegration();
+    const outlinePlan = state.creationMode === "outline" ? outlineToPlan(payload.outlineText) : null;
+    if (outlinePlan && !outlinePlan.slides.length) throw new Error("Markdown 大纲中没有识别到页面，请使用 ## 页面标题。");
+    state.plan = outlinePlan;
+    setBusy(true, state.creationMode === "outline" ? "正在按原始大纲生成 HTML..." : "AI 正在生成内容、版式和 16:9 HTML...");
+    setStatus(state.creationMode === "outline" ? "正在按大纲生成 HTML..." : "AI 正在生成完整演示文稿...");
+    const oneLinePlan = outlinePlan || enrichPlanWithQuality({
+      title: payload.topic,
+      audience: payload.audience,
+      goal: payload.requirements,
+      style: payload.style,
+      slides: seedSlidesForTopic(payload),
+    }, "quick-create-one-line");
+    state.plan = oneLinePlan;
+    const data = await runAiPlanGeneration(oneLinePlan, payload, state.creationMode === "outline" ? "quick-create-outline" : "quick-create");
+    state.plan = data.job?.topicPlan || state.plan;
+    renderJob(data.job);
+    window.PptAiProgress?.updateProgress({ percent: 100, phase: "已完成", message: "HTML 已生成，预览结果已准备好。", completedPages: oneLinePlan.slides.length, totalPages: oneLinePlan.slides.length });
+    await saveQuickCreateHistoryRecord(state.job);
+    setStatus(state.creationMode === "outline" ? "已按大纲生成 HTML，可预览、编辑和下载。" : "已生成 HTML，可预览、编辑和下载。", "ok");
+  } catch (error) {
+    setStatus(error.message || "AI generation failed.", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function legacyGeneratePlan(event) {
+  event.preventDefault();
+  if (state.creationMode === "one-line" && !el("topic").value.trim()) {
     setStatus("Please enter a topic first.", "error");
+    return;
+  }
+  if (state.creationMode === "outline" && !el("outlineSource")?.value.trim()) {
+    setStatus("Please paste a Markdown outline or upload one first.", "error");
     return;
   }
   const payload = currentTopicPayload();
@@ -425,8 +648,9 @@ async function generatePlan(event) {
     });
     const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.message || data.error || "AI planning failed.");
-    renderPlan(data.plan);
-    setStatus("Plan ready. Edit the readable outline, then generate HTML.", "ok");
+    renderPlan(enrichPlanWithQuality(data.plan, state.creationMode === "outline" ? "quick-create-outline" : "quick-create-plan"));
+    setStatus("Plan ready. Generating the complete HTML deck...", "ok");
+    await generateHtml(state.plan);
   } catch (error) {
     setStatus(error.message || "AI planning failed.", "error");
   } finally {
@@ -439,6 +663,44 @@ function createInlineHtmlUrl(html) {
   const url = URL.createObjectURL(blob);
   state.objectUrls.push(url);
   return url;
+}
+
+function normalizeDeckHtmlForEditor(html) {
+  return window.PptDeckWorkbench?.normalizeHtml
+    ? window.PptDeckWorkbench.normalizeHtml(html)
+    : String(html || "");
+}
+
+function makePagedHtmlPlayable(html) {
+  return window.PptDeckWorkbench?.makePagedHtmlPlayable
+    ? window.PptDeckWorkbench.makePagedHtmlPlayable(html)
+    : String(html || "");
+}
+
+function ensureDownloadablePagedHtml(html) {
+  const firstPass = makePagedHtmlPlayable(html);
+  if (/id=["']ppt-paged-player-script["']/.test(firstPass)) return firstPass;
+  const retry = makePagedHtmlPlayable(normalizeDeckHtmlForEditor(firstPass));
+  if (/id=["']ppt-paged-player-script["']/.test(retry)) return retry;
+  throw new Error("Could not add the standalone page navigation runtime to the exported HTML.");
+}
+
+function loadPreviewFrame(job) {
+  const frame = el("previewFrame");
+  if (!frame || !job) return;
+  const inlineHtml = job.inlinePreviewHtmlCache || "";
+  if (inlineHtml) {
+    const normalizedHtml = normalizeDeckHtmlForEditor(inlineHtml);
+    if (normalizedHtml && normalizedHtml !== inlineHtml) {
+      job.inlinePreviewHtmlCache = normalizedHtml;
+      job.previewUrl = createInlineHtmlUrl(makePagedHtmlPlayable(normalizedHtml));
+    }
+    frame.removeAttribute("src");
+    frame.srcdoc = normalizedHtml;
+    return;
+  }
+  frame.removeAttribute("srcdoc");
+  frame.src = job.previewUrl || "about:blank";
 }
 
 function syncPreviewScale() {
@@ -465,21 +727,38 @@ function triggerBlobDownload(blob, filename) {
 
 function refreshJobHtmlUrls(pagedHtml, scrollHtml, reloadPreview = false) {
   if (!state.job) return;
-  state.job.inlinePreviewHtmlCache = pagedHtml;
+  state.job.inlinePreviewHtmlCache = normalizeDeckHtmlForEditor(pagedHtml);
   state.job.inlineScrollHtmlCache = scrollHtml;
-  state.job.previewUrl = createInlineHtmlUrl(pagedHtml);
+  state.job.previewUrl = createInlineHtmlUrl(makePagedHtmlPlayable(state.job.inlinePreviewHtmlCache));
   state.job.scrollUrl = createInlineHtmlUrl(scrollHtml);
   if (reloadPreview) {
-    el("previewFrame").src = state.job.previewUrl;
+    loadPreviewFrame(state.job);
     el("previewEmpty").classList.add("hidden");
   }
+}
+
+function makeScrollHtmlFromPaged(html) {
+  if (window.PptDeckWorkbench?.makeScrollHtmlFromPaged) {
+    return window.PptDeckWorkbench.makeScrollHtmlFromPaged(html);
+  }
+  if (!html) return "";
+  let output = String(html);
+  if (/<body\b/i.test(output)) {
+    output = output.replace(/<body([^>]*)>/i, (match, attrs) => {
+      if (/class\s*=/.test(attrs)) {
+        return `<body${attrs.replace(/class\s*=\s*["']([^"']*)["']/i, (classMatch, classes) => `class="${classes} scroll-mode"`)}>`;
+      }
+      return `<body${attrs} class="scroll-mode">`;
+    });
+  }
+  return output.replace(/<\/head>/i, `<style>body.scroll-mode{overflow:auto!important}.scroll-mode .slide{display:block!important;position:relative!important;opacity:1!important;visibility:visible!important;margin:0 auto 24px!important}.scroll-mode .nav,.scroll-mode .deck-nav{display:none!important}</style></head>`);
 }
 
 function hydrateJob(job) {
   const output = { ...job };
   if (output.inlinePreviewHtml) {
-    output.inlinePreviewHtmlCache = output.inlinePreviewHtml;
-    output.previewUrl = createInlineHtmlUrl(output.inlinePreviewHtml);
+    output.inlinePreviewHtmlCache = normalizeDeckHtmlForEditor(output.inlinePreviewHtml);
+    output.previewUrl = createInlineHtmlUrl(makePagedHtmlPlayable(output.inlinePreviewHtmlCache));
     delete output.inlinePreviewHtml;
   }
   if (output.inlineScrollHtml) {
@@ -495,7 +774,7 @@ function renderJob(job) {
   state.editing = false;
   platformEditorSelected = null;
   document.querySelector(".topic-preview")?.classList.remove("editor-active");
-  el("previewFrame").src = state.job.previewUrl;
+  loadPreviewFrame(state.job);
   el("previewEmpty").classList.add("hidden");
   ["openPreviewHtml", "editHtml", "saveEditedHtml", "openScrollHtml", "downloadZip"].forEach((id) => {
     el(id).disabled = false;
@@ -506,25 +785,22 @@ function renderJob(job) {
   setChatStatus("Ready. Choose a scope and describe an edit.", "ok");
 }
 
-async function generateHtml() {
-  const plan = editableTextToPlan(el("planText").value, state.plan);
+async function generateHtml(planOverride = state.plan) {
+  const plan = planFromEditor() || enrichPlanWithQuality(planOverride, "quick-create-html");
   if (!plan?.slides?.length) {
     setStatus("The plan has no usable slides. Generate or edit the outline first.", "error");
     return;
   }
   state.plan = plan;
+  state.plan = plan;
   try {
     await saveIntegration();
     setBusy(true, "AI is generating the editable 16:9 HTML deck...");
     setStatus("Generating HTML deck...");
-    const response = await fetch("/api/generate-from-topic", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...currentTopicPayload(), plan }),
-    });
-    const data = await readJsonResponse(response);
-    if (!response.ok) throw new Error(data.message || data.error || "AI HTML generation failed.");
+    const data = await runAiPlanGeneration(plan, currentTopicPayload(), "quick-create-outline");
     renderJob(data.job);
+    window.PptAiProgress?.updateProgress({ percent: 100, phase: "已完成", message: "HTML 已生成，预览结果已准备好。", completedPages: plan.slides.length, totalPages: plan.slides.length });
+    await saveQuickCreateHistoryRecord(state.job);
     setStatus("HTML generated. You can preview, edit, save and download ZIP.", "ok");
   } catch (error) {
     setStatus(error.message || "AI HTML generation failed.", "error");
@@ -567,6 +843,7 @@ function setPlatformEditorSelected(target) {
 }
 
 function ensurePlatformEditorDock() {
+  if (state.workbench) return;
   const panel = document.querySelector(".topic-preview");
   if (!panel || panel.querySelector(".platform-editor-dock")) return;
   const dock = document.createElement("div");
@@ -623,6 +900,7 @@ function ensurePlatformEditorDock() {
 }
 
 function installPlatformEditorSurface() {
+  if (state.workbench) return;
   const doc = previewDocument();
   if (!doc?.body) return;
   ensurePlatformEditorDock();
@@ -758,12 +1036,17 @@ async function captureEditedHtml() {
   const win = previewWindow();
   if (!win?.exportEditedHtml) throw new Error("The current preview is not editable yet.");
   const wasEditing = Boolean(previewDocument()?.body?.classList.contains("editing"));
+  state.workbench?.prepareExport?.();
   cleanupPlatformEditorArtifacts();
+  const pagedHtml = ensureDownloadablePagedHtml(await win.exportEditedHtml("paged"));
   const output = {
-    pagedHtml: await win.exportEditedHtml("paged"),
-    scrollHtml: await win.exportEditedHtml("scroll"),
+    pagedHtml,
+    scrollHtml: makeScrollHtmlFromPaged(pagedHtml),
   };
-  if (wasEditing) installPlatformEditorSurface();
+  if (wasEditing) {
+    state.workbench?.restoreAfterExport?.();
+    installPlatformEditorSurface();
+  }
   return output;
 }
 
@@ -771,6 +1054,13 @@ async function persistEditedHtml({ reloadPreview = false } = {}) {
   if (!state.job) return;
   const captured = await captureEditedHtml();
   refreshJobHtmlUrls(captured.pagedHtml, captured.scrollHtml, reloadPreview);
+  if (state.job.historyRecordId && window.PptHistory) {
+    try {
+      await window.PptHistory.saveEditedHtml(state.job.historyRecordId, captured.pagedHtml, captured.scrollHtml);
+    } catch (error) {
+      console.warn("Could not update quick create history", error);
+    }
+  }
   try {
     const response = await fetch(`/api/jobs/${state.job.id}/save-edited`, {
       method: "POST",
@@ -814,6 +1104,93 @@ async function downloadZip() {
   }
 }
 
+function historyRecordIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("history") || sessionStorage.getItem("ppt-html-studio-open-history-id") || "";
+}
+
+function shouldOpenHistoryInEditMode() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("edit") === "1" || sessionStorage.getItem("ppt-html-studio-open-history-edit") === "1";
+}
+
+function quickCreateTitleFromJob(job) {
+  return el("topic")?.value?.trim()
+    || state.plan?.title
+    || window.PptHistory?.titleFromHtml?.(job?.inlinePreviewHtmlCache || "")
+    || job?.fileName
+    || "Quick Create deck";
+}
+
+async function saveQuickCreateHistoryRecord(job) {
+  if (!window.PptHistory || !job) return null;
+  try {
+    const pagedHtml = job.inlinePreviewHtmlCache || "";
+    const scrollHtml = job.inlineScrollHtmlCache || (pagedHtml ? makeScrollHtmlFromPaged(pagedHtml) : "");
+    if (!pagedHtml) return null;
+    const title = quickCreateTitleFromJob(job);
+    const record = await window.PptHistory.saveRecord({
+      id: job.historyRecordId || "",
+      title,
+      source: "quick_create",
+      mode: "ai",
+      style: currentTopicPayload().style || state.plan?.style || "clean",
+      slideCount: Number(state.plan?.slides?.length || job.slides || window.PptHistory.detectSlideCount(pagedHtml) || 0),
+      thumbnail: window.PptHistory.thumbnailFromHtml?.(pagedHtml, title, "quick_create", currentTopicPayload().style || "ai") || window.PptHistory.createThumbnail(title, "quick_create", currentTopicPayload().style || "ai"),
+      html: pagedHtml,
+      scrollHtml: scrollHtml || pagedHtml,
+      fileName: job.fileName || `${title}.html`,
+      status: "ready",
+      metadata: { plan: state.plan || null, prompt: currentTopicPayload() },
+    });
+    state.job.historyRecordId = record.id;
+    return record;
+  } catch (error) {
+    console.warn("Could not save quick create history", error);
+    return null;
+  }
+}
+
+function quickCreateJobFromHistoryRecord(record) {
+  const html = record.editedHtml || record.html || "";
+  return hydrateJob({
+    id: `HISTORY-${record.id}`,
+    historyRecordId: record.id,
+    fileName: record.fileName || record.title || "Quick Create history deck",
+    slides: record.slideCount || window.PptHistory?.detectSlideCount?.(html) || 0,
+    style: record.style || "clean",
+    status: record.status || "ready",
+    updatedAt: new Date(record.updatedAt || Date.now()).toISOString(),
+    previewUrl: "",
+    scrollUrl: "",
+    downloadUrl: "",
+    inlinePreviewHtml: html,
+    inlineScrollHtml: record.scrollHtml || makeScrollHtmlFromPaged(html),
+  });
+}
+
+async function restoreQuickCreateHistoryFromUrl() {
+  const historyId = historyRecordIdFromUrl();
+  if (!historyId || !window.PptHistory) return;
+  try {
+    await window.PptHistory.init();
+    const record = await window.PptHistory.getRecord(historyId);
+    if (!record) throw new Error("History record not found.");
+    renderJob(quickCreateJobFromHistoryRecord(record));
+    if (record.metadata?.plan) state.plan = record.metadata.plan;
+    if (shouldOpenHistoryInEditMode()) {
+      setTimeout(() => {
+        if (!state.editing) toggleEdit();
+      }, 500);
+    }
+    sessionStorage.removeItem("ppt-html-studio-open-history-id");
+    sessionStorage.removeItem("ppt-html-studio-open-history-edit");
+    setStatus("Local history record opened.", "ok");
+  } catch (error) {
+    setStatus(error.message || "Could not open local history.", "error");
+  }
+}
+
 function toggleEdit() {
   const win = previewWindow();
   if (!win?.toggleEdit) {
@@ -823,15 +1200,25 @@ function toggleEdit() {
   state.editing = !state.editing;
   win.toggleEdit(state.editing);
   document.querySelector(".topic-preview")?.classList.toggle("editor-active", state.editing);
-  if (state.editing) installPlatformEditorSurface();
-  else setPlatformEditorSelected(null);
+  if (state.editing) {
+    if (state.workbench) state.workbench.setMode("edit", true);
+    else installPlatformEditorSurface();
+  } else {
+    state.workbench?.setMode("preview", true);
+    setPlatformEditorSelected(null);
+  }
   el("editHtml").textContent = state.editing ? "Stop Editing" : "Edit HTML";
   requestAnimationFrame(syncPreviewScale);
 }
 
 function openPreview() {
-  if (!state.job?.previewUrl) return;
-  window.open(state.job.previewUrl, "_blank", "noopener,noreferrer");
+  if (!state.job) return;
+  captureEditedHtml()
+    .then((captured) => window.open(createInlineHtmlUrl(window.PptDeckWorkbench?.buildStandalonePreviewHtml ? window.PptDeckWorkbench.buildStandalonePreviewHtml(captured.pagedHtml) : makePagedHtmlPlayable(captured.pagedHtml)), "_blank", "noopener,noreferrer"))
+    .catch((error) => {
+      console.warn("Could not build playable preview; opening cached preview.", error);
+      if (state.job?.previewUrl) window.open(state.job.previewUrl, "_blank", "noopener,noreferrer");
+    });
 }
 
 function openScroll() {
@@ -877,8 +1264,10 @@ function currentPreviewContext(scope) {
     scope,
     currentSlide: Math.max(1, slides.indexOf(active) + 1),
     slideCount: slides.length || 1,
+    currentSlideId: active?.dataset?.pptId || active?.id || "",
     currentSlideText: active.innerText?.slice(0, 2800) || "",
     currentSlideHtml: active.outerHTML?.slice(0, 8000) || "",
+    selectedId: selected && selected !== doc.body ? selected.dataset?.pptId || "" : "",
     selectedText: selected && selected !== doc.body ? selected.innerText?.slice(0, 1000) || "" : "",
     selectedHtml: selected && selected !== doc.body ? selected.outerHTML?.slice(0, 2200) || "" : "",
   };
@@ -923,7 +1312,7 @@ async function sendChatEdit() {
         instruction,
         scope,
         style: el("styleSelect").value,
-        plan: editableTextToPlan(el("planText").value, state.plan),
+        plan: state.plan,
         context,
         integration,
       }),
@@ -955,36 +1344,98 @@ function applyTheme(theme) {
 }
 
 function initStyles() {
-  el("styleSelect").innerHTML = styles
+  const options = window.PptStyleRegistry?.allOptions?.(state.customStyles) || styles;
+  el("styleSelect").innerHTML = options
     .map(([value, label]) => `<option value="${value}">${label}</option>`)
     .join("");
+  if (!options.some(([value]) => value === state.selectedStyle)) state.selectedStyle = "banana";
+  el("styleSelect").value = state.selectedStyle;
 }
 
 function loadSample() {
   el("topic").value = "Human-computer interaction usability testing workshop";
   el("audience").value = "Undergraduate students";
   el("slideCount").value = "8";
-  el("styleSelect").value = "teaching";
-  el("requirements").value = "Create a concise classroom deck. Include consent, task design, observation, metrics, analysis, and a final discussion slide. Keep the tone modern, clean, and readable.";
+  el("styleSelect").value = "banana";
+  state.selectedStyle = "banana";
+  localStorage.setItem("ppt-html-studio-selected-style", state.selectedStyle);
+  el("requirements").value = "适合课堂演讲，包含研究流程、观察指标、分析方法和最后的讨论问题。内容清晰，页面留白充足。";
+  renderStyleSwatches();
+}
+
+function setCreationMode(mode) {
+  state.creationMode = mode === "outline" ? "outline" : "one-line";
+  const outlineMode = state.creationMode === "outline";
+  el("modeOneLine")?.classList.toggle("active", !outlineMode);
+  el("modeOutline")?.classList.toggle("active", outlineMode);
+  el("modeOneLine")?.setAttribute("aria-selected", String(!outlineMode));
+  el("modeOutline")?.setAttribute("aria-selected", String(outlineMode));
+  el("topicField")?.classList.toggle("hidden", outlineMode);
+  el("topic")?.toggleAttribute("required", !outlineMode);
+  el("outlineSourceField")?.classList.toggle("hidden", !outlineMode);
+  if (outlineMode && !el("outlineSource")?.value.trim() && state.referencePack.outlineText) {
+    el("outlineSource").value = state.referencePack.outlineText;
+  }
+  const button = el("planButton");
+  if (button) button.textContent = outlineMode ? "解析大纲并创建 HTML" : "生成大纲并创建 HTML";
+}
+
+function renderStyleSwatches() {
+  const root = el("styleSwatches");
+  const select = el("styleSelect");
+  if (!root || !select) return;
+  const options = window.PptStyleRegistry?.allOptions?.(state.customStyles) || styles;
+  const current = window.PptStyleRegistry?.get?.(select.value, state.customStyles);
+  const meta = window.PptStyleRegistry?.previewMeta?.(select.value, state.customStyles) || {};
+  root.innerHTML = `<button type="button" class="compact-style-current" data-preview-current style="--style-bg:${meta.swatches?.[0] || "#f8fbff"};--style-ink:${meta.swatches?.[1] || "#17213f"};--style-accent:${meta.swatches?.[2] || "#2563eb"}"><span class="compact-style-art"><i></i><b></b></span><span><strong>${current?.name || select.value}</strong><small>预览当前风格</small></span></button><button type="button" class="compact-style-change" data-open-style-picker>选择风格</button>`;
+  root.querySelector("[data-preview-current]")?.addEventListener("click", () => window.PptStyleRegistry?.openPreview?.(select.value, state.customStyles));
+  root.querySelector("[data-open-style-picker]")?.addEventListener("click", () => window.PptStyleRegistry?.openPicker?.({
+    selected: select.value,
+    customStyles: state.customStyles,
+    onSelect: (nextStyle) => {
+      select.value = nextStyle;
+      state.selectedStyle = nextStyle;
+      localStorage.setItem("ppt-html-studio-selected-style", nextStyle);
+      renderStyleSwatches();
+    },
+  }));
+  const picked = el("stylePicked");
+  if (picked) picked.textContent = options.find(([value]) => value === select.value)?.[1] || select.value;
 }
 
 function init() {
   initStyles();
   applyTheme(state.theme);
   loadIntegration();
+  setCreationMode("one-line");
+  el("styleSelect").value = state.selectedStyle;
+  el("planButton").innerHTML = "<span>✦</span> 一句话生成 PPT";
+  renderStyleSwatches();
+  el("modeOneLine")?.addEventListener("click", () => setCreationMode("one-line"));
+  el("modeOutline")?.addEventListener("click", () => setCreationMode("outline"));
+  el("styleSelect")?.addEventListener("change", () => {
+    state.selectedStyle = el("styleSelect").value;
+    localStorage.setItem("ppt-html-studio-selected-style", state.selectedStyle);
+    renderStyleSwatches();
+  });
+  if (window.PptReferencePack) {
+    state.referencePackController = window.PptReferencePack.attach({
+      input: el("referenceInput"),
+      list: el("referenceFiles"),
+      initial: state.referencePack,
+      onChange: (pack, error) => {
+        if (error) {
+          setStatus(error.message || "Could not read reference material.", "error");
+          return;
+        }
+        state.referencePack = pack;
+        if (state.creationMode === "outline" && pack.outlineText && !el("outlineSource").value.trim()) el("outlineSource").value = pack.outlineText;
+      },
+    });
+  }
   el("topicForm").addEventListener("submit", generatePlan);
-  el("generateButton").addEventListener("click", generateHtml);
   el("saveApi")?.addEventListener("click", () => saveIntegration().catch((error) => setStatus(error.message, "error")));
   el("apiProvider")?.addEventListener("change", (event) => applyProvider(event.target.value, true));
-  el("formatPlan").addEventListener("click", () => {
-    if (!state.plan) {
-      setStatus("Generate a plan first.", "error");
-      return;
-    }
-    const plan = editableTextToPlan(el("planText").value, state.plan);
-    renderPlan(plan);
-    setStatus("Readable plan refreshed.", "ok");
-  });
   el("editHtml").addEventListener("click", toggleEdit);
   el("saveEditedHtml").addEventListener("click", () => saveEditedHtml().catch((error) => setStatus(error.message, "error")));
   el("downloadZip").addEventListener("click", downloadZip);
@@ -999,21 +1450,31 @@ function init() {
     const shell = el("previewFrame").closest(".preview-frame");
     if (shell) new ResizeObserver(syncPreviewScale).observe(shell);
   }
-  el("sendChatEdit").addEventListener("click", sendChatEdit);
-  el("chatScope").addEventListener("change", (event) => setChatStatus(`${event.target.options[event.target.selectedIndex].text} mode`));
-  el("chatInput").addEventListener("keydown", (event) => {
+  el("sendChatEdit")?.addEventListener("click", sendChatEdit);
+  el("chatScope")?.addEventListener("change", (event) => setChatStatus(`${event.target.options[event.target.selectedIndex].text} mode`));
+  el("chatInput")?.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") sendChatEdit();
   });
   document.querySelectorAll("[data-chat-prompt]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (!el("chatInput")) return;
       el("chatInput").value = button.dataset.chatPrompt || "";
       el("chatInput").focus();
     });
   });
   el("themeToggle")?.addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark"));
   el("loadSample").addEventListener("click", loadSample);
-  el("closeGenerationOverlay").addEventListener("click", () => el("generationOverlay").classList.add("hidden"));
+  el("regenerateFromPlan")?.addEventListener("click", () => generateHtml(planFromEditor()).catch((error) => setStatus(error.message || "Could not regenerate from outline.", "error")));
+  el("closeGenerationOverlay")?.addEventListener("click", () => el("generationOverlay")?.classList.add("hidden"));
+  state.workbench = window.PptDeckWorkbench?.create({
+    iframe: "#previewFrame",
+    section: ".topic-preview",
+    editButton: "#editHtml",
+    chatPanel: null,
+    chatAfterLoad: false,
+  });
   updateChatSendState();
+  restoreQuickCreateHistoryFromUrl().catch((error) => console.warn("Could not restore quick create history", error));
 }
 
 document.addEventListener("DOMContentLoaded", init);
