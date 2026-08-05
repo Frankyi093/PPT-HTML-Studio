@@ -36,6 +36,7 @@ import {
   renderPaper2PosterHtml,
 } from "./ai-engine/academic-engine.js";
 import {
+  academicPosterV5EvidencePrompt,
   academicPosterV5BriefPrompt,
   academicPosterV5ReviewPrompt,
   auditAcademicPosterV5,
@@ -4709,16 +4710,47 @@ async function academicPosterV5BriefStream(request) {
     emit("stage", { stage: "dynamic_section_planning", progress: 24, message: "正在依据论文结构、证据数量和信息密度动态规划板块。" });
     let brief = fallback;
     let jsonRepaired = false;
+    let fallbackUsed = true;
     if (config.apiKey && config.endpoint && config.mode !== LOCAL_MODE) {
+      let extractedEvidence = null;
+      emit("stage", { stage: "evidence_extraction", progress: 14, message: "正在先提取论文事实、章节和原始证据映射。" });
+      try {
+        const extracted = await callAcademicJson(academicPosterV5EvidencePrompt(source), config, "Return strict JSON only. Extract source-grounded claims and evidence links without repetition.", payload.referencePack || null, "AcademicPosterEvidenceV5");
+        extractedEvidence = extracted.value;
+      } catch (extractionError) {
+        emit("stage", { stage: "evidence_extraction_warning", progress: 18, message: "证据提取模型暂不可用，继续使用本地结构化来源块。" });
+      }
       emit("stage", { stage: "copy_and_visual_brief", progress: 52, message: "正在生成每个板块的来源锁定文案、视觉描述和生图提示词。" });
-      const parsed = await callAcademicJson(academicPosterV5BriefPrompt(source, options), config, "Return strict JSON only. Be source-grounded. Do not invent claims, numbers, assets or citations.", payload.referencePack || null, "AcademicPosterBriefV5");
+      const parsed = await callAcademicJson(academicPosterV5BriefPrompt(source, options, extractedEvidence), config, "Return strict JSON only. Be source-grounded. Do not invent claims, numbers, assets or citations.", payload.referencePack || null, "AcademicPosterBriefV5");
       brief = normalizeAcademicPosterBriefV5(parsed.value, source, options);
       jsonRepaired = Boolean(parsed.repaired);
+      fallbackUsed = false;
+      let candidateQuality = auditAcademicPosterV5(brief, source);
+      if (!candidateQuality.ok) {
+        emit("stage", { stage: "semantic_repair", progress: 72, message: `初版方案未通过语义质检，正在修复：${candidateQuality.warnings.slice(0, 4).join("、")}` });
+        const repairPrompt = `${academicPosterV5BriefPrompt(source, options, extractedEvidence)}\n\nThe previous candidate failed these checks: ${candidateQuality.warnings.join(", ")}. Rebuild every affected panel from its own source block. Do not repeat headings, takeaways, roles, visual descriptions or evidenceIds. Do not use Section 1 as a placeholder.`;
+        let repairedQuality = { ok: false, warnings: ["repair_call_failed"] };
+        try {
+          const repaired = await callAcademicJson(repairPrompt, config, "Return strict JSON only. Repair repeated or unsupported panels and preserve source references.", payload.referencePack || null, "AcademicPosterBriefV5Repair");
+          const repairedBrief = normalizeAcademicPosterBriefV5(repaired.value, source, options);
+          repairedQuality = auditAcademicPosterV5(repairedBrief, source);
+          if (repairedQuality.ok) { brief = repairedBrief; candidateQuality = repairedQuality; jsonRepaired = true; }
+        } catch (repairError) {
+          repairedQuality = { ok: false, warnings: [`repair_call_failed:${String(repairError?.message || repairError).slice(0, 120)}`] };
+        }
+        if (!repairedQuality.ok) {
+          const fallbackQuality = auditAcademicPosterV5(fallback, source);
+          if (!fallbackQuality.ok) throw new Error(`Academic V5 brief quality failed after repair: ${repairedQuality.warnings.slice(0, 8).join(", ")}`);
+          brief = fallback;
+          fallbackUsed = true;
+          candidateQuality = fallbackQuality;
+        }
+      }
     }
     const quality = auditAcademicPosterV5(brief, source);
     if (!quality.ok) throw new Error(`Academic V5 brief quality failed: ${quality.warnings.join(", ")}`);
     emit("quality_check", { progress: 88, report: quality });
-    emit("complete", { progress: 100, protocol: "academic-poster-v5", source, brief, assetLibrary: buildPaperAssetLibrary(source), quality, jsonRepaired, fallbackUsed: brief === fallback });
+    emit("complete", { progress: 100, protocol: "academic-poster-v5", source, brief, assetLibrary: buildPaperAssetLibrary(source), quality, jsonRepaired, fallbackUsed });
   });
 }
 
@@ -4874,7 +4906,34 @@ async function handleImageModelTest(request, env) {
   return json({ ok: true, contentType: response.headers.get("content-type") || "image/png" });
 }
 
-async function handleAcademicPosterImage(request, env) { return generateConfiguredImage(await readJson(request), env); }
+function academicPosterImagePayload(payload = {}) {
+  const source = { ...payload };
+  const { width, height } = imageDimensions(payload);
+  const ratio = width / Math.max(1, height);
+  // Keep the final HTML canvas independent from provider-specific limits.
+  // Academic V5 asks the model for a native-size background and composites it
+  // deterministically afterwards.
+  const nativeSize = ratio > 1.15 ? { width: 1536, height: 1024 } : ratio < 0.87 ? { width: 1024, height: 1536 } : { width: 1024, height: 1024 };
+  const negative = String(payload.negativePrompt || "").trim();
+  const prompt = String(payload.prompt || "").slice(0, 5000);
+  return { ...source, ...nativeSize, prompt: negative ? `${prompt}\n\nNegative constraints: ${negative.slice(0, 1600)}` : prompt };
+}
+
+async function handleAcademicPosterImage(request, env) {
+  const traceId = crypto.randomUUID();
+  try {
+    const normalized = academicPosterImagePayload(await readJson(request));
+    let response = await generateConfiguredImage(normalized, env);
+    if (!response.ok && (response.status >= 500 || response.status === 429)) response = await generateConfiguredImage({ ...normalized, prompt: `${normalized.prompt}\nRetry once with the same composition and no readable text.` }, env);
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      return json({ ...detail, traceId, retryable: response.status >= 500 || response.status === 429, stage: "academic-poster-v5-image" }, response.status);
+    }
+    return response;
+  } catch (error) {
+    return json({ error: "academic_image_generation_failed", message: String(error?.message || error), traceId, retryable: true, stage: "academic-poster-v5-image" }, 502);
+  }
+}
 
 const ZINE_LAYOUTS = ["center-fragment", "lower-left-float", "upper-right-block", "dual-panel", "irregular-cutout", "type-led", "dot-orbit", "single-specimen"];
 const ZINE_ANCHORS = ["tiny-faded-photo", "torn-paper-clipping", "flat-silhouette", "solid-color-block", "old-printed-illustration", "object-specimen", "translucent-overlay", "texture-window"];
